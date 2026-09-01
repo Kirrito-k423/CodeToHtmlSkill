@@ -1,0 +1,3458 @@
+{
+  "source": {
+    "sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc"
+  },
+  "functions": [
+    {
+      "id": "f-moedistributedispatchv2fullmeshimpl-simt-write-wqe-5b3a890c15",
+      "module_id": "wqe-alternates",
+      "name": "simt_write_wqe",
+      "start": 3233,
+      "end": 3275,
+      "inactive": true,
+      "summary": "不可达的基础 64B WQE writer：按固定 depth=2^14 选择 SQ ring 槽，构造 owner/CQE/remote-jetty/token header，复制 remote EID，并写 remote/local address 与 length；参数 opcode 被忽略而硬编码 OP_WRITE。",
+      "inputs": [
+        "sq",
+        "myHead",
+        "localAddr",
+        "remoteAddr",
+        "messageLen",
+        "opcode"
+      ],
+      "outputs": [
+        "wqeAddr"
+      ],
+      "side_effects": [
+        "若被调用会直接写 sq->sqVA 对应 GM WQE ring 的多个字段",
+        "#if 0 的 UB WQE 输出实现不编译，当前编译分支选择 GM ring",
+        "opcode 参数未消费，offset 4 固定写 URMAOPCODE::OP_WRITE",
+        "inactive：当前 vf 调用 simt_write_wqe_v4，本函数无有效调用点"
+      ],
+      "review": {
+        "status": "PASS",
+        "reviewer": "e2e-architecture-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "line_range": [
+          3233,
+          3275
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 3233,
+        "reviewed_end": 3275,
+        "expected_line_count": 43,
+        "covered_line_count": 43,
+        "covered_ranges": [
+          [
+            3233,
+            3247
+          ],
+          [
+            3248,
+            3254
+          ],
+          [
+            3255,
+            3265
+          ],
+          [
+            3266,
+            3275
+          ]
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {
+          "line": 3233,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_write_wqe` 的签名片段 `__simt_callee__ inline void simt_write_wqe(JETTY_POS HcclAiRMAWQ *sq, uint32_t myHead, uint64_t localAddr, uint64_t remoteAddr, uint32_t messageLen, URMAOPCODE opcode)`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3234,
+          "kind": "brace",
+          "explanation": "在 `simt_write_wqe` 的 L3234 打开 代码块 `__simt_callee__ inline void simt_write_wqe(JETTY_POS HcclAiRMAWQ *sq, uint32_t myHead, uint64_t…` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3235,
+          "kind": "declaration",
+          "explanation": "固定 `shift=14`，因此此备选 writer 按 2^14 个槽位计算 owner 周期。",
+          "reads": [],
+          "writes": [
+            "shift"
+          ]
+        },
+        {
+          "line": 3236,
+          "kind": "declaration",
+          "explanation": "固定每条 WQE 占 `wqeSize=64` 字节。",
+          "reads": [],
+          "writes": [
+            "wqeSize"
+          ]
+        },
+        {
+          "line": 3237,
+          "kind": "declaration",
+          "explanation": "由 `shift` 得到 `qpDepth=16384`，后续用它对 `myHead` 取环形槽。",
+          "reads": [
+            "shift"
+          ],
+          "writes": [
+            "qpDepth"
+          ]
+        },
+        {
+          "line": 3238,
+          "kind": "blank",
+          "explanation": "空行在 `simt_write_wqe` 的 L3238 分隔 `constexpr uint32_t qpDepth = 1 << shift;` 与 `// auto shift = 14;` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3239,
+          "kind": "comment",
+          "explanation": "历史注释保留固定 `shift=14` 的旧写法；当前不参与编译。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3240,
+          "kind": "comment",
+          "explanation": "历史注释曾从 `sq->wqeSize` 读取动态 WQE 大小；当前固定为 64。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3241,
+          "kind": "comment",
+          "explanation": "历史注释曾从 `sq->sqDepth` 读取动态深度；当前固定为 16384。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3242,
+          "kind": "blank",
+          "explanation": "空行在 `simt_write_wqe` 的 L3242 分隔 `// auto qpDepth = sq->sqDepth;` 与 `auto sqBaseAddr = sq->sqVA;` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3243,
+          "kind": "declaration",
+          "explanation": "从 `sq->sqVA` 取得发送队列 WQE 环形区的全局内存基址 `sqBaseAddr`。",
+          "reads": [
+            "sq",
+            "sqVA"
+          ],
+          "writes": [
+            "sqBaseAddr"
+          ]
+        },
+        {
+          "line": 3244,
+          "kind": "declaration",
+          "explanation": "把 `sq->tp_id` 截断为协议头使用的低 24 位 `tpId`。",
+          "reads": [
+            "sq",
+            "tp_id"
+          ],
+          "writes": [
+            "tpId"
+          ]
+        },
+        {
+          "line": 3245,
+          "kind": "declaration",
+          "explanation": "把 `sq->rmtObjId` 截断为协议头使用的低 20 位 `rmtObjId`。",
+          "reads": [
+            "sq"
+          ],
+          "writes": [
+            "rmtObjId"
+          ]
+        },
+        {
+          "line": 3246,
+          "kind": "declaration",
+          "explanation": "计算低 20 位 `tokenId`，但当前实现后续没有写入它，属于遗留中间量。",
+          "reads": [
+            "sq",
+            "localTokenId"
+          ],
+          "writes": [
+            "tokenId"
+          ]
+        },
+        {
+          "line": 3247,
+          "kind": "blank",
+          "explanation": "空行在 `simt_write_wqe` 的 L3247 分隔 `auto tokenId = (sq->localTokenId) & 0xFFFFF;` 与 `#if 0` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3248,
+          "kind": "preprocessor",
+          "explanation": "`#if 0` 关闭后续 UB WQE 地址方案，因此该分支在当前构建中不可达。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3249,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `if (threadIdx.x == 0) printf(\"writing wqes to UB\\n\");`；该内容当前不参与 `simt_write_wqe` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3250,
+          "kind": "call",
+          "explanation": "不可达 UB 方案把每个线程的 WQE 放到 `WQE_OUT_OFFSET + wqeSize * threadIdx.x`。",
+          "reads": [
+            "WQE_OUT_OFFSET",
+            "wqeSize",
+            "threadIdx"
+          ],
+          "writes": [
+            "wqeAddr"
+          ]
+        },
+        {
+          "line": 3251,
+          "kind": "preprocessor",
+          "explanation": "切换到当前编译采用的 GM 环形发送队列分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3252,
+          "kind": "declaration",
+          "explanation": "按 `myHead % qpDepth` 选择环形槽，并以 `sqBaseAddr + wqeSize*槽号` 得到 GM `wqeAddr`。",
+          "reads": [
+            "sqBaseAddr",
+            "wqeSize",
+            "myHead",
+            "qpDepth"
+          ],
+          "writes": [
+            "wqeAddr"
+          ]
+        },
+        {
+          "line": 3253,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `if (threadIdx.x == 0) printf(\"writing wqes to GM, addr %p\\n\", wqeAddr);`；该内容当前不参与 `simt_write_wqe` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3254,
+          "kind": "preprocessor",
+          "explanation": "结束由 `#if 0` 打开的条件编译区域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3255,
+          "kind": "declaration",
+          "explanation": "根据 `myHead` 跨越 2^14 槽的奇偶翻转计算 owner 位原值。",
+          "reads": [
+            "myHead",
+            "shift"
+          ],
+          "writes": [
+            "ownBit"
+          ]
+        },
+        {
+          "line": 3256,
+          "kind": "declaration",
+          "explanation": "把 owner 位移到 WQE 首字的 bit31。",
+          "reads": [],
+          "writes": [
+            "ownBit"
+          ]
+        },
+        {
+          "line": 3257,
+          "kind": "declaration",
+          "explanation": "在首字 bit21 置位，要求硬件生成 CQE。",
+          "reads": [],
+          "writes": [
+            "ownBit"
+          ]
+        },
+        {
+          "line": 3258,
+          "kind": "declaration",
+          "explanation": "在首字 bit29 标记远端对象为 jetty 类型。",
+          "reads": [],
+          "writes": [
+            "ownBit"
+          ]
+        },
+        {
+          "line": 3259,
+          "kind": "declaration",
+          "explanation": "在首字 bit28 启用 token 语义。",
+          "reads": [],
+          "writes": [
+            "ownBit"
+          ]
+        },
+        {
+          "line": 3260,
+          "kind": "statement",
+          "explanation": "把组合后的 `ownBit` 写入 `wqeAddr` 偏移 0 的 32 位首字。",
+          "reads": [
+            "ownBit"
+          ],
+          "writes": [
+            "wqeAddr"
+          ]
+        },
+        {
+          "line": 3261,
+          "kind": "comment",
+          "explanation": "被注释的旧写法会使用形参 `opcode`；当前不执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3262,
+          "kind": "statement",
+          "explanation": "当前实现忽略形参 `opcode`，在偏移 4 固定编码 `URMAOPCODE::OP_WRITE`。",
+          "reads": [
+            "URMAOPCODE",
+            "OP_WRITE"
+          ],
+          "writes": [
+            "wqeAddr"
+          ]
+        },
+        {
+          "line": 3263,
+          "kind": "statement",
+          "explanation": "在偏移 8 写入单 SGE 标志与低 24 位 `tpId`。",
+          "reads": [
+            "tpId"
+          ],
+          "writes": [
+            "wqeAddr"
+          ]
+        },
+        {
+          "line": 3264,
+          "kind": "statement",
+          "explanation": "在偏移 12 写入低 20 位远端 jetty/segment 标识 `rmtObjId`。",
+          "reads": [
+            "rmtObjId"
+          ],
+          "writes": [
+            "wqeAddr"
+          ]
+        },
+        {
+          "line": 3265,
+          "kind": "blank",
+          "explanation": "空行在 `simt_write_wqe` 的 L3265 分隔 `*(WQE_OUT_POS uint32_t*)(wqeAddr + 12) = rmtObjId; // [19:0] rmt_jetty_…` 与 `#pragma unroll` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3266,
+          "kind": "preprocessor",
+          "explanation": "应用预处理指令 `#pragma unroll`，改变 `simt_write_wqe` 所在编译单元的构建内容。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3267,
+          "kind": "loop",
+          "explanation": "展开 16 次循环，逐字节复制远端 EID。",
+          "reads": [],
+          "writes": [
+            "index"
+          ]
+        },
+        {
+          "line": 3268,
+          "kind": "statement",
+          "explanation": "把 `sq->rmtEid[index]` 写到 WQE 偏移 16–31。",
+          "reads": [
+            "index",
+            "sq",
+            "rmtEid"
+          ],
+          "writes": [
+            "wqeAddr"
+          ]
+        },
+        {
+          "line": 3269,
+          "kind": "brace",
+          "explanation": "在 `simt_write_wqe` 的 L3269 结束 for 循环 `for (uint32_t index = 0; index < 16; index++) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3270,
+          "kind": "statement",
+          "explanation": "在 WQE 偏移 40 写入 64 位 `remoteAddr`。",
+          "reads": [
+            "remoteAddr"
+          ],
+          "writes": [
+            "wqeAddr"
+          ]
+        },
+        {
+          "line": 3271,
+          "kind": "statement",
+          "explanation": "在 WQE 偏移 48 写入 32 位 `messageLen`。",
+          "reads": [
+            "messageLen"
+          ],
+          "writes": [
+            "wqeAddr"
+          ]
+        },
+        {
+          "line": 3272,
+          "kind": "comment",
+          "explanation": "注释掉的测试写法会把长度硬编码为 5120；当前不执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3273,
+          "kind": "blank",
+          "explanation": "空行在 `simt_write_wqe` 的 L3273 分隔 `// *(WQE_OUT_POS uint32_t*)(wqeAddr + 48) = (uint32_t)5120; // [31:0] l…` 与 `*(WQE_OUT_POS uint64_t*)(wqeAddr + 56) = (uint64_t)localAddr;` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3274,
+          "kind": "statement",
+          "explanation": "在 WQE 偏移 56 写入 64 位 `localAddr`，完成固定 64B WQE 布局。",
+          "reads": [
+            "localAddr"
+          ],
+          "writes": [
+            "wqeAddr"
+          ]
+        },
+        {
+          "line": 3275,
+          "kind": "brace",
+          "explanation": "在 `simt_write_wqe` 的 L3275 结束 代码块 `__simt_callee__ inline void simt_write_wqe(JETTY_POS HcclAiRMAWQ *sq, uint32_t myHead, uint64_t…` 作用域。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments": [
+        {
+          "id": "legacy-wqe-fixed-ring-and-sq-identifiers",
+          "start": 3233,
+          "end": 3247,
+          "title": "固定 64B WQE 与 16K SQ depth，并提取 SQ 标识",
+          "detail": "shift=14、wqeSize=64、qpDepth=16384；动态读取 sq->wqeSize/sqDepth 的方案被注释。随后从 sq 读取 sqVA，并把 tp_id 截到 24 bit、rmtObjId/localTokenId 截到 20 bit；tokenId 在后续有效写入中未使用。",
+          "kind": "input",
+          "input_state": [
+            "sq：HcclAiRMAWQ 上下文",
+            "myHead：单调递增 SQ head"
+          ],
+          "mechanism": "固定 ring 参数并用位 mask 提取 WQE header 可编码的 tpId/rmtObjId/tokenId。",
+          "output_state": [
+            "sqBaseAddr/qpDepth/wqeSize：ring 定位参数",
+            "tpId/rmtObjId/tokenId：截断后的 SQ 标识"
+          ],
+          "why": "WQE 字段位宽与 ring 格式固定；该旧 writer 没有复用 sq 的动态 size/depth。",
+          "calls": []
+        },
+        {
+          "id": "legacy-wqe-select-gm-ring-not-ub",
+          "start": 3248,
+          "end": 3254,
+          "title": "条件编译禁用 UB 输出，选择 GM SQ ring 槽",
+          "detail": "#if 0 分支会用 get_imm(WQE_OUT_OFFSET) 和 threadIdx.x 写 UB，但永远不编译；#else 令 wqeAddr=sqBaseAddr+64*(myHead%16384)。调试 printf 注释。",
+          "kind": "guard",
+          "input_state": [
+            "sqBaseAddr/myHead/qpDepth：GM ring 定位",
+            "#if 0：固定关闭的 UB 备选"
+          ],
+          "mechanism": "对 myHead 取 qpDepth 模实现 ring wrap，再乘 wqeSize。",
+          "output_state": [
+            "wqeAddr：当前 head 对应 GM 64B WQE 槽"
+          ],
+          "why": "区分禁用的中间 UB 方案与实际 GM SQ 写入，避免把 get_imm 视为主路径。",
+          "calls": []
+        },
+        {
+          "id": "legacy-wqe-write-owner-and-routing-header",
+          "start": 3255,
+          "end": 3265,
+          "title": "构造 owner/CQE/token 位并写 WQE 前 16B header",
+          "detail": "owner bit 是 ~(myHead>>14)&1，放 bit31；同时置 enable CQE(bit21)、remote jetty(bit29)、token enable(bit28)。offset0 写 ownBit，offset4 固定 OP_WRITE，offset8 写 num_sge=1 与 24-bit tpId，offset12 写 20-bit rmtObjId。",
+          "kind": "output",
+          "input_state": [
+            "myHead/shift：ring 周期 owner parity",
+            "tpId/rmtObjId：路由对象",
+            "opcode：传入但不使用"
+          ],
+          "mechanism": "按字段位定义 OR header bits，并用 WQE_OUT_POS 指针逐 32-bit 写固定偏移。",
+          "output_state": [
+            "wqeAddr[0:16]：owner、硬编码 write opcode、SGE 数、TP 与远端对象 ID"
+          ],
+          "why": "硬件通过 owner bit 区分 ring 周期，并需要 CQE/token/remote jetty 标志解释后续地址字段。",
+          "calls": []
+        },
+        {
+          "id": "legacy-wqe-copy-remote-eid-and-sge",
+          "start": 3266,
+          "end": 3275,
+          "title": "展开复制 16B remote EID，并写 remote/local SGE 地址",
+          "detail": "#pragma unroll 的 16 次循环把 sq->rmtEid 写到 offset16–31；随后 offset40 写 remoteAddr，offset48 写 messageLen，offset56 写 localAddr。固定 length=5120 的调试替代被注释。",
+          "kind": "output",
+          "input_state": [
+            "sq->rmtEid：16B 远端 endpoint ID",
+            "remoteAddr/messageLen/localAddr：write SGE"
+          ],
+          "mechanism": "byte loop 写 EID，按 uint64/uint32 固定 offset 写地址和长度。",
+          "output_state": [
+            "wqeAddr：完成该旧格式的 64B OP_WRITE WQE"
+          ],
+          "why": "remote EID、远端地址和本地 SGE 是远端 write 的实际传输描述。",
+          "calls": []
+        }
+      ]
+    },
+    {
+      "id": "f-moedistributedispatchv2fullmeshimpl-simt-nw-mj-vf-dca9896a43",
+      "module_id": "wqe-active",
+      "name": "simt_nw_mj_vf",
+      "start": 3277,
+      "end": 3408,
+      "inactive": false,
+      "summary": "当前 128-thread SIMT WQE 构建核心：清空 per-rank/per-SQ scratch，按目标 Rank 将批次 WQE 轮转到 SQ 并计数；每个活跃 SQ 仅一次 GM atomicAdd 预留连续 head；并行写 WQE、fence 后设置 UB head bitmap，最后按 word atomicOr 发布到 HeadRecordGM。",
+      "inputs": [
+        "rankNum",
+        "wqe_desc_arr",
+        "wqe_count",
+        "sqs",
+        "wqeSqIdx",
+        "dstRankWqeCount",
+        "sqWqeCount",
+        "sqBaseHead",
+        "sqCursor",
+        "HeadRecordUB",
+        "HeadRecordGM",
+        "maxJettyNumOnUB",
+        "maxHeadRecordSlot",
+        "startRankId",
+        "writerId"
+      ],
+      "outputs": [
+        "wqeSqIdx",
+        "dstRankWqeCount",
+        "sqWqeCount",
+        "sqBaseHead",
+        "sqCursor",
+        "HeadRecordUB",
+        "HeadRecordGM",
+        "sqs"
+      ],
+      "side_effects": [
+        "对每个活跃 SQ 的 GM headAddr 执行一次 atomicAdd(count)，预留不重叠连续 head 区间",
+        "通过 simt_write_wqe_v4 写 SQ WQE ring，并用 asc_threadfence 在发布 bitmap 前保证 WQE 可见",
+        "atomicOr 把完成 head 位先聚合到 HeadRecordUB，再发布到 HeadRecordGM",
+        "四次 __syncthreads 建立 scratch 初始化、计数、head 预留、WQE/UB bitmap 与 GM 发布的阶段边界",
+        "第 3381–3407 行旧 doorbell/head 数组生成实现全部注释"
+      ],
+      "review": {
+        "status": "PASS",
+        "reviewer": "e2e-architecture-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "line_range": [
+          3277,
+          3408
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 3277,
+        "reviewed_end": 3408,
+        "expected_line_count": 132,
+        "covered_line_count": 132,
+        "covered_ranges": [
+          [
+            3277,
+            3291
+          ],
+          [
+            3292,
+            3305
+          ],
+          [
+            3306,
+            3318
+          ],
+          [
+            3319,
+            3331
+          ],
+          [
+            3332,
+            3342
+          ],
+          [
+            3343,
+            3356
+          ],
+          [
+            3357,
+            3364
+          ],
+          [
+            3365,
+            3379
+          ],
+          [
+            3380,
+            3394
+          ],
+          [
+            3395,
+            3408
+          ]
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {
+          "line": 3277,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_nw_mj_vf` 的签名片段 `template<int port_num = 1, int jetty_num = 1>`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3278,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_nw_mj_vf` 的签名片段 `__simt_vf__ __aicore__ LAUNCH_BOUND(WQE_THREADS_NUM)`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3279,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_nw_mj_vf` 的签名片段 `inline void simt_nw_mj_vf(int rankNum, __ubuf__ wqe_desc_array_t *wqe_desc_arr, uint32_t wqe_count, JETTY_POS HcclAiRMAWQ *sqs,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3280,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_nw_mj_vf` 的签名片段 `__ubuf__ uint32_t* wqeSqIdx,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3281,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_nw_mj_vf` 的签名片段 `__ubuf__ uint32_t* dstRankWqeCount,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3282,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_nw_mj_vf` 的签名片段 `__ubuf__ uint32_t* sqWqeCount,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3283,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_nw_mj_vf` 的签名片段 `__ubuf__ uint32_t* sqBaseHead,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3284,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_nw_mj_vf` 的签名片段 `__ubuf__ uint32_t* sqCursor,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3285,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_nw_mj_vf` 的签名片段 `__ubuf__ uint32_t* HeadRecordUB,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3286,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_nw_mj_vf` 的签名片段 `__gm__ uint32_t* HeadRecordGM,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3287,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_nw_mj_vf` 的签名片段 `uint32_t maxJettyNumOnUB,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3288,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_nw_mj_vf` 的签名片段 `uint32_t maxHeadRecordSlot,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3289,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_nw_mj_vf` 的签名片段 `uint32_t startRankId,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3290,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_nw_mj_vf` 的签名片段 `uint32_t writerId)`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3291,
+          "kind": "brace",
+          "explanation": "在 `simt_nw_mj_vf` 的 L3291 打开 代码块 `uint32_t writerId)` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3292,
+          "kind": "declaration",
+          "explanation": "模板参数相乘得到每个 rank 的 SQ 数 `jetty_per_rank`。",
+          "reads": [
+            "port_num",
+            "jetty_num"
+          ],
+          "writes": [
+            "jetty_per_rank"
+          ]
+        },
+        {
+          "line": 3293,
+          "kind": "declaration",
+          "explanation": "由 `rankNum * port_num * jetty_num` 得到本次覆盖的 SQ 总数 `total_jetty`。",
+          "reads": [
+            "rankNum",
+            "port_num",
+            "jetty_num"
+          ],
+          "writes": [
+            "total_jetty"
+          ]
+        },
+        {
+          "line": 3294,
+          "kind": "declaration",
+          "explanation": "读取 SIMT 线程横坐标作为扁平线程号 `tid`。",
+          "reads": [
+            "threadIdx"
+          ],
+          "writes": [
+            "tid"
+          ]
+        },
+        {
+          "line": 3295,
+          "kind": "declaration",
+          "explanation": "用 `tid >> 5` 得到 warp 编号 `warpId`。",
+          "reads": [
+            "tid"
+          ],
+          "writes": [
+            "warpId"
+          ]
+        },
+        {
+          "line": 3296,
+          "kind": "declaration",
+          "explanation": "用 `tid & 31` 得到 warp 内 lane 编号 `laneId`。",
+          "reads": [
+            "tid"
+          ],
+          "writes": [
+            "laneId"
+          ]
+        },
+        {
+          "line": 3297,
+          "kind": "blank",
+          "explanation": "空行在 `simt_nw_mj_vf` 的 L3297 分隔 `uint32_t laneId = tid & 31U;` 与 `uint32_t N32_num_per_jetty = maxHeadRecordSlot >> 5U;` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3298,
+          "kind": "declaration",
+          "explanation": "每个 jetty 的 head bitmap 按 32 位字切分，字数为 `maxHeadRecordSlot >> 5`。",
+          "reads": [
+            "maxHeadRecordSlot"
+          ],
+          "writes": [
+            "N32_num_per_jetty"
+          ]
+        },
+        {
+          "line": 3299,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `auto DB_ARR = (__ubuf__ uint64_t *) get_imm(DB_ARRAY_OFFSET);`；该内容当前不参与 `simt_nw_mj_vf` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3300,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `auto HEAD_ARR = (__ubuf__ uint32_t *) get_imm(HEAD_ARRAY_OFFSET);`；该内容当前不参与 `simt_nw_mj_vf` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3301,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `auto PREV_HEAD_ARR = (__ubuf__ uint32_t *) get_imm(PREV_HEAD_ARRAY_OFFSET);`；该内容当前不参与 `simt_nw_mj_vf` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3302,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `auto OUT_JETTY_IDX = (__ubuf__ uint32_t *) get_imm(OUT_JETTY_IDX_OFFSET);`；该内容当前不参与 `simt_nw_mj_vf` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3303,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `auto PORT_IDX = (__ubuf__ uint32_t *) get_imm(PORT_IDX_OFFSET);`；该内容当前不参与 `simt_nw_mj_vf` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3304,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `auto JETTY_IDX = (__ubuf__ uint32_t *) get_imm(JETTY_IDX_OFFSET);`；该内容当前不参与 `simt_nw_mj_vf` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3305,
+          "kind": "blank",
+          "explanation": "空行在 `simt_nw_mj_vf` 的 L3305 分隔 `// auto JETTY_IDX = (__ubuf__ uint32_t *) get_imm(JETTY_IDX_OFFSET);` 与 `for (int idx = tid; idx < rankNum; idx += WQE_THREADS_NUM) {` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3306,
+          "kind": "loop",
+          "explanation": "线程按 `WQE_THREADS_NUM` 跨步遍历所有 rank 的计数槽。",
+          "reads": [
+            "tid",
+            "rankNum",
+            "WQE_THREADS_NUM"
+          ],
+          "writes": [
+            "idx"
+          ]
+        },
+        {
+          "line": 3307,
+          "kind": "declaration",
+          "explanation": "清零当前 rank 的 `dstRankWqeCount[idx]`，供 Phase 1 分配 rank 内序号。",
+          "reads": [
+            "idx"
+          ],
+          "writes": [
+            "dstRankWqeCount"
+          ]
+        },
+        {
+          "line": 3308,
+          "kind": "brace",
+          "explanation": "在 `simt_nw_mj_vf` 的 L3308 结束 for 循环 `for (int idx = tid; idx < rankNum; idx += WQE_THREADS_NUM) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3309,
+          "kind": "loop",
+          "explanation": "线程跨步遍历全部 `total_jetty` 个 SQ。",
+          "reads": [
+            "tid",
+            "total_jetty",
+            "WQE_THREADS_NUM"
+          ],
+          "writes": [
+            "sqIdx"
+          ]
+        },
+        {
+          "line": 3310,
+          "kind": "declaration",
+          "explanation": "清零每个 SQ 的批次 WQE 数 `sqWqeCount`。",
+          "reads": [
+            "sqIdx"
+          ],
+          "writes": [
+            "sqWqeCount"
+          ]
+        },
+        {
+          "line": 3311,
+          "kind": "declaration",
+          "explanation": "清零每个 SQ 在预留区内的分配游标 `sqCursor`。",
+          "reads": [
+            "sqIdx"
+          ],
+          "writes": [
+            "sqCursor"
+          ]
+        },
+        {
+          "line": 3312,
+          "kind": "declaration",
+          "explanation": "清零每个 SQ 保存的本批次预留起始 head `sqBaseHead`。",
+          "reads": [
+            "sqIdx"
+          ],
+          "writes": [
+            "sqBaseHead"
+          ]
+        },
+        {
+          "line": 3313,
+          "kind": "brace",
+          "explanation": "在 `simt_nw_mj_vf` 的 L3313 结束 for 循环 `for (int sqIdx = tid; sqIdx < total_jetty; sqIdx += WQE_THREADS_NUM) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3314,
+          "kind": "loop",
+          "explanation": "线程跨步覆盖 UB 中所有 jetty 的全部 32 位 bitmap 字。",
+          "reads": [
+            "tid",
+            "maxJettyNumOnUB",
+            "N32_num_per_jetty",
+            "WQE_THREADS_NUM"
+          ],
+          "writes": [
+            "slotIdx"
+          ]
+        },
+        {
+          "line": 3315,
+          "kind": "declaration",
+          "explanation": "清零 `HeadRecordUB[slotIdx]`，避免发布上批次残留的完成位。",
+          "reads": [
+            "slotIdx"
+          ],
+          "writes": [
+            "HeadRecordUB"
+          ]
+        },
+        {
+          "line": 3316,
+          "kind": "brace",
+          "explanation": "在 `simt_nw_mj_vf` 的 L3316 结束 for 循环 `for (uint32_t slotIdx = tid; slotIdx < maxJettyNumOnUB * N32_num_per_jetty; slotIdx += WQE_THRE…` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3317,
+          "kind": "sync",
+          "explanation": "所有线程在清零 rank/SQ/bitmap 三类 scratch 后汇合，再进入路由阶段。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3318,
+          "kind": "blank",
+          "explanation": "空行在 `simt_nw_mj_vf` 的 L3318 分隔 `__syncthreads();` 与 `// Phase 1: Route every WQE to one SQ and count this batch per SQ.` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3319,
+          "kind": "comment",
+          "explanation": "注释界定 Phase 1：为每条 WQE 选定 SQ，并统计每个 SQ 的批次条数。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3320,
+          "kind": "loop",
+          "explanation": "线程跨步领取 WQE 索引 `my_idx`。",
+          "reads": [
+            "tid",
+            "wqe_count",
+            "WQE_THREADS_NUM"
+          ],
+          "writes": [
+            "my_idx"
+          ]
+        },
+        {
+          "line": 3321,
+          "kind": "declaration",
+          "explanation": "从 `wqe_desc_arr->dstRank` 读取该 WQE 的目标 rank。",
+          "reads": [
+            "wqe_desc_arr",
+            "dstRank",
+            "my_idx"
+          ],
+          "writes": [
+            "my_dst_rank"
+          ]
+        },
+        {
+          "line": 3322,
+          "kind": "blank",
+          "explanation": "空行在 `simt_nw_mj_vf` 的 L3322 分隔 `uint32_t my_dst_rank = wqe_desc_arr->dstRank[my_idx];` 与 `// dstRankWqeOrdinal is this WQE's zero-based position among WQEs` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3323,
+          "kind": "comment",
+          "explanation": "注释说明 `dstRankWqeOrdinal` 是当前 writer 批次内、同一目标 rank 的零基序号。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3324,
+          "kind": "comment",
+          "explanation": "注释记录 `targeting the same rank in the current writer batch.`，说明 `simt_nw_mj_vf` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3325,
+          "kind": "call",
+          "explanation": "对目标 rank 的计数器 `atomicAdd(...,1)`，原值成为本 WQE 的 rank 内序号。",
+          "reads": [
+            "my_dst_rank"
+          ],
+          "writes": [
+            "dstRankWqeOrdinal",
+            "dstRankWqeCount"
+          ]
+        },
+        {
+          "line": 3326,
+          "kind": "declaration",
+          "explanation": "用 `(writerId + dstRankWqeOrdinal) % jetty_per_rank` 在该 rank 的 SQ 间轮转。",
+          "reads": [
+            "writerId",
+            "dstRankWqeOrdinal",
+            "jetty_per_rank"
+          ],
+          "writes": [
+            "localSqIdx"
+          ]
+        },
+        {
+          "line": 3327,
+          "kind": "declaration",
+          "explanation": "把 rank 基址与 `localSqIdx` 合成为全局 `mySqIdx`。",
+          "reads": [
+            "my_dst_rank",
+            "jetty_per_rank",
+            "localSqIdx"
+          ],
+          "writes": [
+            "mySqIdx"
+          ]
+        },
+        {
+          "line": 3328,
+          "kind": "declaration",
+          "explanation": "记录 WQE 到 SQ 的映射 `wqeSqIdx[my_idx]`，供 Phase 3 复用。",
+          "reads": [
+            "my_idx",
+            "mySqIdx"
+          ],
+          "writes": [
+            "wqeSqIdx"
+          ]
+        },
+        {
+          "line": 3329,
+          "kind": "call",
+          "explanation": "原子递增 `sqWqeCount[mySqIdx]`，累计该 SQ 本批次所需槽数。",
+          "reads": [
+            "mySqIdx"
+          ],
+          "writes": [
+            "sqWqeCount"
+          ]
+        },
+        {
+          "line": 3330,
+          "kind": "brace",
+          "explanation": "在 `simt_nw_mj_vf` 的 L3330 结束 for 循环 `for (auto my_idx = tid; my_idx < wqe_count; my_idx += WQE_THREADS_NUM) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3331,
+          "kind": "sync",
+          "explanation": "等待所有 WQE 完成路由和计数，保证 Phase 2 看到完整 `sqWqeCount`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3332,
+          "kind": "blank",
+          "explanation": "空行在 `simt_nw_mj_vf` 的 L3332 分隔 `__syncthreads();` 与 `// Phase 2: Reserve one contiguous head range per active SQ. This reduc…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3333,
+          "kind": "comment",
+          "explanation": "注释界定 Phase 2：每个活跃 SQ 只做一次 GM head 原子预留。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3334,
+          "kind": "comment",
+          "explanation": "该批量预留把 GM `atomicAdd` 从每条 WQE 一次降到每个活跃 SQ 一次。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3335,
+          "kind": "loop",
+          "explanation": "线程跨步领取一个 SQ 索引 `sqIdx`。",
+          "reads": [
+            "tid",
+            "total_jetty",
+            "WQE_THREADS_NUM"
+          ],
+          "writes": [
+            "sqIdx"
+          ]
+        },
+        {
+          "line": 3336,
+          "kind": "declaration",
+          "explanation": "读取该 SQ 在 Phase 1 累计的本批次 `count`。",
+          "reads": [
+            "sqWqeCount",
+            "sqIdx"
+          ],
+          "writes": [
+            "count"
+          ]
+        },
+        {
+          "line": 3337,
+          "kind": "branch",
+          "explanation": "只有 `count>0` 的活跃 SQ 才需要预留 head 区间。",
+          "reads": [
+            "count"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3338,
+          "kind": "declaration",
+          "explanation": "取得活跃 SQ 描述符 `mySq=&sqs[sqIdx]`。",
+          "reads": [
+            "sqs",
+            "sqIdx"
+          ],
+          "writes": [
+            "mySq"
+          ]
+        },
+        {
+          "line": 3339,
+          "kind": "call",
+          "explanation": "对 `mySq->headAddr` 原子加 `count`，返回的旧 head 保存为连续预留区起点。",
+          "reads": [
+            "sqIdx",
+            "headAddr",
+            "count"
+          ],
+          "writes": [
+            "sqBaseHead",
+            "mySq"
+          ]
+        },
+        {
+          "line": 3340,
+          "kind": "brace",
+          "explanation": "在 `simt_nw_mj_vf` 的 L3340 结束 if 分支 `if (count > 0U) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3341,
+          "kind": "brace",
+          "explanation": "在 `simt_nw_mj_vf` 的 L3341 结束 for 循环 `for (int sqIdx = tid; sqIdx < total_jetty; sqIdx += WQE_THREADS_NUM) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3342,
+          "kind": "sync",
+          "explanation": "等待所有活跃 SQ 完成 head 预留，随后每条 WQE 才能计算最终槽位。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3343,
+          "kind": "blank",
+          "explanation": "空行在 `simt_nw_mj_vf` 的 L3343 分隔 `__syncthreads();` 与 `// Phase 3: Assign each WQE an offset in its reserved SQ range and writ…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3344,
+          "kind": "comment",
+          "explanation": "注释界定 Phase 3：在已预留的 SQ 连续区间内分配偏移并写入 WQE。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3345,
+          "kind": "loop",
+          "explanation": "线程再次跨步遍历本批次 WQE。",
+          "reads": [
+            "tid",
+            "wqe_count",
+            "WQE_THREADS_NUM"
+          ],
+          "writes": [
+            "my_idx"
+          ]
+        },
+        {
+          "line": 3346,
+          "kind": "declaration",
+          "explanation": "声明由 `get_wqe_content` 填充的本地、远端地址。",
+          "reads": [],
+          "writes": [
+            "my_local_addr",
+            "my_remote_addr"
+          ]
+        },
+        {
+          "line": 3347,
+          "kind": "declaration",
+          "explanation": "声明由 `get_wqe_content` 填充的消息长度和目标 rank。",
+          "reads": [],
+          "writes": [
+            "my_message_len",
+            "my_dst_rank"
+          ]
+        },
+        {
+          "line": 3348,
+          "kind": "declaration",
+          "explanation": "声明由 `get_wqe_content` 填充的 `URMAOPCODE my_op`。",
+          "reads": [
+            "URMAOPCODE"
+          ],
+          "writes": [
+            "my_op"
+          ]
+        },
+        {
+          "line": 3349,
+          "kind": "call",
+          "explanation": "调用内部 `get_wqe_content`，从描述数组解包地址、长度、目标 rank 与操作码。",
+          "reads": [
+            "wqe_desc_arr",
+            "my_idx"
+          ],
+          "writes": [
+            "my_local_addr",
+            "my_remote_addr",
+            "my_message_len",
+            "my_dst_rank",
+            "my_op"
+          ]
+        },
+        {
+          "line": 3350,
+          "kind": "blank",
+          "explanation": "空行在 `simt_nw_mj_vf` 的 L3350 分隔 `get_wqe_content(wqe_desc_arr, my_idx, my_local_addr, my_remote_addr, my…` 与 `uint32_t mySqIdx = wqeSqIdx[my_idx];` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3351,
+          "kind": "declaration",
+          "explanation": "从 Phase 1 的 `wqeSqIdx` 恢复该 WQE 所属 SQ。",
+          "reads": [
+            "wqeSqIdx",
+            "my_idx"
+          ],
+          "writes": [
+            "mySqIdx"
+          ]
+        },
+        {
+          "line": 3352,
+          "kind": "call",
+          "explanation": "对该 SQ 的 UB `sqCursor` 原子加一，旧值成为预留区内唯一 `localOffset`。",
+          "reads": [
+            "mySqIdx"
+          ],
+          "writes": [
+            "localOffset",
+            "sqCursor"
+          ]
+        },
+        {
+          "line": 3353,
+          "kind": "declaration",
+          "explanation": "把 Phase 2 的 `sqBaseHead` 与 `localOffset` 相加得到单调 head `my_head`。",
+          "reads": [
+            "sqBaseHead",
+            "mySqIdx",
+            "localOffset"
+          ],
+          "writes": [
+            "my_head"
+          ]
+        },
+        {
+          "line": 3354,
+          "kind": "declaration",
+          "explanation": "取得最终 SQ 描述符 `my_sq=&sqs[mySqIdx]`。",
+          "reads": [
+            "sqs",
+            "mySqIdx"
+          ],
+          "writes": [
+            "my_sq"
+          ]
+        },
+        {
+          "line": 3355,
+          "kind": "call",
+          "explanation": "调用内部 `simt_write_wqe_v4`，把该条 WQE 写入 `my_sq` 的 `my_head` 槽。",
+          "reads": [
+            "my_head",
+            "my_local_addr",
+            "my_remote_addr",
+            "my_message_len",
+            "my_op"
+          ],
+          "writes": [
+            "my_sq"
+          ]
+        },
+        {
+          "line": 3356,
+          "kind": "sync",
+          "explanation": "执行 `asc_threadfence`，先发布 WQE 数据，再允许后续 head bitmap 对消费者可见。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3357,
+          "kind": "declaration",
+          "explanation": "把单调 `my_head` 对 `maxHeadRecordSlot` 取模得到 bitmap 槽。",
+          "reads": [
+            "my_head",
+            "maxHeadRecordSlot"
+          ],
+          "writes": [
+            "headRecordSlot"
+          ]
+        },
+        {
+          "line": 3358,
+          "kind": "declaration",
+          "explanation": "用右移 5 位把 head 槽换算为 32 位 bitmap 字索引。",
+          "reads": [
+            "headRecordSlot"
+          ],
+          "writes": [
+            "wordSlot"
+          ]
+        },
+        {
+          "line": 3359,
+          "kind": "declaration",
+          "explanation": "从全局 SQ 索引减去 `startRankId * jetty_per_rank`，得到 UB 局部 jetty 索引。",
+          "reads": [
+            "mySqIdx",
+            "startRankId",
+            "jetty_per_rank"
+          ],
+          "writes": [
+            "jettyIdxOnUb"
+          ]
+        },
+        {
+          "line": 3360,
+          "kind": "declaration",
+          "explanation": "用低 5 位得到 `headRecordSlot` 在 32 位字内的 bit 位置。",
+          "reads": [
+            "headRecordSlot"
+          ],
+          "writes": [
+            "bitInWord"
+          ]
+        },
+        {
+          "line": 3361,
+          "kind": "call",
+          "explanation": "原子或置位 `HeadRecordUB` 对应 bit，记录该 WQE 已完成写入。",
+          "reads": [
+            "jettyIdxOnUb",
+            "N32_num_per_jetty",
+            "wordSlot",
+            "bitInWord"
+          ],
+          "writes": [
+            "HeadRecordUB"
+          ]
+        },
+        {
+          "line": 3362,
+          "kind": "brace",
+          "explanation": "在 `simt_nw_mj_vf` 的 L3362 结束 for 循环 `for (auto my_idx = tid; my_idx < wqe_count; my_idx += WQE_THREADS_NUM) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3363,
+          "kind": "blank",
+          "explanation": "空行在 `simt_nw_mj_vf` 的 L3363 分隔 `}` 与 `__syncthreads();` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3364,
+          "kind": "sync",
+          "explanation": "等待所有线程完成 UB bitmap 置位，再统一发布到 GM。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3365,
+          "kind": "blank",
+          "explanation": "空行在 `simt_nw_mj_vf` 的 L3365 分隔 `__syncthreads();` 与 `for (uint32_t sqIdx = warpId; sqIdx < total_jetty; sqIdx += WQE_THREADS…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3366,
+          "kind": "loop",
+          "explanation": "以 `warpId` 为起点并按源码的 `WQE_THREADS_NUM` 步长遍历 SQ。",
+          "reads": [
+            "warpId",
+            "total_jetty",
+            "WQE_THREADS_NUM"
+          ],
+          "writes": [
+            "sqIdx"
+          ]
+        },
+        {
+          "line": 3367,
+          "kind": "declaration",
+          "explanation": "读取当前 SQ 的批次 `count`，无 WQE 的 SQ 不发布 bitmap。",
+          "reads": [
+            "sqWqeCount",
+            "sqIdx"
+          ],
+          "writes": [
+            "count"
+          ]
+        },
+        {
+          "line": 3368,
+          "kind": "branch",
+          "explanation": "只处理 `count>0` 的活跃 SQ。",
+          "reads": [
+            "count"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3369,
+          "kind": "declaration",
+          "explanation": "把全局 `sqIdx` 换算为本窗口 UB 局部 jetty 索引。",
+          "reads": [
+            "sqIdx",
+            "startRankId",
+            "jetty_per_rank"
+          ],
+          "writes": [
+            "jettyIdxOnUb"
+          ]
+        },
+        {
+          "line": 3370,
+          "kind": "loop",
+          "explanation": "各 lane 从 `laneId` 起按 `WARP_SIZE` 分摊一个 jetty 的 bitmap 字。",
+          "reads": [
+            "laneId",
+            "N32_num_per_jetty",
+            "WARP_SIZE"
+          ],
+          "writes": [
+            "wordSlot"
+          ]
+        },
+        {
+          "line": 3371,
+          "kind": "declaration",
+          "explanation": "计算当前 jetty、当前 word 的 UB 线性槽 `ubWordSlot`。",
+          "reads": [
+            "jettyIdxOnUb",
+            "N32_num_per_jetty",
+            "wordSlot"
+          ],
+          "writes": [
+            "ubWordSlot"
+          ]
+        },
+        {
+          "line": 3372,
+          "kind": "declaration",
+          "explanation": "读取 UB bitmap 字 `mask`。",
+          "reads": [
+            "HeadRecordUB",
+            "ubWordSlot"
+          ],
+          "writes": [
+            "mask"
+          ]
+        },
+        {
+          "line": 3373,
+          "kind": "branch",
+          "explanation": "跳过全零字，减少无效 GM 原子操作。",
+          "reads": [
+            "mask"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3374,
+          "kind": "declaration",
+          "explanation": "GM 每个 SQ 的跨度为 `N32_num_per_jetty + UB_ALIGN_DATA_COUNT`，据此算 `gmWordSlot`。",
+          "reads": [
+            "sqIdx",
+            "N32_num_per_jetty",
+            "UB_ALIGN_DATA_COUNT",
+            "wordSlot"
+          ],
+          "writes": [
+            "gmWordSlot"
+          ]
+        },
+        {
+          "line": 3375,
+          "kind": "call",
+          "explanation": "把非零 `mask` 原子或到 `HeadRecordGM[gmWordSlot]`，发布可消费 head。",
+          "reads": [
+            "gmWordSlot",
+            "mask"
+          ],
+          "writes": [
+            "HeadRecordGM"
+          ]
+        },
+        {
+          "line": 3376,
+          "kind": "brace",
+          "explanation": "在 `simt_nw_mj_vf` 的 L3376 结束 if 分支 `if (mask != 0U) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3377,
+          "kind": "brace",
+          "explanation": "在 `simt_nw_mj_vf` 的 L3377 结束 for 循环 `for (uint32_t wordSlot = laneId; wordSlot < N32_num_per_jetty; wordSlot += WARP_SIZE) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3378,
+          "kind": "brace",
+          "explanation": "在 `simt_nw_mj_vf` 的 L3378 结束 if 分支 `if (count > 0U) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3379,
+          "kind": "brace",
+          "explanation": "在 `simt_nw_mj_vf` 的 L3379 结束 for 循环 `for (uint32_t sqIdx = warpId; sqIdx < total_jetty; sqIdx += WQE_THREADS_NUM) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3380,
+          "kind": "blank",
+          "explanation": "空行在 `simt_nw_mj_vf` 的 L3380 分隔 `}` 与 `// Phase 2: Each jetty is assigned to a thread.` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3381,
+          "kind": "comment",
+          "explanation": "以下注释是旧 Phase 2 门铃收集方案的说明，整段均被逐行注释、当前不执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3382,
+          "kind": "comment",
+          "explanation": "旧方案认为 SIMT 线程不能正确敲门铃，曾计划把活跃 jetty 的门铃地址和 head 并行写入 UB。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3383,
+          "kind": "comment",
+          "explanation": "旧方案随后由 scalar 顺序读取 UB 并敲门铃；当前实现没有执行这一路径。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3384,
+          "kind": "comment",
+          "explanation": "被注释的旧循环原计划让线程跨步遍历 `total_jetty`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3385,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `// if (tid < total_jetty)`；该内容当前不参与 `simt_nw_mj_vf` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3386,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `{`；该内容当前不参与 `simt_nw_mj_vf` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3387,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `// uint32_t prevHead = PREV_HEAD_ARR[my_idx];`；该内容当前不参与 `simt_nw_mj_vf` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3388,
+          "kind": "comment",
+          "explanation": "被注释的旧代码原计划取得 `sqs[my_idx]`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3389,
+          "kind": "blank",
+          "explanation": "空行在 `simt_nw_mj_vf` 的 L3389 分隔 `// auto my_sq = &sqs[my_idx];` 与 `// if (my_sq->headAddr == 0) {` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3390,
+          "kind": "comment",
+          "explanation": "被注释的旧分支会跳过 `headAddr==0` 的 SQ。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3391,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `continue;`；该内容当前不参与 `simt_nw_mj_vf` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3392,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `simt_nw_mj_vf` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3393,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `#if 0`；该内容当前不参与 `simt_nw_mj_vf` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3394,
+          "kind": "comment",
+          "explanation": "被注释的旧分支曾考虑以 `localTokenId` 作为当前 head。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3395,
+          "kind": "comment",
+          "explanation": "注释记录 `#else`，说明 `simt_nw_mj_vf` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3396,
+          "kind": "comment",
+          "explanation": "被注释的另一分支曾从 GM `headAddr` 读取当前 head。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3397,
+          "kind": "comment",
+          "explanation": "注释记录 `#endif`，说明 `simt_nw_mj_vf` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3398,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `// printf(\"[kfm] my_idx %d curHead %d\\n\", my_idx, curHead);`；该内容当前不参与 `simt_nw_mj_vf` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3399,
+          "kind": "comment",
+          "explanation": "被注释的旧方案会把 `dbAddr` 收集到 `DB_ARR`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3400,
+          "kind": "comment",
+          "explanation": "被注释的旧方案会把取模后的 head 收集到 `HEAD_ARR`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3401,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `// if (curHead != prevHead) {`；该内容当前不参与 `simt_nw_mj_vf` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3402,
+          "kind": "comment",
+          "explanation": "更早的被注释逻辑曾按 `OUT_JETTY_IDX` 压缩活跃 jetty。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3403,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `// DB_ARR[my_jetty] = my_sq->dbAddr;`；该内容当前不参与 `simt_nw_mj_vf` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3404,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `// HEAD_ARR[my_jetty] = curHead; // my_sq->headAddr`；该内容当前不参与 `simt_nw_mj_vf` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3405,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `// PREV_HEAD_ARR[my_idx] = curHead;`；该内容当前不参与 `simt_nw_mj_vf` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3406,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `// }`；该内容当前不参与 `simt_nw_mj_vf` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3407,
+          "kind": "comment",
+          "explanation": "结束被逐行注释的旧门铃数组收集循环；不产生运行时动作。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3408,
+          "kind": "brace",
+          "explanation": "在 `simt_nw_mj_vf` 的 L3408 结束 代码块 `uint32_t writerId)` 作用域。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments": [
+        {
+          "id": "vf-signature-scratch-and-publish-contract",
+          "start": 3277,
+          "end": 3291,
+          "title": "声明 WQE 描述、SQ scratch 与 head-record 发布接口",
+          "detail": "模板 port_num/jetty_num 定义每 Rank jetty 数；参数同时包含 WQE SoA 描述、GM SQ 数组、五组 UB 分配/计数 scratch、UB/GM head bitmap 以及当前 writer 的 Rank 区间映射参数。",
+          "kind": "input",
+          "input_state": [
+            "wqe_desc_arr/wqe_count：当前 batch WQE",
+            "sqs：全部 Rank 的 SQ 上下文",
+            "scratch 与 HeadRecordUB/GM：调用者预分配"
+          ],
+          "mechanism": "由 __simt_vf__ 与 LAUNCH_BOUND(WQE_THREADS_NUM) 声明固定 SIMT 并行函数。",
+          "output_state": [
+            "函数体获得完整路由、head 预留和 bitmap 发布状态"
+          ],
+          "why": "三阶段算法需要跨线程共享计数和阶段 barrier，因此所有 scratch 显式由 scalar wrapper 传入。",
+          "calls": []
+        },
+        {
+          "id": "vf-derive-thread-jetty-and-bitmap-shapes",
+          "start": 3292,
+          "end": 3305,
+          "title": "计算每 Rank SQ 数、线程 warp/lane 与 bitmap word 数",
+          "detail": "jetty_per_rank=port_num*jetty_num，total_jetty=rankNum*jetty_per_rank；tid 来自 threadIdx.x，warpId=tid/32，laneId=tid%32；每 jetty 的 head record 需要 maxHeadRecordSlot/32 个 uint32 word。旧 get_imm 数组方案注释。",
+          "kind": "compute",
+          "input_state": [
+            "rankNum/port_num/jetty_num：SQ 拓扑",
+            "maxHeadRecordSlot：循环 head 槽数"
+          ],
+          "mechanism": "乘法得到 jetty 数，位运算拆 warp/lane，右移 5 得 bitmap word 数。",
+          "output_state": [
+            "jetty_per_rank/total_jetty/N32_num_per_jetty",
+            "tid/warpId/laneId"
+          ],
+          "why": "后续分别按 thread、warp 和 lane 并行初始化、写 WQE 与发布 bitmap。",
+          "calls": []
+        },
+        {
+          "id": "vf-zero-routing-head-and-bitmap-scratch",
+          "start": 3306,
+          "end": 3318,
+          "title": "并行清零 Rank/SQ 计数、cursor、base head 与 UB bitmap",
+          "detail": "thread-stride 循环分别清 dstRankWqeCount、每 SQ 的 sqWqeCount/sqCursor/sqBaseHead，以及 maxJettyNumOnUB*N32_num_per_jetty 个 HeadRecordUB word；__syncthreads 后所有线程进入 Phase 1。",
+          "kind": "sync",
+          "input_state": [
+            "五组 UB scratch 可能保留上一 batch 状态"
+          ],
+          "mechanism": "tid 起始、步长 WQE_THREADS_NUM 的覆盖循环清零，随后 block barrier。",
+          "output_state": [
+            "routing/head/bitmap scratch：本 batch 全零基线"
+          ],
+          "why": "atomic 计数、SQ 内 offset 与 head bitmap 都必须从本 batch 的独立零状态开始。",
+          "calls": [
+            {
+              "name": "__syncthreads",
+              "line": 3317,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "vf-phase1-route-wqe-and-count-per-sq",
+          "start": 3319,
+          "end": 3331,
+          "title": "Phase 1：按目标 Rank 的 batch ordinal 轮转分配 SQ",
+          "detail": "每线程遍历 WQE。atomicAdd(dstRankWqeCount[dst]) 返回该 WQE 在同 Rank 中的零基 ordinal；localSqIdx=(writerId+ordinal)%jetty_per_rank，得到 mySqIdx 并写 wqeSqIdx，随后原子增加 sqWqeCount。barrier 结束计数。",
+          "kind": "loop",
+          "input_state": [
+            "wqe_desc_arr->dstRank：每 WQE 目标 Rank",
+            "writerId/jetty_per_rank：轮转起点与 SQ 数"
+          ],
+          "mechanism": "同 Rank ordinal 通过 atomicAdd 唯一化，再取模轮转到该 Rank 的不同 SQ。",
+          "output_state": [
+            "wqeSqIdx[my_idx]：每 WQE 确定 SQ",
+            "sqWqeCount：每 SQ 本 batch WQE 数"
+          ],
+          "why": "先路由并计数，才能把 head 原子操作从每 WQE 一次降低为每活跃 SQ 一次。",
+          "calls": [
+            {
+              "name": "atomicAdd",
+              "line": 3325,
+              "type": "external"
+            },
+            {
+              "name": "atomicAdd",
+              "line": 3329,
+              "type": "external"
+            },
+            {
+              "name": "__syncthreads",
+              "line": 3331,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "vf-phase2-reserve-contiguous-sq-heads",
+          "start": 3332,
+          "end": 3342,
+          "title": "Phase 2：每个活跃 SQ 一次原子预留连续 head 区间",
+          "detail": "thread-stride 遍历 total_jetty，读取 sqWqeCount；count>0 时以 atomicAdd(mySq->headAddr,count) 获取旧 head，保存为 sqBaseHead。barrier 后所有 WQE 都能读取所属 SQ 的 base。",
+          "kind": "sync",
+          "input_state": [
+            "sqWqeCount：Phase 1 的每 SQ batch 数",
+            "sqs[].headAddr：跨 batch 全局 head"
+          ],
+          "mechanism": "每活跃 SQ 单次 atomicAdd 批量推进 GM head，并返回该 batch 连续区间起点。",
+          "output_state": [
+            "sqBaseHead[sqIdx]：该 SQ 本 batch 保留 head 范围起点",
+            "GM headAddr：增加 count"
+          ],
+          "why": "连续区间保证同 SQ WQE 不重叠，同时显著减少 GM 原子争用。",
+          "calls": [
+            {
+              "name": "atomicAdd",
+              "line": 3339,
+              "type": "external"
+            },
+            {
+              "name": "__syncthreads",
+              "line": 3342,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "vf-phase3-assign-offset-write-and-fence",
+          "start": 3343,
+          "end": 3356,
+          "title": "Phase 3：在预留区间分配 localOffset、写 WQE 并 fence",
+          "detail": "每 WQE 通过 get_wqe_content 取 local/remote address、length、Rank、opcode；读取 wqeSqIdx，atomicAdd(sqCursor) 分配该 SQ 内唯一 localOffset，my_head=base+offset；simt_write_wqe_v4 写 WQE 后 asc_threadfence。",
+          "kind": "output",
+          "input_state": [
+            "wqeSqIdx/sqBaseHead/sqCursor：Phase 1/2 结果",
+            "wqe_desc_arr：WQE 内容"
+          ],
+          "mechanism": "SQ 内 UB cursor 原子分配 offset，组合 base head；调用 v4 writer 后执行 thread fence。",
+          "output_state": [
+            "sqs[mySqIdx] ring：my_head 对应 WQE 完整写入",
+            "WQE payload：在 bitmap 发布前可见"
+          ],
+          "why": "head 范围虽已批量预留，每条 WQE 仍需唯一 offset；fence 建立“先写 WQE，后发布完成 bit”的顺序。",
+          "calls": [
+            {
+              "name": "get_wqe_content",
+              "line": 3349,
+              "type": "internal",
+              "target": "f-moedistributedispatchv2fullmeshimpl-get-wqe-content-3e6b7c5e4a"
+            },
+            {
+              "name": "atomicAdd",
+              "line": 3352,
+              "type": "external"
+            },
+            {
+              "name": "simt_write_wqe_v4",
+              "line": 3355,
+              "type": "internal",
+              "target": "f-moedistributedispatchv2fullmeshimpl-simt-write-wqe-v4-48d4eea0cd"
+            },
+            {
+              "name": "asc_threadfence",
+              "line": 3356,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "vf-mark-written-head-in-ub-bitmap",
+          "start": 3357,
+          "end": 3364,
+          "title": "把已写 head 映射为 per-jetty UB bitmap bit",
+          "detail": "headRecordSlot=my_head%maxHeadRecordSlot，wordSlot=/32，bitInWord=%32；jettyIdxOnUb=mySqIdx-startRankId*jetty_per_rank 把全局 SQ 映射到 writer 的局部 jetty 区。atomicOr 设置 HeadRecordUB 对应 bit，随后 barrier。",
+          "kind": "sync",
+          "input_state": [
+            "my_head/mySqIdx：刚写完的 WQE",
+            "maxHeadRecordSlot/startRankId：循环 bitmap 与局部 Rank 区间"
+          ],
+          "mechanism": "head 取模后拆 word/bit，按局部 jetty stride 定位 UB word并 atomicOr。",
+          "output_state": [
+            "HeadRecordUB：本 batch 所有已写 WQE head bit 聚合完成"
+          ],
+          "why": "doorbell/scalar 消费者需要知道哪些 head 槽已具备可见 WQE；UB 先聚合可减少 GM 原子次数。",
+          "calls": [
+            {
+              "name": "atomicOr",
+              "line": 3361,
+              "type": "external"
+            },
+            {
+              "name": "__syncthreads",
+              "line": 3364,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "vf-publish-nonzero-bitmap-words-to-gm",
+          "start": 3365,
+          "end": 3379,
+          "title": "按 warp/lane 扫 UB bitmap 并 atomicOr 发布 HeadRecordGM",
+          "detail": "sqIdx 从 warpId 开始按 WQE_THREADS_NUM 递增；仅 sqWqeCount>0 的 SQ 处理。laneId 按 WARP_SIZE 跨 wordSlot，读取局部 ubWordSlot；mask 非零时计算带 UB_ALIGN_DATA_COUNT guard stride 的 gmWordSlot，并 atomicOr 到 HeadRecordGM。",
+          "kind": "output",
+          "input_state": [
+            "HeadRecordUB：barrier 后完整 batch bitmap",
+            "sqWqeCount：活跃 SQ 筛选",
+            "HeadRecordGM：跨阶段握手区"
+          ],
+          "mechanism": "warp/lane 分工扫描 bitmap word，只发布非零 mask；GM 每 jetty stride=N32_num_per_jetty+UB_ALIGN_DATA_COUNT。",
+          "output_state": [
+            "HeadRecordGM：新增本 writer 已完成 WQE head bits"
+          ],
+          "why": "GM head record 是 RingDoorbell 轮询的发布信号；atomicOr 支持多个 writer/线程合并不相交或并发 bit。",
+          "calls": [
+            {
+              "name": "atomicOr",
+              "line": 3375,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "vf-disabled-doorbell-array-legacy-start",
+          "start": 3380,
+          "end": 3394,
+          "title": "禁用的 SIMT 收集活跃 jetty doorbell/head 方案前半段",
+          "detail": "注释说明 SIMT 线程不能正确 ring doorbell，旧方案计划每 thread 读取 jetty head 并写 UB DB_ARR/HEAD_ARR 供 scalar 顺序敲门；第 3384 起循环完全注释，包含 headAddr==0 跳过与 #if0 token head 备选。",
+          "kind": "debug",
+          "input_state": [
+            "sqs/旧 PREV_HEAD_ARR 等数组：仅注释方案"
+          ],
+          "mechanism": "第 3381–3394 行不编译；当前函数以 HeadRecordGM bitmap 替代该数组协议。",
+          "output_state": [
+            "运行时无 doorbell 数组写入"
+          ],
+          "why": "必须明确 doorbell 在后续 scalar RingDoorbell 完成，而不是在本 vf 中执行。",
+          "calls": []
+        },
+        {
+          "id": "vf-disabled-doorbell-array-legacy-end",
+          "start": 3395,
+          "end": 3408,
+          "title": "禁用的读取 SQ head、写 DB/HEAD/PREV 数组与函数收尾",
+          "detail": "注释分支曾从 headAddr 读取 curHead，写 DB_ARR 与 HEAD_ARR，并保留按变更 compact 活跃 jetty 的 atomicAdd 方案；所有内容禁用。第 3408 行结束当前 vf。",
+          "kind": "debug",
+          "input_state": [
+            "my_sq->headAddr/dbAddr/sqDepth：仅历史方案"
+          ],
+          "mechanism": "注释代码不执行，不产生 doorbell 或 prev-head 更新。",
+          "output_state": [
+            "有效结果仅为此前 WQE ring 与 HeadRecordGM bitmap"
+          ],
+          "why": "当前 scalar 端按 head-record bitmap 统一决定 doorbell 发布，避免 SIMT 直接敲门限制。",
+          "calls": []
+        }
+      ]
+    },
+    {
+      "id": "f-moedistributedispatchv2fullmeshimpl-simt-nw-mj-689a46e20d",
+      "module_id": "wqe-active",
+      "name": "simt_nw_mj",
+      "start": 3411,
+      "end": 3444,
+      "inactive": false,
+      "summary": "scalar/AICore wrapper：以 WQE_THREADS_NUM 个 SIMT 线程 VF_CALL simt_nw_mj_vf，透传 WQE/SQ/scratch/head-record 参数；调用结束后用 PIPE_V→PIPE_S set/wait flag 把 vector SIMT 结果同步回 scalar。",
+      "inputs": [
+        "rankNum",
+        "wqe_desc_arr",
+        "wqe_count",
+        "sqs",
+        "wqeSqIdx",
+        "dstRankWqeCount",
+        "sqWqeCount",
+        "sqBaseHead",
+        "sqCursor",
+        "HeadRecordUB",
+        "HeadRecordGM",
+        "maxJettyNumOnUB",
+        "maxHeadRecordSlot",
+        "startRankId",
+        "writerId"
+      ],
+      "outputs": [
+        "sqs",
+        "HeadRecordGM",
+        "wqeSqIdx",
+        "sqWqeCount",
+        "sqBaseHead"
+      ],
+      "side_effects": [
+        "VF_CALL 启动 simt_nw_mj_vf 完成 SQ head 预留、WQE 写入与 head bitmap 发布",
+        "set_flag/wait_flag 建立 PIPE_V 完成到 PIPE_S 后续 scalar 消费的顺序"
+      ],
+      "review": {
+        "status": "PASS",
+        "reviewer": "e2e-architecture-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "line_range": [
+          3411,
+          3444
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 3411,
+        "reviewed_end": 3444,
+        "expected_line_count": 34,
+        "covered_line_count": 34,
+        "covered_ranges": [
+          [
+            3411,
+            3427
+          ],
+          [
+            3428,
+            3444
+          ]
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {
+          "line": 3411,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_nw_mj` 的签名片段 `template<int port_num = 1, int jetty_num = 1>`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3412,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_nw_mj` 的签名片段 `__aicore__ inline void simt_nw_mj(int rankNum, __ubuf__ wqe_desc_array_t *wqe_desc_arr, uint32_t wqe_count, JETTY_POS HcclAiRMAWQ *sqs,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3413,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_nw_mj` 的签名片段 `__ubuf__ uint32_t* wqeSqIdx,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3414,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_nw_mj` 的签名片段 `__ubuf__ uint32_t* dstRankWqeCount,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3415,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_nw_mj` 的签名片段 `__ubuf__ uint32_t* sqWqeCount,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3416,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_nw_mj` 的签名片段 `__ubuf__ uint32_t* sqBaseHead,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3417,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_nw_mj` 的签名片段 `__ubuf__ uint32_t* sqCursor,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3418,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_nw_mj` 的签名片段 `__ubuf__ uint32_t* HeadRecordUB,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3419,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_nw_mj` 的签名片段 `__gm__ uint32_t* HeadRecordGM,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3420,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_nw_mj` 的签名片段 `uint32_t maxJettyNumOnUB,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3421,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_nw_mj` 的签名片段 `uint32_t maxHeadRecordSlot,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3422,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_nw_mj` 的签名片段 `uint32_t startRankId,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3423,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_nw_mj` 的签名片段 `uint32_t writerId)`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3424,
+          "kind": "brace",
+          "explanation": "在 `simt_nw_mj` 的 L3424 打开 代码块 `uint32_t writerId)` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3425,
+          "kind": "blank",
+          "explanation": "空行在 `simt_nw_mj` 的 L3425 分隔 `{` 与 `AscendC::Simt::VF_CALL<simt_nw_mj_vf<port_num, jetty_num>>(` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3426,
+          "kind": "blank",
+          "explanation": "空行在 `simt_nw_mj` 的 L3426 分隔 `{` 与 `AscendC::Simt::VF_CALL<simt_nw_mj_vf<port_num, jetty_num>>(` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3427,
+          "kind": "call",
+          "explanation": "通过 `VF_CALL<simt_nw_mj_vf<...>>` 启动内部 SIMT 实现；参数从下一行继续。",
+          "reads": [
+            "AscendC",
+            "Simt",
+            "simt_nw_mj_vf",
+            "port_num",
+            "jetty_num"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3428,
+          "kind": "statement",
+          "explanation": "以 `Dim3{WQE_THREADS_NUM,1,1}` 启动线程，并传入 rank、WQE 描述和 SQ 数组。",
+          "reads": [
+            "AscendC",
+            "Simt",
+            "Dim3",
+            "WQE_THREADS_NUM",
+            "rankNum",
+            "wqe_desc_arr",
+            "wqe_count",
+            "sqs"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3429,
+          "kind": "statement",
+          "explanation": "求值源码语句 `wqeSqIdx,`；该语句明确涉及 `wqeSqIdx`。",
+          "reads": [
+            "wqeSqIdx"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3430,
+          "kind": "statement",
+          "explanation": "求值源码语句 `dstRankWqeCount,`；该语句明确涉及 `dstRankWqeCount`。",
+          "reads": [
+            "dstRankWqeCount"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3431,
+          "kind": "statement",
+          "explanation": "求值源码语句 `sqWqeCount,`；该语句明确涉及 `sqWqeCount`。",
+          "reads": [
+            "sqWqeCount"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3432,
+          "kind": "statement",
+          "explanation": "求值源码语句 `sqBaseHead,`；该语句明确涉及 `sqBaseHead`。",
+          "reads": [
+            "sqBaseHead"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3433,
+          "kind": "statement",
+          "explanation": "求值源码语句 `sqCursor,`；该语句明确涉及 `sqCursor`。",
+          "reads": [
+            "sqCursor"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3434,
+          "kind": "statement",
+          "explanation": "求值源码语句 `HeadRecordUB,`；该语句明确涉及 `HeadRecordUB`。",
+          "reads": [
+            "HeadRecordUB"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3435,
+          "kind": "statement",
+          "explanation": "求值源码语句 `HeadRecordGM,`；该语句明确涉及 `HeadRecordGM`。",
+          "reads": [
+            "HeadRecordGM"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3436,
+          "kind": "statement",
+          "explanation": "求值源码语句 `maxJettyNumOnUB,`；该语句明确涉及 `maxJettyNumOnUB`。",
+          "reads": [
+            "maxJettyNumOnUB"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3437,
+          "kind": "statement",
+          "explanation": "求值源码语句 `maxHeadRecordSlot,`；该语句明确涉及 `maxHeadRecordSlot`。",
+          "reads": [
+            "maxHeadRecordSlot"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3438,
+          "kind": "statement",
+          "explanation": "求值源码语句 `startRankId,`；该语句明确涉及 `startRankId`。",
+          "reads": [
+            "startRankId"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3439,
+          "kind": "declaration",
+          "explanation": "传入最后一个 `writerId` 参数并结束 `VF_CALL`。",
+          "reads": [
+            "writerId"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3440,
+          "kind": "blank",
+          "explanation": "空行在 `simt_nw_mj` 的 L3440 分隔 `writerId);` 与 `set_flag(PIPE_V, PIPE_S, (event_t) 0);` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3441,
+          "kind": "sync",
+          "explanation": "`set_flag(PIPE_V, PIPE_S, 0)` 从 vector 侧向 scalar 侧发布完成事件。",
+          "reads": [
+            "PIPE_V",
+            "PIPE_S",
+            "event_t"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3442,
+          "kind": "sync",
+          "explanation": "`wait_flag(PIPE_V, PIPE_S, 0)` 等待同一事件，确保 wrapper 返回前 SIMT 工作完成。",
+          "reads": [
+            "PIPE_V",
+            "PIPE_S",
+            "event_t"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3443,
+          "kind": "blank",
+          "explanation": "空行在 `simt_nw_mj` 的 L3443 分隔 `wait_flag(PIPE_V, PIPE_S, (event_t) 0);` 与 `}` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3444,
+          "kind": "brace",
+          "explanation": "在 `simt_nw_mj` 的 L3444 结束 代码块 `AscendC::Simt::Dim3{WQE_THREADS_NUM, 1, 1}, rankNum, wqe_desc_arr, wqe_count, sqs,` 作用域。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments": [
+        {
+          "id": "wrapper-declare-and-launch-simt-vf",
+          "start": 3411,
+          "end": 3427,
+          "title": "声明与 vf 相同的接口并启动 simt_nw_mj_vf",
+          "detail": "wrapper 保留 port_num/jetty_num 模板与 15 个参数；函数体空行后调用 VF_CALL<simt_nw_mj_vf<...>>。",
+          "kind": "input",
+          "input_state": [
+            "WQE/SQ/scratch/head-record 参数：来自 URMASendToken"
+          ],
+          "mechanism": "模板实例化 vf 并进入 VF_CALL 参数列表。",
+          "output_state": [
+            "SIMT launch 已声明，线程维度与实参在下一段完成"
+          ],
+          "why": "AICore scalar 代码不能直接执行 __simt_vf__，需要 VF_CALL wrapper。",
+          "calls": [
+            {
+              "name": "VF_CALL",
+              "line": 3427,
+              "type": "external"
+            },
+            {
+              "name": "simt_nw_mj_vf",
+              "line": 3427,
+              "type": "internal",
+              "target": "f-moedistributedispatchv2fullmeshimpl-simt-nw-mj-vf-dca9896a43"
+            }
+          ]
+        },
+        {
+          "id": "wrapper-pass-scratch-and-join-vector-to-scalar",
+          "start": 3428,
+          "end": 3444,
+          "title": "用 128-thread Dim3 启动 vf，并把 PIPE_V 完成同步到 PIPE_S",
+          "detail": "Dim3{WQE_THREADS_NUM,1,1} 后依次透传全部参数到 writerId。VF_CALL 返回后 set_flag(PIPE_V,PIPE_S,event0) 并 wait_flag，最后结束 wrapper。",
+          "kind": "sync",
+          "input_state": [
+            "全部 vf 实参",
+            "PIPE_V：SIMT/vector 执行域",
+            "PIPE_S：scalar 后续域"
+          ],
+          "mechanism": "VF_CALL 完成 launch；set_flag/wait_flag event0 建立 vector→scalar join。",
+          "output_state": [
+            "sqs/HeadRecordGM 与 scratch 更新对 scalar URMASendToken 可见"
+          ],
+          "why": "调用者紧接着复用/读取这些结果，必须显式等待 SIMT pipeline 完成。",
+          "calls": [
+            {
+              "name": "set_flag",
+              "line": 3441,
+              "type": "external"
+            },
+            {
+              "name": "wait_flag",
+              "line": 3442,
+              "type": "external"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "f-moedistributedispatchv2fullmeshimpl-cachewritethrough-7000c8c3d6",
+      "module_id": "wqe-active",
+      "name": "cacheWriteThrough",
+      "start": 3447,
+      "end": 3458,
+      "inactive": false,
+      "summary": "把任意 GM 地址范围扩到 cache-line 边界，并逐 cache line 执行 DataCacheCleanAndInvalid<CACHELINE_OUT>；用于 RingDoorbell 初始化 SQ/CQ 上下文，也被不可达 CQ poller 用来刷新 CQE。",
+      "inputs": [
+        "sourceAddr",
+        "length"
+      ],
+      "outputs": [
+        "global"
+      ],
+      "side_effects": [
+        "对从 floor(sourceAddr/cacheLine) 到 floor((sourceAddr+length)/cacheLine) 的所有 cache line（含端点）执行 clean+invalidate",
+        "空 asm volatile 放在 DCCI 前后，保持源码给定的编译顺序边界"
+      ],
+      "review": {
+        "status": "PASS",
+        "reviewer": "e2e-architecture-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "line_range": [
+          3447,
+          3458
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 3447,
+        "reviewed_end": 3458,
+        "expected_line_count": 12,
+        "covered_line_count": 12,
+        "covered_ranges": [
+          [
+            3447,
+            3458
+          ]
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {
+          "line": 3447,
+          "kind": "signature",
+          "explanation": "构成函数 `cacheWriteThrough` 的签名片段 `__aicore__ inline void cacheWriteThrough(__gm__ uint8_t* sourceAddr, uint64_t length)`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3448,
+          "kind": "brace",
+          "explanation": "在 `cacheWriteThrough` 的 L3448 打开 代码块 `__aicore__ inline void cacheWriteThrough(__gm__ uint8_t* sourceAddr, uint64_t length)` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3449,
+          "kind": "declaration",
+          "explanation": "把 `sourceAddr` 向下对齐到 `CACHE_LINE_SIZE` 得到首条 cache line `start`。",
+          "reads": [
+            "sourceAddr",
+            "AscendC",
+            "CACHE_LINE_SIZE"
+          ],
+          "writes": [
+            "start"
+          ]
+        },
+        {
+          "line": 3450,
+          "kind": "declaration",
+          "explanation": "把 `sourceAddr + length` 向下对齐得到包含末端地址的 `end` cache line。",
+          "reads": [
+            "sourceAddr",
+            "length",
+            "AscendC",
+            "CACHE_LINE_SIZE"
+          ],
+          "writes": [
+            "end"
+          ]
+        },
+        {
+          "line": 3451,
+          "kind": "declaration",
+          "explanation": "构造 `GlobalTensor<uint8_t> global` 作为缓存维护 API 的全局地址视图。",
+          "reads": [
+            "AscendC"
+          ],
+          "writes": [
+            "global"
+          ]
+        },
+        {
+          "line": 3452,
+          "kind": "call",
+          "explanation": "把 `global` 绑定到对齐后的 `start` 地址。",
+          "reads": [
+            "start"
+          ],
+          "writes": [
+            "global"
+          ]
+        },
+        {
+          "line": 3453,
+          "kind": "loop",
+          "explanation": "从偏移 0 到 `end-start` 做包含末端的 cache-line 步进。",
+          "reads": [
+            "end",
+            "start",
+            "AscendC",
+            "CACHE_LINE_SIZE"
+          ],
+          "writes": [
+            "i"
+          ]
+        },
+        {
+          "line": 3454,
+          "kind": "declaration",
+          "explanation": "空 `asm volatile` 作为编译器级屏障，阻止缓存维护前的指令重排。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3455,
+          "kind": "sync",
+          "explanation": "对 `global[i]` 执行单 cache line 的 clean+invalidate，并将脏数据写出到外部。",
+          "reads": [
+            "AscendC",
+            "CacheLine",
+            "SINGLE_CACHE_LINE",
+            "DcciDst",
+            "CACHELINE_OUT"
+          ],
+          "writes": [
+            "global"
+          ]
+        },
+        {
+          "line": 3456,
+          "kind": "declaration",
+          "explanation": "第二个空 `asm volatile` 阻止缓存维护后的指令重排。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3457,
+          "kind": "brace",
+          "explanation": "在 `cacheWriteThrough` 的 L3457 结束 for 循环 `for (uint32_t i = 0; i <= end - start; i += AscendC::CACHE_LINE_SIZE) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3458,
+          "kind": "brace",
+          "explanation": "在 `cacheWriteThrough` 的 L3458 结束 代码块 `__aicore__ inline void cacheWriteThrough(__gm__ uint8_t* sourceAddr, uint64_t length)` 作用域。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments": [
+        {
+          "id": "flush-inclusive-cacheline-range",
+          "start": 3447,
+          "end": 3458,
+          "title": "对齐首尾地址并逐 line clean+invalidate 到 CACHELINE_OUT",
+          "detail": "start 向下对齐 sourceAddr，end 把 sourceAddr+length 向下对齐；GlobalTensor 绑定 start。循环 i<=end-start，步长 CACHE_LINE_SIZE，每 line 在两个 asm volatile 之间调用 DataCacheCleanAndInvalid。",
+          "kind": "sync",
+          "input_state": [
+            "sourceAddr/length：需要向外可见或重新读取的 GM 范围",
+            "CACHE_LINE_SIZE：硬件 cache line 粒度"
+          ],
+          "mechanism": "floor 对齐首尾，并以 inclusive <= 循环逐 line DCCI<CACHELINE_OUT>。",
+          "output_state": [
+            "覆盖范围内 cache lines：clean 到外层并 invalid"
+          ],
+          "why": "SQ/CQ control 对象可能同时由设备缓存与硬件队列更新，使用前需把 cache 状态与外部内存协调。",
+          "calls": [
+            {
+              "name": "SetGlobalBuffer",
+              "line": 3452,
+              "type": "external"
+            },
+            {
+              "name": "DataCacheCleanAndInvalid",
+              "line": 3455,
+              "type": "external"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "f-moedistributedispatchv2fullmeshimpl-urmapollcq-4eae8cd065",
+      "module_id": "wqe-alternates",
+      "name": "URMAPollCQ",
+      "start": 3460,
+      "end": 3498,
+      "inactive": true,
+      "summary": "不可达的单 SQ/CQ completion poller：从 SQ head 得目标 idx，逐 CQ tail 等待 CQE bit2，3,000,000 cycle 超时时打印但仍继续消费；刷新 CQE cache、检查 status/subStatus，最后敲 CQ doorbell 并更新 SQ hardware tail。",
+      "inputs": [
+        "sq",
+        "cq"
+      ],
+      "outputs": [
+        "curTail",
+        "cq",
+        "sq"
+      ],
+      "side_effects": [
+        "轮询读取 CQE，并调用 cacheWriteThrough 刷新 8B CQE cache range",
+        "超时只 break 内层等待，不中止外层 tail 消费",
+        "st_dev 写 cq->dbAddr，随后写 sq->tailAddr",
+        "inactive：只被另一个不可达 URMAPollCQ 重载调用"
+      ],
+      "review": {
+        "status": "PASS",
+        "reviewer": "e2e-architecture-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "line_range": [
+          3460,
+          3498
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 3460,
+        "reviewed_end": 3498,
+        "expected_line_count": 39,
+        "covered_line_count": 39,
+        "covered_ranges": [
+          [
+            3460,
+            3471
+          ],
+          [
+            3472,
+            3484
+          ],
+          [
+            3485,
+            3498
+          ]
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {
+          "line": 3460,
+          "kind": "signature",
+          "explanation": "构成函数 `URMAPollCQ` 的签名片段 `__aicore__ inline void URMAPollCQ(__gm__ AiURMAWQ *sq, __gm__ AiURMACQ *cq)`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3461,
+          "kind": "brace",
+          "explanation": "在 `URMAPollCQ` 的 L3461 打开 代码块 `__aicore__ inline void URMAPollCQ(__gm__ AiURMAWQ *sq, __gm__ AiURMACQ *cq)` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3462,
+          "kind": "declaration",
+          "explanation": "读取 `sq->headAddr` 的生产 head 为目标 `idx`。",
+          "reads": [
+            "sq",
+            "headAddr"
+          ],
+          "writes": [
+            "idx"
+          ]
+        },
+        {
+          "line": 3463,
+          "kind": "branch",
+          "explanation": "若目标 head 为 0，则没有待轮询 CQE。",
+          "reads": [
+            "idx"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3464,
+          "kind": "statement",
+          "explanation": "立即返回，不访问 CQ 或更新门铃。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3465,
+          "kind": "brace",
+          "explanation": "在 `URMAPollCQ` 的 L3465 结束 if 分支 `if (idx == 0) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3466,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"pollcq: sqDB %p, idx %d\\n\", sq->dbAddr, idx);`；该内容当前不参与 `URMAPollCQ` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3467,
+          "kind": "blank",
+          "explanation": "空行在 `URMAPollCQ` 的 L3467 分隔 `// AscendC::printf(\"pollcq: sqDB %p, idx %d\\n\", sq->dbAddr, idx);` 与 `auto cqBaseAddr = cq->cqVA;` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3468,
+          "kind": "declaration",
+          "explanation": "读取 CQ 环形缓冲基址 `cqBaseAddr`。",
+          "reads": [
+            "cq",
+            "cqVA"
+          ],
+          "writes": [
+            "cqBaseAddr"
+          ]
+        },
+        {
+          "line": 3469,
+          "kind": "declaration",
+          "explanation": "读取每条 CQE 的字节数 `cqeSize`。",
+          "reads": [
+            "cq"
+          ],
+          "writes": [
+            "cqeSize"
+          ]
+        },
+        {
+          "line": 3470,
+          "kind": "declaration",
+          "explanation": "读取 CQ 深度 `depth`，用于环形索引。",
+          "reads": [
+            "cq",
+            "cqDepth"
+          ],
+          "writes": [
+            "depth"
+          ]
+        },
+        {
+          "line": 3471,
+          "kind": "declaration",
+          "explanation": "从 `cq->tailAddr` 读取软件当前消费尾 `curTail`。",
+          "reads": [
+            "cq",
+            "tailAddr"
+          ],
+          "writes": [
+            "curTail"
+          ]
+        },
+        {
+          "line": 3472,
+          "kind": "loop",
+          "explanation": "持续消费，直到 `curTail` 追上 SQ head `idx`。",
+          "reads": [
+            "curTail",
+            "idx"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3473,
+          "kind": "declaration",
+          "explanation": "用 `curTail & (depth-1)` 选择 CQ 环形槽并计算 `cqeAddr`。",
+          "reads": [
+            "cqBaseAddr",
+            "cqeSize",
+            "curTail",
+            "depth"
+          ],
+          "writes": [
+            "cqeAddr"
+          ]
+        },
+        {
+          "line": 3474,
+          "kind": "declaration",
+          "explanation": "读取 CQE 首 32 位 `cqeByte4`，其中 bit2 是到达标志。",
+          "reads": [
+            "cqeAddr"
+          ],
+          "writes": [
+            "cqeByte4"
+          ]
+        },
+        {
+          "line": 3475,
+          "kind": "call",
+          "explanation": "记录轮询起始 cycle `start`，用于超时诊断。",
+          "reads": [
+            "AscendC"
+          ],
+          "writes": [
+            "start"
+          ]
+        },
+        {
+          "line": 3476,
+          "kind": "loop",
+          "explanation": "只要 `cqeByte4` 的 bit2 未置位，就继续刷新并重读该 CQE。",
+          "reads": [
+            "cqeByte4"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3477,
+          "kind": "call",
+          "explanation": "读取当前 cycle `tmp`。",
+          "reads": [
+            "AscendC"
+          ],
+          "writes": [
+            "tmp"
+          ]
+        },
+        {
+          "line": 3478,
+          "kind": "branch",
+          "explanation": "若轮询超过 3,000,000 cycles，则进入超时分支。",
+          "reads": [
+            "tmp",
+            "start"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3479,
+          "kind": "call",
+          "explanation": "打印 SQ 门铃地址与目标 `idx` 的超时诊断。",
+          "reads": [
+            "AscendC",
+            "sq",
+            "dbAddr",
+            "idx"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3480,
+          "kind": "declaration",
+          "explanation": "`break` 仅退出内层到达等待循环；外层仍会检查状态并推进 `curTail`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3481,
+          "kind": "brace",
+          "explanation": "在 `URMAPollCQ` 的 L3481 结束 if 分支 `if (tmp - start > 3000000) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3482,
+          "kind": "call",
+          "explanation": "调用内部 `cacheWriteThrough(cqeAddr,8)` 刷新该 CQE 的可见性。",
+          "reads": [],
+          "writes": [
+            "cqeAddr"
+          ]
+        },
+        {
+          "line": 3483,
+          "kind": "declaration",
+          "explanation": "缓存维护后重读 `cqeByte4`，再次检查 bit2。",
+          "reads": [
+            "cqeAddr"
+          ],
+          "writes": [
+            "cqeByte4"
+          ]
+        },
+        {
+          "line": 3484,
+          "kind": "brace",
+          "explanation": "在 `URMAPollCQ` 的 L3484 结束 while 循环 `while ((cqeByte4 & (1 << 2)) == 0) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3485,
+          "kind": "comment",
+          "explanation": "注释界定后续 CQE 状态检查。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3486,
+          "kind": "declaration",
+          "explanation": "提取 `cqeByte4` 的高 8 位为 `status`。",
+          "reads": [
+            "cqeByte4"
+          ],
+          "writes": [
+            "status"
+          ]
+        },
+        {
+          "line": 3487,
+          "kind": "declaration",
+          "explanation": "提取 `cqeByte4` 的 bits16–23 为 `subStatus`。",
+          "reads": [
+            "cqeByte4"
+          ],
+          "writes": [
+            "subStatus"
+          ]
+        },
+        {
+          "line": 3488,
+          "kind": "branch",
+          "explanation": "状态或子状态非零时进入错误诊断。",
+          "reads": [
+            "status",
+            "subStatus"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3489,
+          "kind": "call",
+          "explanation": "打印非零 `status` 与 `subStatus`。",
+          "reads": [
+            "AscendC",
+            "status",
+            "subStatus"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3490,
+          "kind": "brace",
+          "explanation": "在 `URMAPollCQ` 的 L3490 结束 if 分支 `if (status != 0 || subStatus != 0) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3491,
+          "kind": "declaration",
+          "explanation": "每处理一个 CQE 就递增 `curTail`。",
+          "reads": [],
+          "writes": [
+            "curTail"
+          ]
+        },
+        {
+          "line": 3492,
+          "kind": "brace",
+          "explanation": "在 `URMAPollCQ` 的 L3492 结束 while 循环 `while (curTail != idx) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3493,
+          "kind": "declaration",
+          "explanation": "把 `curTail` 截为低 22 位门铃值 `curJFCDB`。",
+          "reads": [
+            "curTail"
+          ],
+          "writes": [
+            "curJFCDB"
+          ]
+        },
+        {
+          "line": 3494,
+          "kind": "sync",
+          "explanation": "用 `st_dev` 把 `curJFCDB` 写到 `cq->dbAddr`，通知 CQ 消费进度。",
+          "reads": [
+            "curJFCDB",
+            "dbAddr"
+          ],
+          "writes": [
+            "cq"
+          ]
+        },
+        {
+          "line": 3495,
+          "kind": "comment",
+          "explanation": "注释说明下一步更新 JFS/SQ tail。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3496,
+          "kind": "declaration",
+          "explanation": "取得 `sq->tailAddr` 为硬件 tail 地址 `curHardwareTail`。",
+          "reads": [
+            "sq",
+            "tailAddr"
+          ],
+          "writes": [
+            "curHardwareTail"
+          ]
+        },
+        {
+          "line": 3497,
+          "kind": "statement",
+          "explanation": "把最终 `curTail` 写回 `curHardwareTail`。",
+          "reads": [
+            "curTail"
+          ],
+          "writes": [
+            "curHardwareTail"
+          ]
+        },
+        {
+          "line": 3498,
+          "kind": "brace",
+          "explanation": "在 `URMAPollCQ` 的 L3498 结束 代码块 `__aicore__ inline void URMAPollCQ(__gm__ AiURMAWQ *sq, __gm__ AiURMACQ *cq)` 作用域。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments": [
+        {
+          "id": "poll-one-cq-target-head-and-state",
+          "start": 3460,
+          "end": 3471,
+          "title": "读取 SQ 软件 head，零 head 退出并加载 CQ ring 状态",
+          "detail": "idx=*sq->headAddr；idx==0 直接返回。随后从 cq 读取 cqVA、cqeSize、cqDepth 与当前 tailAddr。调试 SQ doorbell 打印注释。",
+          "kind": "guard",
+          "input_state": [
+            "sq->headAddr：待完成 WQE head",
+            "cq：completion ring context"
+          ],
+          "mechanism": "用 idx 作为本轮 poll 终点，并以 cq tail 作为消费起点。",
+          "output_state": [
+            "idx/curTail/cqBaseAddr/cqeSize/depth：CQ 遍历状态"
+          ],
+          "why": "无已提交 WQE 时没有 completion 可等；否则需从当前 CQ tail 追到 SQ head。",
+          "calls": []
+        },
+        {
+          "id": "poll-cqe-valid-bit-with-timeout-and-cache-refresh",
+          "start": 3472,
+          "end": 3484,
+          "title": "逐 CQE 等待 bit2，并在轮询中刷新 8B cache range",
+          "detail": "curTail!=idx 时按 curTail&(depth-1) 定位 CQE，读取 cqeByte4。内层 while 等 bit2；每轮取 system cycle，超过 3,000,000 打印并 break，否则 cacheWriteThrough(cqeAddr,8) 后重读。",
+          "kind": "loop",
+          "input_state": [
+            "curTail/idx：CQ 消费范围",
+            "CQE bit2：硬件完成标志"
+          ],
+          "mechanism": "ring mask 定位 CQE；cycle 差做超时；DCCI 刷新后重读 status word。",
+          "output_state": [
+            "cqeByte4：已见 bit2，或超时后的最后读值"
+          ],
+          "why": "CQE 由硬件异步写入，cache 可能保留旧值；超时诊断避免无限停留在单个 CQE。",
+          "calls": [
+            {
+              "name": "GetSystemCycle",
+              "line": 3475,
+              "type": "external"
+            },
+            {
+              "name": "GetSystemCycle",
+              "line": 3477,
+              "type": "external"
+            },
+            {
+              "name": "printf",
+              "line": 3479,
+              "type": "external"
+            },
+            {
+              "name": "cacheWriteThrough",
+              "line": 3482,
+              "type": "internal",
+              "target": "f-moedistributedispatchv2fullmeshimpl-cachewritethrough-7000c8c3d6"
+            }
+          ]
+        },
+        {
+          "id": "poll-check-status-advance-tail-and-doorbell",
+          "start": 3485,
+          "end": 3498,
+          "title": "解析 CQE status，推进 tail，敲 CQ doorbell 并回写 SQ tail",
+          "detail": "从 cqeByte4 bits31:24 和23:16 提取 status/subStatus，非零则打印。每 CQE curTail++，直到等于 idx。curJFCDB 保留 tail 低22 bit，经 st_dev 写 cq->dbAddr；最后把 curTail 写 sq->tailAddr。",
+          "kind": "output",
+          "input_state": [
+            "cqeByte4：当前 CQE 状态",
+            "curTail/idx：消费进度"
+          ],
+          "mechanism": "检查两个状态 byte，逐项推进 tail；完成后发布 CQ consumer doorbell 与 SQ hardware tail。",
+          "output_state": [
+            "cq->dbAddr：低22 bit consumer tail",
+            "sq->tailAddr：完整 curTail"
+          ],
+          "why": "硬件需要 CQ doorbell 回收 completion ring，并同步 SQ tail 表示 WQE 已完成。",
+          "calls": [
+            {
+              "name": "printf",
+              "line": 3489,
+              "type": "external"
+            },
+            {
+              "name": "st_dev",
+              "line": 3494,
+              "type": "external"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "f-moedistributedispatchv2fullmeshimpl-urmapollcq-110d72f7d6",
+      "module_id": "wqe-alternates",
+      "name": "URMAPollCQ",
+      "start": 3501,
+      "end": 3515,
+      "inactive": true,
+      "summary": "不可达的多端口/多 QP wrapper：双循环计算 pe×port×qp 展平 offset，并逐项调用单 SQ/CQ URMAPollCQ；FULLMESH_NUM 之后端口的第二组循环被注释。",
+      "inputs": [
+        "pe",
+        "portNum",
+        "qpNum",
+        "sqs",
+        "cq"
+      ],
+      "outputs": [
+        "sqs",
+        "cq"
+      ],
+      "side_effects": [
+        "若可达会依次触发每个 port/qp 的单 CQ 轮询、doorbell 与 SQ tail 更新",
+        "第 3509–3514 行额外端口循环全部注释",
+        "inactive：无入口调用者"
+      ],
+      "review": {
+        "status": "PASS",
+        "reviewer": "e2e-architecture-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "line_range": [
+          3501,
+          3515
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 3501,
+        "reviewed_end": 3515,
+        "expected_line_count": 15,
+        "covered_line_count": 15,
+        "covered_ranges": [
+          [
+            3501,
+            3515
+          ]
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {
+          "line": 3501,
+          "kind": "signature",
+          "explanation": "定义不可达的多端口、多 QP CQ 轮询 wrapper，并接收 `sqs`/`cq` 数组。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3502,
+          "kind": "loop",
+          "explanation": "遍历 `[0, portNum)` 的 `portIdx`。",
+          "reads": [
+            "portNum"
+          ],
+          "writes": [
+            "portIdx"
+          ]
+        },
+        {
+          "line": 3503,
+          "kind": "loop",
+          "explanation": "对每个端口遍历 `[0, qpNum)` 的 `qpIdx`。",
+          "reads": [
+            "qpNum"
+          ],
+          "writes": [
+            "qpIdx"
+          ]
+        },
+        {
+          "line": 3504,
+          "kind": "call",
+          "explanation": "用 `OFFSET_OF(..., pe, portIdx, qpIdx)` 计算当前 PE/端口/QP 的线性偏移。",
+          "reads": [
+            "portNum",
+            "qpNum",
+            "pe",
+            "portIdx",
+            "qpIdx"
+          ],
+          "writes": [
+            "offset"
+          ]
+        },
+        {
+          "line": 3505,
+          "kind": "sync",
+          "explanation": "调用内部两参数 `URMAPollCQ`，轮询 `sqs[offset]` 与 `cq[offset]`。",
+          "reads": [
+            "offset"
+          ],
+          "writes": [
+            "sqs",
+            "cq"
+          ]
+        },
+        {
+          "line": 3506,
+          "kind": "brace",
+          "explanation": "在 `URMAPollCQ` 的 L3506 结束 for 循环 `for (int qpIdx = 0; qpIdx < qpNum; qpIdx++) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3507,
+          "kind": "brace",
+          "explanation": "在 `URMAPollCQ` 的 L3507 结束 for 循环 `for (int portIdx = 0; portIdx < portNum; portIdx++) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3508,
+          "kind": "blank",
+          "explanation": "空行在 `URMAPollCQ` 的 L3508 分隔 `}` 与 `// for (int portIdx = FULLMESH_NUM; portIdx < PORT_NUM; portIdx++) {` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3509,
+          "kind": "comment",
+          "explanation": "以下全被注释的循环曾计划从 `FULLMESH_NUM` 起处理额外端口，当前不执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3510,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `for (int qpIdx = 0; qpIdx < qpNum; qpIdx++) {`；该内容当前不参与 `URMAPollCQ` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3511,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `auto offset = OFFSET_OF(0, portNum, qpNum, pe, portIdx, qpIdx);`；该内容当前不参与 `URMAPollCQ` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3512,
+          "kind": "comment",
+          "explanation": "被注释的旧代码会调用同一两参数 `URMAPollCQ`，当前没有调用边。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3513,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `URMAPollCQ` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3514,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `URMAPollCQ` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3515,
+          "kind": "brace",
+          "explanation": "在 `URMAPollCQ` 的 L3515 结束 函数 `URMAPollCQ` 主体 作用域。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments": [
+        {
+          "id": "inactive-poll-all-port-qp-pairs",
+          "start": 3501,
+          "end": 3515,
+          "title": "展平 pe/port/qp 并调用单 CQ poller（当前不可达）",
+          "detail": "portIdx 遍历 [0,portNum)，qpIdx 遍历 [0,qpNum)。OFFSET_OF(0,portNum,qpNum,pe,portIdx,qpIdx)=pe*portNum*qpNum+portIdx*qpNum+qpIdx；用相同 offset 索引 sqs/cq 并调用两参数重载。额外 FULLMESH_NUM 端口循环注释。",
+          "kind": "loop",
+          "input_state": [
+            "pe/portNum/qpNum：三维 SQ/CQ 拓扑",
+            "sqs/cq：展平数组"
+          ],
+          "mechanism": "双循环计算线性 offset，逐对调用 URMAPollCQ(sqs+offset,cq+offset)。",
+          "output_state": [
+            "若启用：当前 pe 的全部 port/qp completions 被消费",
+            "当前主路径：无动作"
+          ],
+          "why": "单 CQ helper 只处理一对队列；wrapper 提供拓扑遍历，但现有 Process/URMASendToken 不调用它。",
+          "calls": [
+            {
+              "name": "OFFSET_OF",
+              "line": 3504,
+              "type": "external"
+            },
+            {
+              "name": "URMAPollCQ",
+              "line": 3505,
+              "type": "internal",
+              "target": "f-moedistributedispatchv2fullmeshimpl-urmapollcq-4eae8cd065"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

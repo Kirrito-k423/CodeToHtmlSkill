@@ -1,0 +1,745 @@
+{
+  "source": {"sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc"},
+  "functions": [
+    {
+      "id": "m-moedistributedispatchv2fullmesh-process-0538141e33",
+      "module_id": "process-entry",
+      "name": "Process",
+      "start": 4278,
+      "end": 4354,
+      "inactive": false,
+      "summary": "AIV 侧总调度入口：所有 AIV 依据 aivId_ 落入互斥角色区间并行工作——stage AIV 先 dispatch/publish，再细分为远端 URMA 或 self-copy；中间 AIV 轮询 doorbell；尾部 AIV 计算 cumsum。各角色完成后都进入 LocalWindowCopy 汇合路径；DEBUG_CLOCK_ON 时再导出每 AIV 的 15 段耗时。",
+      "inputs": ["aivId_", "aivUsedStage_", "aivUsedRemoteWqe_", "aivCumSumStart_", "timePoint", "sendTpCountOutGM_"],
+      "outputs": ["clockResultLT", "clockResultOut", "sendTpCountOutGM_"],
+      "side_effects": [
+        "按 AIV ID 并行选择 stage/remote/self-copy、doorbell 或 cumsum 角色，而非在单个 AIV 上串行执行全部分支",
+        "stage AIV 发布 stageDone 后 Reset 本地 pipe，再执行 URMASendToken 或 SelfCopyToken；其他角色同时推进 doorbell/cumsum",
+        "所有 AIV 分支退出后调用 LocalWindowCopy，形成 expandX/scales/expandIdx 的本地连续化汇合路径",
+        "DEBUG_CLOCK_ON 编译路径把 timePoint 相邻差值写到 sendTpCountOutGM_ 并执行跨核同步"
+      ],
+      "review": {"status":"PASS","verdict":"PASS","reviewer":"function-block-review-agent","draft_author":"full-analysis-draft-agent","revision":1,"source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","line_range":[4278,4354],"gaps":[],"overlaps":[],"unresolved":[],"required_changes":[]},
+      "line_review_certification": {"complete":true,"reviewed_line_range":[4278,4354],"reviewed_line_count":77,"coverage":"every_source_line_reviewed_once","source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","gaps":[],"overlaps":[]},
+      "line_notes": [
+        {
+          "line": 4278,
+          "kind": "signature",
+          "explanation": "构成函数 `Process` 的签名片段 `template <TemplateMC2TypeFullmeshClass>`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4279,
+          "kind": "signature",
+          "explanation": "构成函数 `Process` 的签名片段 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::Process()`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4280,
+          "kind": "brace",
+          "explanation": "在 `Process` 的 L4280 打开 代码块 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::Process()` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4281,
+          "kind": "call",
+          "explanation": "调用 `DebugClock` 并更新 `k`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4282,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"====== chy process ======\\n\");`；该内容当前不参与 `Process` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4283,
+          "kind": "branch",
+        "explanation": "仅当 `ASCEND_IS_AIV` 成立时进入整个 dispatch 调度体；非 AIV 核跳到 L4354 返回。",
+          "reads": [
+            "ASCEND_IS_AIV"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4284,
+          "kind": "comment",
+          "explanation": "注释记录 `All stage flags are cleared in Init. Synchronize once before any`，说明 `Process` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4285,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `stage core publishes the completion flag for this launch.`；该内容当前不参与 `Process` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4286,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `SyncAll<true>();`；该内容当前不参与 `Process` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4287,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `tpipe_->Reset();`；该内容当前不参与 `Process` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4288,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"====== chy aiv process ======\\n\");`；该内容当前不参与 `Process` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4289,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"====== chy0 ======\\n\");`；该内容当前不参与 `Process` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4290,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"ismc2Context: %d\\n\", isMc2Context_);`；该内容当前不参与 `Process` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4291,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `GM_ADDR r0_ptr = (GM_ADDR)aclshmem_ptr((GM_ADDR)shmemBuffer_, 0);`；该内容当前不参与 `Process` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4292,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `GM_ADDR r1_ptr = (GM_ADDR)aclshmem_ptr((GM_ADDR)shmemBuffer_, 1);`；该内容当前不参与 `Process` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4293,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm] Addr check: r0 shmemBuffer %p, r1 shmemBuffer %p\\n\", r0_ptr, r1_ptr);`；该内容当前不参与 `Process` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4294,
+          "kind": "blank",
+          "explanation": "空行在 `Process` 的 L4294 分隔 `// AscendC::printf(\"[kfm] Addr check: r0 shmemBuffer %p, r1 shmemBuffer…` 与 `if (aivId_ < aivUsedStage_) {` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4295,
+          "kind": "branch",
+        "explanation": "将 `aivId_ < aivUsedStage_` 的 AIV 分配为 stage 生产者；其余 AIV 不执行本分支，而并行承担 doorbell 或 cumsum。",
+          "reads": [
+            "aivId_",
+            "aivUsedStage_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4296,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"====== chy11 [aivId_ %d]======\\n\", aivId_);`；该内容当前不参与 `Process` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4297,
+          "kind": "call",
+        "explanation": "stage AIV 调用 `AllToAllDispatch`，把本地 token 写入 send buffer/shared expert；同行尾注释明确这是前段生产工作。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4298,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"====== chy12 [aivId_ %d]======\\n\", aivId_);`；该内容当前不参与 `Process` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4299,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `PipeBarrier<PIPE_ALL>();`；该内容当前不参与 `Process` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4300,
+          "kind": "call",
+          "explanation": "调用 `DebugClock` 并更新 `k`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4301,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `DebugClock(3);`；该内容当前不参与 `Process` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4302,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `SyncAll<true>();`；该内容当前不参与 `Process` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4303,
+          "kind": "call",
+        "explanation": "调用 `PublishStageDone` 发布当前 stage 的完成标志，使其他 AIV 的等待逻辑可确认对应 staging 数据已就绪。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4304,
+          "kind": "call",
+          "explanation": "调用 `Reset` 并更新 `_`；本行实参或对象来自 `tpipe_`。",
+          "reads": [
+            "tpipe_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4305,
+          "kind": "call",
+          "explanation": "调用 `DebugClock` 并更新 `k`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4306,
+          "kind": "branch",
+        "explanation": "stage AIV 再以 `aivUsedRemoteWqe_` 为界互斥分工：较小 ID 负责远端 URMA，其余 ID 负责本 rank self-copy。",
+          "reads": [
+            "aivId_",
+            "aivUsedRemoteWqe_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4307,
+          "kind": "call",
+        "explanation": "远端发送子角色调用 `URMASendToken` 准备目标 rank 的 token/WQE；它与其他 AIV 上的 self-copy 并行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4308,
+          "kind": "branch",
+          "explanation": "按分支表达式 `} else {` 选择 `Process` 的后续路径；判定涉及 `编译期/字面量条件`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4309,
+          "kind": "call",
+        "explanation": "self-copy 子角色调用 `SelfCopyToken`，等待 stageDone 后把属于本 rank 专家的 token 写入本地 window。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4310,
+          "kind": "brace",
+          "explanation": "在 `Process` 的 L4310 结束 else 备选分支 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4311,
+          "kind": "call",
+          "explanation": "调用 `DebugClock` 并更新 `k`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4312,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"====== chy32 [aivId_ %d]======\\n\", aivId_);`；该内容当前不参与 `Process` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4313,
+          "kind": "branch",
+        "explanation": "未进入 stage 区且 `aivId_ < aivCumSumStart_` 的中间 AIV 被分配为 doorbell 角色。",
+          "reads": [
+            "aivId_",
+            "aivCumSumStart_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4314,
+          "kind": "call",
+        "explanation": "doorbell 角色调用 `RingDoorbell`，并行轮询 WQE 连续就绪 bitmap 并推进远端 SQ head。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4315,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `DebugClock(6);`；该内容当前不参与 `Process` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4316,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `DebugClock(8);`；该内容当前不参与 `Process` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4317,
+          "kind": "branch",
+        "explanation": "剩余 `aivId_ >= aivCumSumStart_` 的尾部 AIV 进入 cumsum 角色；该分支与 stage、doorbell 分支互斥。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4318,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"====== chy21 [aivId_ %d]======\\n\", aivId_);`；该内容当前不参与 `Process` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4319,
+          "kind": "call",
+        "explanation": "cumsum 角色调用 `CalCumSum`，汇总当前 rank 发往各专家的 token 数并生成 epRecvCnt/expertTokenNums。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4320,
+          "kind": "call",
+          "explanation": "调用 `DebugClock` 并更新 `k`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4321,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `DebugClock(7);`；该内容当前不参与 `Process` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4322,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `DebugClock(8);`；该内容当前不参与 `Process` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4323,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"====== chy22 [aivId_ %d]======\\n\", aivId_);`；该内容当前不参与 `Process` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4324,
+          "kind": "brace",
+          "explanation": "在 `Process` 的 L4324 结束 else 备选分支 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4325,
+          "kind": "comment",
+          "explanation": "注释记录 `localWindowCopy中包含reset操作，需确保前面操作完成`，说明 `Process` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4326,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"====== chy41 [aivId_ %d]======\\n\", aivId_);`；该内容当前不参与 `Process` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4327,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `SyncAll<true>();`；该内容当前不参与 `Process` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4328,
+          "kind": "blank",
+          "explanation": "空行在 `Process` 的 L4328 分隔 `// SyncAll<true>();` 与 `PipeBarrier<PIPE_ALL>();` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4329,
+          "kind": "sync",
+          "explanation": "调用 `PipeBarrier`，等待源码指定流水线上的先前操作完成后再继续。",
+          "reads": [
+            "PIPE_ALL"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4330,
+          "kind": "call",
+          "explanation": "调用 `DebugClock` 并更新 `k`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4331,
+          "kind": "call",
+        "explanation": "互斥角色分支汇合后，每个 AIV 都调用 `LocalWindowCopy` 连续化本卡专家数据，形成 expandX/scales/expandIdx 输出路径。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4332,
+          "kind": "sync",
+          "explanation": "调用 `PipeBarrier`，等待源码指定流水线上的先前操作完成后再继续。",
+          "reads": [
+            "PIPE_ALL"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4333,
+          "kind": "call",
+          "explanation": "调用 `DebugClock` 并更新 `k`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4334,
+          "kind": "blank",
+          "explanation": "空行在 `Process` 的 L4334 分隔 `DebugClock(8);` 与 `// AscendC::printf(\"====== chy42 [aivId_ %d]======\\n\", aivId_);` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4335,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"====== chy42 [aivId_ %d]======\\n\", aivId_);`；该内容当前不参与 `Process` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4336,
+          "kind": "blank",
+          "explanation": "空行在 `Process` 的 L4336 分隔 `// AscendC::printf(\"====== chy42 [aivId_ %d]======\\n\", aivId_);` 与 `#ifdef DEBUG_CLOCK_ON` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4337,
+          "kind": "preprocessor",
+          "explanation": "用预处理条件 `#ifdef DEBUG_CLOCK_ON` 决定后续实现是否进入本次编译。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4338,
+          "kind": "call",
+        "explanation": "仅在 `DEBUG_CLOCK_ON` 编译路径重置 `tpipe_`，为复用 UB 导出性能数据做准备。",
+          "reads": [
+            "tpipe_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4339,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer`、`Ceil` 并更新 `_`；本行实参或对象来自 `tpipe_、clockResultBuf_、UB_ALIGN`。",
+          "reads": [
+            "tpipe_",
+            "clockResultBuf_",
+            "UB_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4340,
+          "kind": "call",
+        "explanation": "从 `clockResultBuf_` 取得 `int32_t` LocalTensor 并赋给 `clockResultLT`，作为 15 个时间差的 UB 输出。",
+          "reads": [
+            "clockResultBuf_"
+          ],
+          "writes": [
+            "clockResultLT"
+          ]
+        },
+        {
+          "line": 4341,
+          "kind": "declaration",
+          "explanation": "声明 `timeOffset`；源码初始化式 `uint32_t timeOffset = aivId_;`读取 `aivId_`。",
+          "reads": [
+            "aivId_"
+          ],
+          "writes": [
+            "timeOffset"
+          ]
+        },
+        {
+          "line": 4342,
+          "kind": "declaration",
+          "explanation": "声明 `clockResultOut`；源码初始化式 `GlobalTensor<int32_t> clockResultOut;`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": [
+            "clockResultOut"
+          ]
+        },
+        {
+          "line": 4343,
+          "kind": "call",
+        "explanation": "把 `clockResultOut` 绑定到 `sendTpCountOutGM_`，后续按每个 AIV 独立的 16 元素槽写性能结果。",
+          "reads": [
+            "clockResultOut",
+            "__gm__",
+            "sendTpCountOutGM_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4344,
+          "kind": "loop",
+          "explanation": "启动或推进 `for` 循环 `for (int i = 0; i < 15; i++) {`；迭代式涉及 `i`。",
+          "reads": [],
+          "writes": [
+            "i"
+          ]
+        },
+        {
+          "line": 4345,
+          "kind": "declaration",
+          "explanation": "声明 `timeCast`；源码初始化式 `int64_t timeCast = timePoint[i+1] - timePoint[i];`读取 `timePoint、i`。",
+          "reads": [
+            "timePoint",
+            "i"
+          ],
+          "writes": [
+            "timeCast"
+          ]
+        },
+        {
+          "line": 4346,
+          "kind": "call",
+        "explanation": "将第 `i` 段 `timeCast` 收窄为 `int32_t` 后写入 `clockResultLT(i)`；循环覆盖 15 个相邻时间点差值。",
+          "reads": [
+            "i",
+            "timeCast"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4347,
+          "kind": "brace",
+          "explanation": "在 `Process` 的 L4347 结束 for 循环 `for (int i = 0; i < 15; i++) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4348,
+          "kind": "sync",
+          "explanation": "调用 `SyncFunc`，在本行指定的硬件事件或流水线之间建立先后关系。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "S_MTE3"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4349,
+          "kind": "call",
+        "explanation": "把 16 个 `clockResultLT` 元素搬到 `clockResultOut[timeOffset*16]`，以 `aivId_` 派生偏移隔离各 AIV 的结果行。",
+          "reads": [
+            "timeOffset",
+            "clockResultLT"
+          ],
+          "writes": [
+            "clockResultOut"
+          ]
+        },
+        {
+          "line": 4350,
+          "kind": "sync",
+          "explanation": "调用 `PipeBarrier`，等待源码指定流水线上的先前操作完成后再继续。",
+          "reads": [
+            "PIPE_ALL"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4351,
+          "kind": "sync",
+          "explanation": "调用 `SyncAll`，使参与当前 `SyncAll` 阶段的线程或核在此汇合。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4352,
+          "kind": "preprocessor",
+          "explanation": "结束由 `#ifdef DEBUG_CLOCK_ON` 打开的条件编译区域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4353,
+          "kind": "brace",
+          "explanation": "在 `Process` 的 L4353 结束 代码块 `if ASCEND_IS_AIV {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4354,
+          "kind": "brace",
+          "explanation": "在 `Process` 的 L4354 结束 代码块 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::Process()` 作用域。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments": [
+        {
+          "id": "process-enter-aiv-domain",
+          "start": 4278,
+          "end": 4294,
+          "title": "仅 AIV 进入角色调度域",
+          "detail": "模板方法进入后记录基准时钟，ASCEND_IS_AIV 包住全部实际工作；同步、pipe reset、地址核对与 printf 均为注释，不参与当前执行。",
+          "kind": "guard",
+          "input_state": ["当前核类型：可能是 AIV 或其他核", "timePoint/DebugClock 状态：用于后续分段计时"],
+          "mechanism": "DebugClock(0) 记录入口；只有 ASCEND_IS_AIV 条件成立才执行 L4295–4352，其他核直接越过。",
+          "output_state": ["AIV：进入按 aivId_ 划分的并行角色区", "非 AIV：无 dispatch 工作并返回"],
+          "why": "该实现把数据搬运、WQE、doorbell 和 cumsum 分摊给 AIV，入口必须先限制核类型；注释中的 SyncAll 不应被误认为生效屏障。",
+          "calls": [{"name":"DebugClock","line":4281,"type":"external"}]
+        },
+        {
+          "id": "process-stage-produce-and-publish",
+          "start": 4295,
+          "end": 4305,
+          "title": "stage AIV 生产 staging 数据并发布完成",
+          "detail": "aivId_<aivUsedStage_ 的 AIV 各自运行 AllToAllDispatch，把本地 token 写入 send buffer/shared expert；随后 PublishStageDone 发布本 stage 完成，Reset 当前 AIV pipe 以切换到发送/自拷阶段。",
+          "kind": "guard",
+          "input_state": ["aivId_、aivUsedStage_：stage 角色区间", "AllToAllDispatch 输入：本地 token 与路由状态"],
+          "mechanism": "按 AIV ID 进入互斥 stage 分支；dispatch 完成后记录 clock 1，发布 stageDone，Reset，再记录 clock 2。",
+          "output_state": ["本 stage 的 staging/send buffer 数据已生成", "对应 stageDone 已发布供远端发送、自拷和 doorbell 等待", "当前 stage AIV pipe 已重置"],
+          "why": "消费者可能跨 stage 读取 token，因此必须在生产完成后显式发布；这是 AIV 间协议，不是 Process 内串行推进到其他角色。",
+          "calls": [
+            {"name":"AllToAllDispatch","line":4297,"type":"internal","target":"m-moedistributedispatchv2fullmesh-alltoalldispatch-5b12449592"},
+            {"name":"PublishStageDone","line":4303,"type":"internal","target":"m-moedistributedispatchv2fullmesh-publishstagedone-93230832a9"},
+            {"name":"DebugClock","line":4300,"type":"external"},
+            {"name":"Reset","line":4304,"type":"external"},
+            {"name":"DebugClock","line":4305,"type":"external"}
+          ]
+        },
+        {
+          "id": "process-stage-subroles-remote-or-self",
+          "start": 4306,
+          "end": 4312,
+          "title": "stage AIV 再互斥细分为远端发送与 self-copy",
+          "detail": "stage 角色内部，较小 aivId_ 执行 URMASendToken，余下 stage AIV 执行 SelfCopyToken；同一个 AIV 只走其中之一，两个子角色在不同 AIV 上并行。",
+          "kind": "guard",
+          "input_state": ["aivId_、aivUsedRemoteWqe_：stage 子角色分界", "已发布的全部 stageDone：两个消费者内部会等待所需完成状态"],
+          "mechanism": "if aivId_<aivUsedRemoteWqe_ 选择 URMA，否则选择本 rank window self-copy；分支后统一记录 DebugClock(6)。",
+          "output_state": ["远端子角色：目标 rank WQE/token 已准备", "self-copy 子角色：本 rank expert window 已填充"],
+          "why": "网络发送与本地拷贝使用不同资源和目标地址，通过 ID 分区并行覆盖，不能解读成先 URMA 后 self-copy。",
+          "calls": [
+            {"name":"URMASendToken","line":4307,"type":"internal","target":"m-moedistributedispatchv2fullmesh-urmasendtoken-d440368f92"},
+            {"name":"SelfCopyToken","line":4309,"type":"internal","target":"m-moedistributedispatchv2fullmesh-selfcopytoken-2eead1ce43"},
+            {"name":"DebugClock","line":4311,"type":"external"}
+          ]
+        },
+        {
+          "id": "process-peer-roles-doorbell-or-cumsum",
+          "start": 4313,
+          "end": 4324,
+          "title": "非 stage AIV 并行承担 doorbell 或 cumsum",
+          "detail": "未进入 stage 区的 AIV 继续按 aivCumSumStart_ 分界：中间区调用 RingDoorbell 轮询 WQE 连续就绪并提交 SQ，尾部区调用 CalCumSum 汇总/发布每专家 token 计数。",
+          "kind": "guard",
+          "input_state": ["aivId_、aivUsedStage_、aivCumSumStart_：三个角色区间", "stage AIV 并行生产的 stageDone/WQE/headRecord 状态"],
+          "mechanism": "else-if 区间执行 RingDoorbell，最终 else 执行 CalCumSum；只有 cumsum 路径在此记录 DebugClock(6)。",
+          "output_state": ["doorbell 角色：远端 SQ 已按连续 bitmap 推进", "cumsum 角色：epRecvCnt/expertTokenNums 已生成"],
+          "why": "doorbell、cumsum 与 stage/发送角色由不同 AIV 同时推进，依靠共享标志和各子函数同步汇合，而非 Process 调用顺序。",
+          "calls": [
+            {"name":"RingDoorbell","line":4314,"type":"internal","target":"m-moedistributedispatchv2fullmesh-ringdoorbell-a0c423ce68"},
+            {"name":"CalCumSum","line":4319,"type":"internal","target":"m-moedistributedispatchv2fullmesh-calcumsum-a5faf2a53a"},
+            {"name":"DebugClock","line":4320,"type":"external"}
+          ]
+        },
+        {
+          "id": "process-converge-local-window-copy",
+          "start": 4325,
+          "end": 4335,
+          "title": "所有 AIV 角色退出分支后汇合到 LocalWindowCopy",
+          "detail": "互斥角色分支闭合后，每个 AIV 都先做本核 PIPE_ALL barrier、记录 clock 7、调用 LocalWindowCopy，再做 PIPE_ALL 和 clock 8；源码中的 SyncAll 仍被注释。",
+          "kind": "sync",
+          "input_state": ["各角色子函数已在当前 AIV 返回", "本地/远端 window 与计数状态：由不同角色并行生成"],
+          "mechanism": "PipeBarrier<PIPE_ALL> 约束当前 AIV 流水线；LocalWindowCopy 连续化本卡专家数据并输出 expandX/scales/expandIdx；再次 barrier 防止尾部搬运越过。",
+          "output_state": ["本卡专家数据已连续化到下游 expand 输出", "每个 AIV 的 clock 7/8 阶段边界已记录"],
+          "why": "这是控制流汇合点，但生效代码没有全 AIV SyncAll；跨 AIV 完成依赖前置子函数自身的 stageDone/doorbell/cumsum 协议和 LocalWindowCopy 内部约束。",
+          "calls": [
+            {"name":"LocalWindowCopy","line":4331,"type":"internal","target":"m-moedistributedispatchv2fullmesh-localwindowcopy-68c5075b26"},
+            {"name":"PipeBarrier","line":4329,"type":"external"},
+            {"name":"DebugClock","line":4330,"type":"external"},
+            {"name":"PipeBarrier","line":4332,"type":"external"},
+            {"name":"DebugClock","line":4333,"type":"external"}
+          ]
+        },
+        {
+          "id": "process-debug-clock-export",
+          "start": 4336,
+          "end": 4352,
+          "title": "DEBUG_CLOCK_ON 时导出每 AIV 的 15 段耗时",
+          "detail": "条件编译路径 Reset pipe，分配 16 个 int32 对齐 UB，计算 timePoint[i+1]-timePoint[i] 的 15 个差值，按 aivId_*16 写入 sendTpCountOutGM_，最后 barrier 与 SyncAll。",
+          "kind": "output",
+          "input_state": ["DEBUG_CLOCK_ON：编译期开关", "timePoint[0..15]：DebugClock 记录", "aivId_：输出行索引", "sendTpCountOutGM_：性能结果 GM"],
+          "mechanism": "循环 i=0..14 将 int64 差值收窄写 clockResultLT；S_MTE3 后 DataCopy 16 个元素到每 AIV 独立槽，PIPE_ALL 后 SyncAll<true>。",
+          "output_state": ["clockResultOut[aivId_*16..]：15 个阶段耗时和一个缓冲槽", "所有 AIV：调试输出路径完成同步"],
+          "why": "调试数据按 AIV 分行避免竞争；该 Reset/DataCopy/SyncAll 仅在宏开启时存在，不属于默认执行路径。",
+          "calls": [
+            {"name":"Reset","line":4338,"type":"external"},
+            {"name":"InitBuffer","line":4339,"type":"external"},
+            {"name":"Get","line":4340,"type":"external"},
+            {"name":"SetGlobalBuffer","line":4343,"type":"external"},
+            {"name":"SyncFunc","line":4348,"type":"external"},
+            {"name":"DataCopy","line":4349,"type":"external"},
+            {"name":"PipeBarrier","line":4350,"type":"external"},
+            {"name":"SyncAll","line":4351,"type":"external"}
+          ]
+        },
+        {
+          "id": "process-close-aiv-and-method",
+          "start": 4353,
+          "end": 4354,
+          "title": "结束 AIV 条件域和 Process",
+          "detail": "依次闭合 ASCEND_IS_AIV 条件与方法作用域；无额外调用。",
+          "kind": "output",
+          "input_state": ["AIV：角色工作、LocalWindowCopy 及可选性能导出已完成", "非 AIV：先前已跳过工作体"],
+          "mechanism": "闭合作用域并返回调用方。",
+          "output_state": ["Process 结束"],
+          "why": "明确模板行、条件域和函数末尾均计入逐行覆盖。",
+          "calls": []
+        }
+      ]
+    }
+  ]
+}

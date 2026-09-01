@@ -1,0 +1,2186 @@
+{
+  "source": {"sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc"},
+  "functions": [
+    {
+      "id":"m-moedistributedispatchv2fullmesh-waitdispatch-3e9546ab05","module_id":"count-control","name":"WaitDispatch","start":1670,"end":1726,"inactive":false,
+      "summary":"轮询当前 cumsum 核负责的 recStatusNumPerCore_ 个远端状态槽：逐 cacheline 失效后搬入并归约 flag，直到全部为 1；可选记录各来源 Rank 首次到达耗时，退出后清消费过的状态并发布各核 recvCount/ready flag。",
+      "inputs":["gatherMaskOutBuf_","scalarBuf_","waitStatusBuf_","recStatusNumPerCore_","windowInstatusFp32Tensor_","startStatusIndex_","isPerformanceFlag_","performanceInfoTensor_","performanceInfoGMTensor_","epWorldSizeOriginal_"],
+      "outputs":["statusFp32Tensor_","performanceInfoTensor_","performanceInfoGMTensor_","windowInstatusFp32Tensor_"],
+      "side_effects":["DataCacheCleanAndInvalid 强制每轮从外部可见状态重新取数","性能模式记录每个来源 Rank 首次 ready 的微秒耗时，并以 atomic max 合并到 performanceInfoGMTensor_","WaitDispatchClearStatus 清零本核消费的 dispatch 状态；GatherSumRecvCnt 向本 Rank 状态区发布本核 recvCount 与 flag"],
+      "review":{"status":"PASS","verdict":"PASS","reviewer":"function-block-review-agent","draft_author":"full-analysis-draft-agent","revision":1,"source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","line_range":[1670,1726],"gaps":[],"overlaps":[],"unresolved":[],"required_changes":[]},
+      "line_review_certification":{"complete":true,"reviewed_line_range":[1670,1726],"reviewed_line_count":57,"coverage":"every_source_line_reviewed_once","source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","gaps":[],"overlaps":[]},
+      "line_notes":[
+        {
+          "line": 1670,
+          "kind": "signature",
+          "explanation": "构成函数 `WaitDispatch` 的签名片段 `template <TemplateMC2TypeFullmeshClass>`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1671,
+          "kind": "signature",
+          "explanation": "构成函数 `WaitDispatch` 的签名片段 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::WaitDispatch()`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1672,
+          "kind": "brace",
+          "explanation": "在 `WaitDispatch` 的 L1672 打开 代码块 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::WaitDispat…` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1673,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `gatherMaskOutTensor`；本行实参或对象来自 `gatherMaskOutBuf_、Get`。",
+          "reads": [
+            "gatherMaskOutBuf_",
+            "Get"
+          ],
+          "writes": [
+            "gatherMaskOutTensor"
+          ]
+        },
+        {
+          "line": 1674,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `gatherTmpTensor`；本行实参或对象来自 `scalarBuf_、GetWithOffset、UB_ALIGN`。",
+          "reads": [
+            "scalarBuf_",
+            "GetWithOffset",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "gatherTmpTensor"
+          ]
+        },
+        {
+          "line": 1675,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `statusSumOutTensor`；本行实参或对象来自 `scalarBuf_、GetWithOffset、UB_ALIGN`。",
+          "reads": [
+            "scalarBuf_",
+            "GetWithOffset",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "statusSumOutTensor"
+          ]
+        },
+        {
+          "line": 1676,
+          "kind": "call",
+          "explanation": "调用 `Get` 并更新 `statusFp32Tensor_、_`；本行实参或对象来自 `waitStatusBuf_`。",
+          "reads": [
+            "waitStatusBuf_"
+          ],
+          "writes": [
+            "statusFp32Tensor_"
+          ]
+        },
+        {
+          "line": 1677,
+          "kind": "declaration",
+          "explanation": "声明 `mask`；源码初始化式 `uint32_t mask = 1;`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": [
+            "mask"
+          ]
+        },
+        {
+          "line": 1678,
+          "kind": "call",
+          "explanation": "调用 `SetValue` 并更新 `r、gatherTmpTensor`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": [
+            "gatherTmpTensor"
+          ]
+        },
+        {
+          "line": 1679,
+          "kind": "declaration",
+          "explanation": "声明 `compareTarget`；源码初始化式 `float compareTarget = static_cast<float>(1.0) * recStatusNumPerCore_;`读取 `recStatusNumPerCore_`。",
+          "reads": [
+            "recStatusNumPerCore_"
+          ],
+          "writes": [
+            "compareTarget"
+          ]
+        },
+        {
+          "line": 1680,
+          "kind": "declaration",
+          "explanation": "声明 `sumOfFlag`；源码初始化式 `float sumOfFlag = static_cast<float>(-1.0);`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": [
+            "sumOfFlag"
+          ]
+        },
+        {
+          "line": 1681,
+          "kind": "declaration",
+          "explanation": "声明 `intriParams`；源码初始化式 `DataCopyParams intriParams{static_cast<uint16_t>(recStatusNumPerCore_), 1, 0, 0};`读取 `recStatusNumPerCore_`。",
+          "reads": [
+            "recStatusNumPerCore_"
+          ],
+          "writes": [
+            "intriParams"
+          ]
+        },
+        {
+          "line": 1682,
+          "kind": "sync",
+          "explanation": "调用 `SyncFunc`，在本行指定的硬件事件或流水线之间建立先后关系。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "S_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1683,
+          "kind": "call",
+          "explanation": "调用 `GetSystemCycle` 并更新 `performanceTimeStart`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": [
+            "performanceTimeStart"
+          ]
+        },
+        {
+          "line": 1684,
+          "kind": "blank",
+          "explanation": "空行在 `WaitDispatch` 的 L1684 分隔 `uint64_t performanceTimeStart = static_cast<uint64_t>(GetSystemCycle());` 与 `uint32_t spin = 0;` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1685,
+          "kind": "declaration",
+          "explanation": "声明 `spin`；源码初始化式 `uint32_t spin = 0;`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": [
+            "spin"
+          ]
+        },
+        {
+          "line": 1686,
+          "kind": "blank",
+          "explanation": "空行在 `WaitDispatch` 的 L1686 分隔 `uint32_t spin = 0;` 与 `while (sumOfFlag != compareTarget) {` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1687,
+          "kind": "loop",
+          "explanation": "启动或推进 `while` 循环 `while (sumOfFlag != compareTarget) {`；迭代式涉及 `sumOfFlag、compareTarget`。",
+          "reads": [
+            "sumOfFlag",
+            "compareTarget"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1688,
+          "kind": "loop",
+          "explanation": "启动或推进 `for` 循环 `for (uint32_t i = 0; i < recStatusNumPerCore_; ++i) {`；迭代式涉及 `i、recStatusNumPerCore_`。",
+          "reads": [
+            "recStatusNumPerCore_"
+          ],
+          "writes": [
+            "i"
+          ]
+        },
+        {
+          "line": 1689,
+          "kind": "sync",
+          "explanation": "调用 `DataCacheCleanAndInvalid`，发布或刷新本行涉及地址的缓存可见性。",
+          "reads": [
+            "CacheLine",
+            "SINGLE_CACHE_LINE",
+            "DcciDst",
+            "CACHELINE_OUT"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1690,
+          "kind": "declaration",
+          "explanation": "声明 `_`；源码初始化式 `windowInstatusFp32Tensor_[(startStatusIndex_ + i) * FLAG_OFFSET]);`读取 `windowInstatusFp32Tensor_、startStatusIndex_、i、FLAG_OFFSET`。",
+          "reads": [
+            "windowInstatusFp32Tensor_",
+            "startStatusIndex_",
+            "i",
+            "FLAG_OFFSET"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1691,
+          "kind": "brace",
+          "explanation": "在 `WaitDispatch` 的 L1691 结束 for 循环 `for (uint32_t i = 0; i < recStatusNumPerCore_; ++i) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1692,
+          "kind": "call",
+          "explanation": "调用 `DataCopy` 并更新 `y、statusFp32Tensor_`；本行实参或对象来自 `windowInstatusFp32Tensor_、startStatusIndex_、STATE_OFFSET、intriParams`。",
+          "reads": [
+            "windowInstatusFp32Tensor_",
+            "startStatusIndex_",
+            "STATE_OFFSET",
+            "intriParams"
+          ],
+          "writes": [
+            "statusFp32Tensor_"
+          ]
+        },
+        {
+          "line": 1693,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (isPerformanceFlag_) {` 选择 `WaitDispatch` 的后续路径；判定涉及 `isPerformanceFlag_`。",
+          "reads": [
+            "isPerformanceFlag_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1694,
+          "kind": "call",
+          "explanation": "调用 `RecordRankCommDuration` 并更新 `n`；本行实参或对象来自 `performanceInfoTensor_、performanceTimeStart`。",
+          "reads": [
+            "performanceInfoTensor_",
+            "performanceTimeStart"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1695,
+          "kind": "brace",
+          "explanation": "在 `WaitDispatch` 的 L1695 结束 if 分支 `if (isPerformanceFlag_) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1696,
+          "kind": "sync",
+          "explanation": "调用 `SyncFunc`，在本行指定的硬件事件或流水线之间建立先后关系。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "MTE2_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1697,
+          "kind": "call",
+          "explanation": "调用 `ReduceSum` 并更新 `m、statusSumOutTensor`；本行实参或对象来自 `statusFp32Tensor_、gatherMaskOutTensor、mask、recStatusNumPerCore_`。",
+          "reads": [
+            "statusFp32Tensor_",
+            "gatherMaskOutTensor",
+            "mask",
+            "recStatusNumPerCore_"
+          ],
+          "writes": [
+            "statusSumOutTensor"
+          ]
+        },
+        {
+          "line": 1698,
+          "kind": "sync",
+          "explanation": "调用 `SyncFunc`，在本行指定的硬件事件或流水线之间建立先后关系。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "V_S"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1699,
+          "kind": "call",
+          "explanation": "调用 `GetValue` 并更新 `sumOfFlag、g`；本行实参或对象来自 `statusSumOutTensor`。",
+          "reads": [
+            "statusSumOutTensor"
+          ],
+          "writes": [
+            "sumOfFlag"
+          ]
+        },
+        {
+          "line": 1700,
+          "kind": "blank",
+          "explanation": "空行在 `WaitDispatch` 的 L1700 分隔 `sumOfFlag = statusSumOutTensor.GetValue(0);` 与 `auto statusI32 = statusFp32Tensor_.ReinterpretCast<int32_t>();` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1701,
+          "kind": "call",
+          "explanation": "调用 `ReinterpretCast` 并更新 `statusI32`；本行实参或对象来自 `statusFp32Tensor_`。",
+          "reads": [
+            "statusFp32Tensor_"
+          ],
+          "writes": [
+            "statusI32"
+          ]
+        },
+        {
+          "line": 1702,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `if ((spin++ & 0xffff) == 0) {`；该内容当前不参与 `WaitDispatch` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1703,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(`；该内容当前不参与 `WaitDispatch` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1704,
+          "kind": "comment",
+          "explanation": "注释记录 `\"[wd] rank %d sum %f target %f \"`，说明 `WaitDispatch` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1705,
+          "kind": "comment",
+          "explanation": "注释记录 `\"f0 %f c0 %d f1 %f c1 %d f2 %f c2 %d f3 %f c3 %d\\n\",`，说明 `WaitDispatch` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1706,
+          "kind": "comment",
+          "explanation": "注释记录 `epRankId_, sumOfFlag, compareTarget,`，说明 `WaitDispatch` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1707,
+          "kind": "comment",
+          "explanation": "注释记录 `statusFp32Tensor_(0 * UB_ALIGN_DATA_COUNT), statusI32(0 * UB_ALIGN_DATA_COUNT + 1),`，说明 `WaitDispatch` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1708,
+          "kind": "comment",
+          "explanation": "注释记录 `statusFp32Tensor_(1 * UB_ALIGN_DATA_COUNT), statusI32(1 * UB_ALIGN_DATA_COUNT + 1),`，说明 `WaitDispatch` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1709,
+          "kind": "comment",
+          "explanation": "注释记录 `statusFp32Tensor_(2 * UB_ALIGN_DATA_COUNT), statusI32(2 * UB_ALIGN_DATA_COUNT + 1),`，说明 `WaitDispatch` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1710,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `statusFp32Tensor_(3 * UB_ALIGN_DATA_COUNT), statusI32(3 * UB_ALIGN_DATA_COUNT + 1));`；该内容当前不参与 `WaitDispatch` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1711,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `WaitDispatch` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1712,
+          "kind": "blank",
+          "explanation": "空行在 `WaitDispatch` 的 L1712 分隔 `// }` 与 `}` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1713,
+          "kind": "brace",
+          "explanation": "在 `WaitDispatch` 的 L1713 结束 while 循环 `while (sumOfFlag != compareTarget) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1714,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `RunPosRecord(RUNPOS_CALCUMSUM); // 维测打点`；该内容当前不参与 `WaitDispatch` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1715,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (isPerformanceFlag_) {` 选择 `WaitDispatch` 的后续路径；判定涉及 `isPerformanceFlag_`。",
+          "reads": [
+            "isPerformanceFlag_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1716,
+          "kind": "sync",
+          "explanation": "调用 `SyncFunc`，在本行指定的硬件事件或流水线之间建立先后关系。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "S_MTE3"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1717,
+          "kind": "call",
+          "explanation": "调用 `SetAtomicMax` 并更新 `x`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1718,
+          "kind": "statement",
+          "explanation": "求值源码语句 `DataCopyExtParams performanceInfoCopyParams{1U, static_cast<uint32_t>(epWorldSizeOriginal_* sizeof(int64_t)),`；该语句明确涉及 `performanceInfoCopyParams、epWorldSizeOriginal_`。",
+          "reads": [
+            "performanceInfoCopyParams",
+            "epWorldSizeOriginal_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1719,
+          "kind": "statement",
+          "explanation": "求值源码语句 `0U, 0U, 0U};`；该语句明确涉及 `标点/字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1720,
+          "kind": "call",
+          "explanation": "调用 `DataCopyPad` 并更新 `d、performanceInfoGMTensor_`；本行实参或对象来自 `performanceInfoTensor_、performanceInfoCopyParams`。",
+          "reads": [
+            "performanceInfoTensor_",
+            "performanceInfoCopyParams"
+          ],
+          "writes": [
+            "performanceInfoGMTensor_"
+          ]
+        },
+        {
+          "line": 1721,
+          "kind": "call",
+          "explanation": "调用 `SetAtomicNone` 并更新 `e`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1722,
+          "kind": "brace",
+          "explanation": "在 `WaitDispatch` 的 L1722 结束 if 分支 `if (isPerformanceFlag_) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1723,
+          "kind": "comment",
+          "explanation": "注释记录 `清状态`，说明 `WaitDispatch` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1724,
+          "kind": "call",
+          "explanation": "调用 `WaitDispatchClearStatus` 并更新 `s`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1725,
+          "kind": "call",
+          "explanation": "调用 `GatherSumRecvCnt` 并更新 `t`；本行实参或对象来自 `gatherMaskOutTensor、gatherTmpTensor、statusSumOutTensor`。",
+          "reads": [
+            "gatherMaskOutTensor",
+            "gatherTmpTensor",
+            "statusSumOutTensor"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1726,
+          "kind": "brace",
+          "explanation": "在 `WaitDispatch` 的 L1726 结束 代码块 `DataCopyParams intriParams{static_cast<uint16_t>(recStatusNumPerCore_), 1, 0, 0};` 作用域。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments":[
+        {"id":"wait-dispatch-reduction-setup","start":1670,"end":1686,"title":"建立 flag 归约视图与等待目标","detail":"从预分配缓冲取得 gather、标量和状态 tensor，令 gather pattern=1 选择每个 32B 状态块的 flag 槽，并把 compareTarget 设为 recStatusNumPerCore_。","kind":"input","input_state":["recStatusNumPerCore_：本核负责状态数","gatherMaskOutBuf_/scalarBuf_/waitStatusBuf_：BufferInit 已分配的 UB"],"mechanism":"建立三个 LocalTensor，DataCopyParams 每状态取 1 个 float；S_V 发布 gather pattern，并读取 GetSystemCycle 作为性能起点。","output_state":["statusFp32Tensor_ 与归约工作 tensor","compareTarget：全部状态 ready 时 flag 和","performanceTimeStart：可选计时基线"],"why":"每个状态块的第一个 float 是 ready flag，归约结果等于状态数即可一次判断整段全部到达。","calls":[{"name":"LocalTensor","line":1673,"type":"external"},{"name":"LocalTensor","line":1674,"type":"external"},{"name":"LocalTensor","line":1675,"type":"external"},{"name":"Get","line":1676,"type":"external"},{"name":"SetValue","line":1678,"type":"external"},{"name":"SyncFunc","line":1682,"type":"external"},{"name":"GetSystemCycle","line":1683,"type":"external"}]},
+        {"id":"wait-dispatch-cache-poll-and-performance","start":1687,"end":1713,"title":"失效 cache 后轮询并归约全部 dispatch flags","detail":"外层 while 在 sumOfFlag==compareTarget 前重复；每轮先逐状态做 cache clean+invalidate，再搬状态、可选记录首次到达耗时、ReduceSum flag。","kind":"loop","input_state":["windowInstatusFp32Tensor_：远端写入的状态窗口","startStatusIndex_ 与 recStatusNumPerCore_：本核负责范围"],"mechanism":"DCCI 每 cacheline 失效→DataCopy→MTE2_V→ReduceSum→V_S→GetValue；性能模式在每轮调用 RecordRankCommDuration。","output_state":["statusFp32Tensor_：最新状态快照","sumOfFlag：ready flag 总和","performanceInfoTensor_：已到达 Rank 的最大首见时延"],"why":"远端写状态绕过本核缓存，必须显式失效；只有 flag 总和等于负责状态数才建立所有计数可读的条件。","calls":[{"name":"DataCacheCleanAndInvalid","line":1689,"type":"external"},{"name":"DataCopy","line":1692,"type":"external"},{"name":"RecordRankCommDuration","line":1694,"type":"internal","target":"m-moedistributedispatchv2fullmesh-recordrankcommduration-17d0d2c4cf"},{"name":"SyncFunc","line":1696,"type":"external"},{"name":"ReduceSum","line":1697,"type":"external"},{"name":"SyncFunc","line":1698,"type":"external"},{"name":"GetValue","line":1699,"type":"external"},{"name":"ReinterpretCast","line":1701,"type":"external"}]},
+        {"id":"wait-dispatch-publish-performance-and-consume","start":1714,"end":1726,"title":"发布性能最大值、清状态并汇总 recvCount","detail":"轮询结束后，可选把 performanceInfoTensor_ 以 int32 atomic max 写回每 Rank int64 槽低 32 位；然后清本核状态并聚合各状态 count。","kind":"output","input_state":["performanceInfoTensor_：每来源 Rank 首见耗时","statusFp32Tensor_：全部 ready 的状态与 count"],"mechanism":"S_MTE3→SetAtomicMax→DataCopyPad→SetAtomicNone；WaitDispatchClearStatus 消费状态；GatherSumRecvCnt 发布本核 count 与 flag。","output_state":["performanceInfoGMTensor_：跨核 max 后耗时","windowInstatusFp32Tensor_：已清理等待下轮","本 Rank cumsum 协作区：本核 recvCount/flag 已发布"],"why":"先保存完整到达性能再清状态；清理后才发布聚合完成，可避免下一轮与本轮状态交叉。","calls":[{"name":"SyncFunc","line":1716,"type":"external"},{"name":"SetAtomicMax","line":1717,"type":"external"},{"name":"DataCopyPad","line":1720,"type":"external"},{"name":"SetAtomicNone","line":1721,"type":"external"},{"name":"WaitDispatchClearStatus","line":1724,"type":"internal","target":"m-moedistributedispatchv2fullmesh-waitdispatchclearstatus-efe4e94078"},{"name":"GatherSumRecvCnt","line":1725,"type":"internal","target":"m-moedistributedispatchv2fullmesh-gathersumrecvcnt-62b057b564"}]}
+      ]
+    },
+    {
+      "id":"m-moedistributedispatchv2fullmesh-calrecvandsetflag-56c1c11bb0","module_id":"count-control","name":"CalRecvAndSetFlag","start":1728,"end":1764,"inactive":false,
+      "summary":"等待所有 cumsum 核发布局部 recvCount 后，取得本核之前各核总和 preSum，并对本核状态 count 做前缀累加；把结果写到 sendCounts 输出和每个 AIV 的 recvCnt workspace 副本，最后向每个 AIV 发布本 cumsum 核完成 flag。",
+      "inputs":["aivId_","aivCumSumStart_","startStatusIndex_","endStatusIndex_","waitStatusBuf_","recvCntWorkspaceGM_","sendCountsOutGM_","recStatusNumPerCore_","aivNum_","rscvStatusNum_","aivUsedCumSum_","sumCoreBuf_","selfRankWinInGMTensor_"],
+      "outputs":["sendCountsGlobal","workspaceGlobal","selfRankWinInGMTensor_"],
+      "side_effects":["GetCumSum 等待并消费 cumsum 核间 recvCount flag","sendCountsOutGM_ 获得本核状态范围的全局前缀和","recvCntWorkspaceGM_ 为每个 AIV 复制同一前缀和片段","向 selfRankWinInGMTensor_ 的 AIV×cumsum flag 矩阵写 1"],
+      "review":{"status":"PASS","verdict":"PASS","reviewer":"function-block-review-agent","draft_author":"full-analysis-draft-agent","revision":1,"source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","line_range":[1728,1764],"gaps":[],"overlaps":[],"unresolved":[],"required_changes":[]},
+      "line_review_certification":{"complete":true,"reviewed_line_range":[1728,1764],"reviewed_line_count":37,"coverage":"every_source_line_reviewed_once","source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","gaps":[],"overlaps":[]},
+      "line_notes":[
+        {
+          "line": 1728,
+          "kind": "signature",
+          "explanation": "构成函数 `CalRecvAndSetFlag` 的签名片段 `template <TemplateMC2TypeFullmeshClass>`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1729,
+          "kind": "signature",
+          "explanation": "构成函数 `CalRecvAndSetFlag` 的签名片段 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::CalRecvAndSetFlag()`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1730,
+          "kind": "brace",
+          "explanation": "在 `CalRecvAndSetFlag` 的 L1730 打开 代码块 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::CalRecvAnd…` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1731,
+          "kind": "comment",
+          "explanation": "注释记录 `check flag 用于 aivUsedCumSum_ 软同步并计算 aivUsedCumSum_ 个核各自的recvCount`，说明 `CalRecvAndSetFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1732,
+          "kind": "declaration",
+          "explanation": "声明 `outCountLocal`；源码初始化式 `LocalTensor<int32_t> outCountLocal;`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": [
+            "outCountLocal"
+          ]
+        },
+        {
+          "line": 1733,
+          "kind": "declaration",
+          "explanation": "声明 `newAivId`；源码初始化式 `uint32_t newAivId = aivId_ - aivCumSumStart_;`读取 `aivId_、aivCumSumStart_`。",
+          "reads": [
+            "aivId_",
+            "aivCumSumStart_"
+          ],
+          "writes": [
+            "newAivId"
+          ]
+        },
+        {
+          "line": 1734,
+          "kind": "call",
+          "explanation": "调用 `GetCumSum` 并更新 `m`；本行实参或对象来自 `outCountLocal、newAivId`。",
+          "reads": [
+            "outCountLocal",
+            "newAivId"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1735,
+          "kind": "comment",
+          "explanation": "注释记录 `计算epRecvCnt`，说明 `CalRecvAndSetFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1736,
+          "kind": "call",
+          "explanation": "调用 `GetValue` 并更新 `preSum`；本行实参或对象来自 `outCountLocal`。",
+          "reads": [
+            "outCountLocal"
+          ],
+          "writes": [
+            "preSum"
+          ]
+        },
+        {
+          "line": 1737,
+          "kind": "declaration",
+          "explanation": "声明 `curCnt`；源码初始化式 `uint32_t curCnt = preSum;`读取 `preSum`。",
+          "reads": [
+            "preSum"
+          ],
+          "writes": [
+            "curCnt"
+          ]
+        },
+        {
+          "line": 1738,
+          "kind": "call",
+          "explanation": "调用 `Get` 并更新 `statusTensor_、_`；本行实参或对象来自 `waitStatusBuf_`。",
+          "reads": [
+            "waitStatusBuf_"
+          ],
+          "writes": [
+            "statusTensor_"
+          ]
+        },
+        {
+          "line": 1739,
+          "kind": "loop",
+          "explanation": "启动或推进 `for` 循环 `for (uint32_t index = startStatusIndex_; index < endStatusIndex_; index++) {`；迭代式涉及 `index、startStatusIndex_、endStatusIndex_`。",
+          "reads": [
+            "startStatusIndex_",
+            "endStatusIndex_"
+          ],
+          "writes": [
+            "index"
+          ]
+        },
+        {
+          "line": 1740,
+          "kind": "declaration",
+          "explanation": "声明 `i`；源码初始化式 `uint32_t i = index - startStatusIndex_;`读取 `index、startStatusIndex_`。",
+          "reads": [
+            "index",
+            "startStatusIndex_"
+          ],
+          "writes": [
+            "i"
+          ]
+        },
+        {
+          "line": 1741,
+          "kind": "call",
+          "explanation": "调用 `GetValue` 并更新 `count`；本行实参或对象来自 `statusTensor_、i、UB_ALIGN_DATA_COUNT`。",
+          "reads": [
+            "statusTensor_",
+            "i",
+            "UB_ALIGN_DATA_COUNT"
+          ],
+          "writes": [
+            "count"
+          ]
+        },
+        {
+          "line": 1742,
+          "kind": "declaration",
+          "explanation": "声明 `t`；源码初始化式 `curCnt += count;`读取 `count`。",
+          "reads": [
+            "count"
+          ],
+          "writes": [
+            "curCnt"
+          ]
+        },
+        {
+          "line": 1743,
+          "kind": "call",
+          "explanation": "调用 `SetValue` 并更新 `l、outCountLocal`；本行实参或对象来自 `i、curCnt`。",
+          "reads": [
+            "i",
+            "curCnt"
+          ],
+          "writes": [
+            "outCountLocal"
+          ]
+        },
+        {
+          "line": 1744,
+          "kind": "brace",
+          "explanation": "在 `CalRecvAndSetFlag` 的 L1744 结束 for 循环 `for (uint32_t index = startStatusIndex_; index < endStatusIndex_; index++) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1745,
+          "kind": "sync",
+          "explanation": "调用 `SyncFunc`，在本行指定的硬件事件或流水线之间建立先后关系。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "S_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1746,
+          "kind": "declaration",
+          "explanation": "声明 `wAddr`；源码初始化式 `GM_ADDR wAddr = (__gm__ uint8_t*)(recvCntWorkspaceGM_);`读取 `__gm__、recvCntWorkspaceGM_`。",
+          "reads": [
+            "__gm__",
+            "recvCntWorkspaceGM_"
+          ],
+          "writes": [
+            "wAddr"
+          ]
+        },
+        {
+          "line": 1747,
+          "kind": "declaration",
+          "explanation": "声明 `sendCountsGlobal`；源码初始化式 `GlobalTensor<int32_t> sendCountsGlobal, workspaceGlobal;`读取 `workspaceGlobal`。",
+          "reads": [
+            "workspaceGlobal"
+          ],
+          "writes": [
+            "sendCountsGlobal"
+          ]
+        },
+        {
+          "line": 1748,
+          "kind": "call",
+          "explanation": "调用 `SetGlobalBuffer` 并更新 `l`；本行实参或对象来自 `sendCountsGlobal、__gm__、sendCountsOutGM_`。",
+          "reads": [
+            "sendCountsGlobal",
+            "__gm__",
+            "sendCountsOutGM_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1749,
+          "kind": "call",
+          "explanation": "调用 `SetGlobalBuffer` 并更新 `l`；本行实参或对象来自 `workspaceGlobal、__gm__、wAddr`。",
+          "reads": [
+            "workspaceGlobal",
+            "__gm__",
+            "wAddr"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1750,
+          "kind": "declaration",
+          "explanation": "声明 `dataCopyOutParams`；源码初始化式 `DataCopyExtParams dataCopyOutParams{1U, static_cast<uint32_t>(recStatusNumPerCore_ * sizeof(int32_t)), 0U, 0U, 0U};`读取 `recStatusNumPerCore_`。",
+          "reads": [
+            "recStatusNumPerCore_"
+          ],
+          "writes": [
+            "dataCopyOutParams"
+          ]
+        },
+        {
+          "line": 1751,
+          "kind": "call",
+          "explanation": "调用 `DataCopyPad` 并更新 `d、sendCountsGlobal`；本行实参或对象来自 `startStatusIndex_、outCountLocal、dataCopyOutParams`。",
+          "reads": [
+            "startStatusIndex_",
+            "outCountLocal",
+            "dataCopyOutParams"
+          ],
+          "writes": [
+            "sendCountsGlobal"
+          ]
+        },
+        {
+          "line": 1752,
+          "kind": "comment",
+          "explanation": "注释记录 `复制aivNum_份`，说明 `CalRecvAndSetFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1753,
+          "kind": "loop",
+          "explanation": "启动或推进 `for` 循环 `for (uint32_t index = 0; index < aivNum_; index++) {`；迭代式涉及 `index、aivNum_`。",
+          "reads": [
+            "aivNum_"
+          ],
+          "writes": [
+            "index"
+          ]
+        },
+        {
+          "line": 1754,
+          "kind": "call",
+          "explanation": "调用 `DataCopyPad` 并更新 `d、workspaceGlobal`；本行实参或对象来自 `index、rscvStatusNum_、startStatusIndex_、outCountLocal、dataCopyOutParams`。",
+          "reads": [
+            "index",
+            "rscvStatusNum_",
+            "startStatusIndex_",
+            "outCountLocal",
+            "dataCopyOutParams"
+          ],
+          "writes": [
+            "workspaceGlobal"
+          ]
+        },
+        {
+          "line": 1755,
+          "kind": "brace",
+          "explanation": "在 `CalRecvAndSetFlag` 的 L1755 结束 for 循环 `for (uint32_t index = 0; index < aivNum_; index++) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1756,
+          "kind": "call",
+          "explanation": "调用 `Ceil` 并更新 `repeatTimes`；本行实参或对象来自 `aivNum_`。",
+          "reads": [
+            "aivNum_"
+          ],
+          "writes": [
+            "repeatTimes"
+          ]
+        },
+        {
+          "line": 1757,
+          "kind": "declaration",
+          "explanation": "声明 `sumIntriParams`；源码初始化式 `DataCopyParams sumIntriParams{static_cast<uint16_t>(aivNum_), 1, 0, static_cast<uint16_t>(aivUsedCumSum_ - 1)};`读取 `aivNum_、aivUsedCumSum_`。",
+          "reads": [
+            "aivNum_",
+            "aivUsedCumSum_"
+          ],
+          "writes": [
+            "sumIntriParams"
+          ]
+        },
+        {
+          "line": 1758,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `syncOnCoreTensor`；本行实参或对象来自 `sumCoreBuf_、Get`。",
+          "reads": [
+            "sumCoreBuf_",
+            "Get"
+          ],
+          "writes": [
+            "syncOnCoreTensor"
+          ]
+        },
+        {
+          "line": 1759,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `syncOnCoreFP32Tensor`；本行实参或对象来自 `sumCoreBuf_、Get`。",
+          "reads": [
+            "sumCoreBuf_",
+            "Get"
+          ],
+          "writes": [
+            "syncOnCoreFP32Tensor"
+          ]
+        },
+        {
+          "line": 1760,
+          "kind": "comment",
+          "explanation": "注释记录 `每次处理256字节，1、8分别为dst、src相邻迭代间地址步长`，说明 `CalRecvAndSetFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1761,
+          "kind": "call",
+          "explanation": "调用 `Duplicate` 并更新 `e、syncOnCoreTensor`；本行实参或对象来自 `SIZE_ALIGN_256、repeatTimes`。",
+          "reads": [
+            "SIZE_ALIGN_256",
+            "repeatTimes"
+          ],
+          "writes": [
+            "syncOnCoreTensor"
+          ]
+        },
+        {
+          "line": 1762,
+          "kind": "sync",
+          "explanation": "调用 `SyncFunc`，在本行指定的硬件事件或流水线之间建立先后关系。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "V_MTE3"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1763,
+          "kind": "call",
+          "explanation": "调用 `DataCopy` 并更新 `y、selfRankWinInGMTensor_`；本行实参或对象来自 `rscvStatusNum_、STATE_OFFSET、aivUsedCumSum_、UB_ALIGN、newAivId、syncOnCoreFP32Tensor、sumIntriParams`。",
+          "reads": [
+            "rscvStatusNum_",
+            "STATE_OFFSET",
+            "aivUsedCumSum_",
+            "UB_ALIGN",
+            "newAivId",
+            "syncOnCoreFP32Tensor",
+            "sumIntriParams"
+          ],
+          "writes": [
+            "selfRankWinInGMTensor_"
+          ]
+        },
+        {
+          "line": 1764,
+          "kind": "brace",
+          "explanation": "在 `CalRecvAndSetFlag` 的 L1764 结束 代码块 `DataCopyParams sumIntriParams{static_cast<uint16_t>(aivNum_), 1, 0, static_cast<uint16_t>(aivUs…` 作用域。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments":[
+        {"id":"recv-prefix-local-scan","start":1728,"end":1745,"title":"从跨核 preSum 继续扫描本核状态 count","detail":"newAivId 标识当前 cumsum 核；GetCumSum 返回所有更低编号核 recvCount 总和，随后逐状态读取 count 槽并写本核全局前缀和。","kind":"compute","input_state":["各 cumsum 核已由 GatherSumRecvCnt 发布 recvCount/flag","waitStatusBuf_：WaitDispatch 留下的状态 count"],"mechanism":"GetCumSum(outCountLocal,newAivId)；curCnt 从 preSum 起，对 index∈[startStatusIndex_,endStatusIndex_) 加 statusTensor_[i*UB_ALIGN_DATA_COUNT+1] 并 SetValue。","output_state":["outCountLocal：本核每个状态后的全局累计接收数"],"why":"不同 cumsum 核负责不相交状态段；本核必须以此前核总数为起点，才能拼成全局连续前缀和。","calls":[{"name":"GetCumSum","line":1734,"type":"internal","target":"m-moedistributedispatchv2fullmesh-getcumsum-ab0a314dce"},{"name":"GetValue","line":1736,"type":"external"},{"name":"Get","line":1738,"type":"external"},{"name":"GetValue","line":1741,"type":"external"},{"name":"SetValue","line":1743,"type":"external"},{"name":"SyncFunc","line":1745,"type":"external"}]},
+        {"id":"recv-prefix-output-replication","start":1746,"end":1755,"title":"写 sendCounts 并为每个 AIV 复制 workspace 片段","detail":"绑定 sendCountsOutGM_ 与 recvCntWorkspaceGM_，先写一次正式 sendCounts，再循环 aivNum_ 次把同一片段复制到各 AIV 私有 workspace 行。","kind":"output","input_state":["outCountLocal：本核状态范围的全局前缀和","startStatusIndex_、recStatusNumPerCore_：目标切片"],"mechanism":"DataCopyPad 写 sendCountsGlobal[startStatusIndex_]；循环 index 写 workspaceGlobal[index*rscvStatusNum_+startStatusIndex_]。","output_state":["sendCountsOutGM_：完整前缀和的一段","recvCntWorkspaceGM_：每个 AIV 都可本地索引的同一段"],"why":"正式输出只需一份，而 LocalWindowCopy 在所有 AIV 上运行；复制 workspace 避免后续跨核共享 UB。","calls":[{"name":"SetGlobalBuffer","line":1748,"type":"external"},{"name":"SetGlobalBuffer","line":1749,"type":"external"},{"name":"DataCopyPad","line":1751,"type":"external"},{"name":"DataCopyPad","line":1754,"type":"external"}]},
+        {"id":"recv-prefix-completion-flags","start":1756,"end":1764,"title":"向全部 AIV 发布本 cumsum 核完成 flag","detail":"在 sumCoreBuf_ 生成 aivNum_ 个值 1，并按跨目的 stride 写入 AIV×cumsum flag 矩阵的 newAivId 列。","kind":"sync","input_state":["aivNum_：消费者数量","newAivId：本 cumsum 核列号","aivUsedCumSum_：矩阵列跨度"],"mechanism":"Duplicate 生成稀疏 1；V_MTE3 后 DataCopy 用 src stride=aivUsedCumSum_-1，把每个 1 写到不同 AIV 行。","output_state":["selfRankWinInGMTensor_ flag 矩阵：所有 AIV 的 newAivId 列置 1"],"why":"WaitCumSumFlag 必须看到每个 cumsum 核都完成 workspace 写入，才允许任何 AIV 消费前缀和。","calls":[{"name":"Ceil","line":1756,"type":"external"},{"name":"LocalTensor","line":1758,"type":"external"},{"name":"LocalTensor","line":1759,"type":"external"},{"name":"Duplicate","line":1761,"type":"external"},{"name":"SyncFunc","line":1762,"type":"external"},{"name":"DataCopy","line":1763,"type":"external"}]}
+      ]
+    },
+    {
+      "id":"m-moedistributedispatchv2fullmesh-setexperttokennums-06080341cd","module_id":"count-control","name":"SetExpertTokenNums","start":1766,"end":1798,"inactive":false,
+      "summary":"由第一个 cumsum 核读取本 Rank 所有本地 expert×来源 Rank 状态 count，按 local expert 对 epWorldSize_ 求和；依据 expertTokenNumsType_ 输出本地 expert token 数的前缀和或逐 expert 原值。",
+      "inputs":["isShareExpertRankFlag_","moeExpertNumPerRank_","epWorldSize_","statusBuf_","windowInstatusFp32Tensor_","scalarBuf_","workLocalBuf_","tokenNumBuf_","expertTokenNumsType_"],
+      "outputs":["expertTokenNumsOutGMTensor_","expertTokenNumsLocalTensor"],
+      "side_effects":["从状态窗口批量搬入 localExpertNum*epWorldSize_ 个状态块","ReduceSum 汇总每个本地 expert 来自所有 Rank 的 token count","DataCopyPad 写 expertTokenNumsOutGMTensor_"],
+      "review":{"status":"PASS","verdict":"PASS","reviewer":"function-block-review-agent","draft_author":"full-analysis-draft-agent","revision":1,"source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","line_range":[1766,1798],"gaps":[],"overlaps":[],"unresolved":[],"required_changes":[]},
+      "line_review_certification":{"complete":true,"reviewed_line_range":[1766,1798],"reviewed_line_count":33,"coverage":"every_source_line_reviewed_once","source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","gaps":[],"overlaps":[]},
+      "line_notes":[
+        {
+          "line": 1766,
+          "kind": "signature",
+          "explanation": "构成函数 `SetExpertTokenNums` 的签名片段 `template <TemplateMC2TypeFullmeshClass>`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1767,
+          "kind": "signature",
+          "explanation": "构成函数 `SetExpertTokenNums` 的签名片段 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::SetExpertTokenNums()`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1768,
+          "kind": "brace",
+          "explanation": "在 `SetExpertTokenNums` 的 L1768 打开 代码块 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::SetExpertT…` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1769,
+          "kind": "declaration",
+          "explanation": "声明 `localExpertNum`；源码初始化式 `uint32_t localExpertNum = isShareExpertRankFlag_ ? 1 : moeExpertNumPerRank_;`读取 `isShareExpertRankFlag_、moeExpertNumPerRank_`。",
+          "reads": [
+            "isShareExpertRankFlag_",
+            "moeExpertNumPerRank_"
+          ],
+          "writes": [
+            "localExpertNum"
+          ]
+        },
+        {
+          "line": 1770,
+          "kind": "declaration",
+          "explanation": "声明 `totalStatusCopyParams`；源码初始化式 `DataCopyParams totalStatusCopyParams{static_cast<uint16_t>(localExpertNum * epWorldSize_), 1, 0, 0};`读取 `localExpertNum、epWorldSize_`。",
+          "reads": [
+            "localExpertNum",
+            "epWorldSize_"
+          ],
+          "writes": [
+            "totalStatusCopyParams"
+          ]
+        },
+        {
+          "line": 1771,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `totalStatusTensorFp32`；本行实参或对象来自 `statusBuf_、Get`。",
+          "reads": [
+            "statusBuf_",
+            "Get"
+          ],
+          "writes": [
+            "totalStatusTensorFp32"
+          ]
+        },
+        {
+          "line": 1772,
+          "kind": "call",
+          "explanation": "调用 `DataCopy` 并更新 `y、totalStatusTensorFp32`；本行实参或对象来自 `windowInstatusFp32Tensor_、totalStatusCopyParams`。",
+          "reads": [
+            "windowInstatusFp32Tensor_",
+            "totalStatusCopyParams"
+          ],
+          "writes": [
+            "totalStatusTensorFp32"
+          ]
+        },
+        {
+          "line": 1773,
+          "kind": "sync",
+          "explanation": "调用 `SyncFunc`，在本行指定的硬件事件或流水线之间建立先后关系。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "MTE2_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1774,
+          "kind": "declaration",
+          "explanation": "声明 `expertTokenNumCumsum`；源码初始化式 `int64_t expertTokenNumCumsum = 0;`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": [
+            "expertTokenNumCumsum"
+          ]
+        },
+        {
+          "line": 1775,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `expertTokenNumsLocalTensor`；本行实参或对象来自 `tokenNumBuf_、Get`。",
+          "reads": [
+            "tokenNumBuf_",
+            "Get"
+          ],
+          "writes": [
+            "expertTokenNumsLocalTensor"
+          ]
+        },
+        {
+          "line": 1776,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `expertTokenNumTensor`；本行实参或对象来自 `scalarBuf_、GetWithOffset、UB_ALIGN`。",
+          "reads": [
+            "scalarBuf_",
+            "GetWithOffset",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "expertTokenNumTensor"
+          ]
+        },
+        {
+          "line": 1777,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `workLocalTensor`；本行实参或对象来自 `workLocalBuf_、Get`。",
+          "reads": [
+            "workLocalBuf_",
+            "Get"
+          ],
+          "writes": [
+            "workLocalTensor"
+          ]
+        },
+        {
+          "line": 1778,
+          "kind": "blank",
+          "explanation": "空行在 `SetExpertTokenNums` 的 L1778 分隔 `LocalTensor<float> workLocalTensor = workLocalBuf_.Get<float>();` 与 `for (uint32_t localExpertIdx = 0; localExpertIdx < localExpertNum; ++lo…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1779,
+          "kind": "loop",
+          "explanation": "启动或推进 `for` 循环 `for (uint32_t localExpertIdx = 0; localExpertIdx < localExpertNum; ++localExpertIdx) {`；迭代式涉及 `localExpertIdx、localExpertNum`。",
+          "reads": [
+            "localExpertNum"
+          ],
+          "writes": [
+            "localExpertIdx"
+          ]
+        },
+        {
+          "line": 1780,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `expertStatusTensor`；本行实参或对象来自 `statusBuf_、GetWithOffset`。",
+          "reads": [
+            "statusBuf_",
+            "GetWithOffset"
+          ],
+          "writes": [
+            "expertStatusTensor"
+          ]
+        },
+        {
+          "line": 1781,
+          "kind": "declaration",
+          "explanation": "声明 `UB_ALIGN`；源码初始化式 `epWorldSize_ * UB_ALIGN / static_cast<uint32_t>(sizeof(float)), localExpertIdx * epWorldSize_ * UB_ALIGN);`读取 `epWorldSize_、localExpertIdx`。",
+          "reads": [
+            "epWorldSize_",
+            "localExpertIdx"
+          ],
+          "writes": [
+            "UB_ALIGN"
+          ]
+        },
+        {
+          "line": 1782,
+          "kind": "declaration",
+          "explanation": "声明 `mask`；源码初始化式 `uint32_t mask = 2;`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": [
+            "mask"
+          ]
+        },
+        {
+          "line": 1783,
+          "kind": "sync",
+          "explanation": "调用 `SyncFunc`，在本行指定的硬件事件或流水线之间建立先后关系。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "S_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1784,
+          "kind": "call",
+          "explanation": "调用 `ReduceSum` 并更新 `m、expertTokenNumTensor`；本行实参或对象来自 `expertStatusTensor、workLocalTensor、mask、epWorldSize_`。",
+          "reads": [
+            "expertStatusTensor",
+            "workLocalTensor",
+            "mask",
+            "epWorldSize_"
+          ],
+          "writes": [
+            "expertTokenNumTensor"
+          ]
+        },
+        {
+          "line": 1785,
+          "kind": "sync",
+          "explanation": "调用 `SyncFunc`，在本行指定的硬件事件或流水线之间建立先后关系。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "V_S"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1786,
+          "kind": "call",
+          "explanation": "调用 `ReinterpretCast`、`GetValue` 并更新 `expertTokenNum`；本行实参或对象来自 `expertTokenNumTensor`。",
+          "reads": [
+            "expertTokenNumTensor"
+          ],
+          "writes": [
+            "expertTokenNum"
+          ]
+        },
+        {
+          "line": 1787,
+          "kind": "declaration",
+          "explanation": "声明 `m`；源码初始化式 `expertTokenNumCumsum += expertTokenNum;`读取 `expertTokenNum`。",
+          "reads": [
+            "expertTokenNum"
+          ],
+          "writes": [
+            "expertTokenNumCumsum"
+          ]
+        },
+        {
+          "line": 1788,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (expertTokenNumsType_ == 0) {` 选择 `SetExpertTokenNums` 的后续路径；判定涉及 `expertTokenNumsType_`。",
+          "reads": [
+            "expertTokenNumsType_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1789,
+          "kind": "call",
+          "explanation": "调用 `SetValue` 并更新 `r、expertTokenNumsLocalTensor`；本行实参或对象来自 `localExpertIdx、expertTokenNumCumsum`。",
+          "reads": [
+            "localExpertIdx",
+            "expertTokenNumCumsum"
+          ],
+          "writes": [
+            "expertTokenNumsLocalTensor"
+          ]
+        },
+        {
+          "line": 1790,
+          "kind": "branch",
+          "explanation": "按分支表达式 `} else {` 选择 `SetExpertTokenNums` 的后续路径；判定涉及 `编译期/字面量条件`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1791,
+          "kind": "call",
+          "explanation": "调用 `SetValue` 并更新 `r、expertTokenNumsLocalTensor`；本行实参或对象来自 `localExpertIdx、expertTokenNum`。",
+          "reads": [
+            "localExpertIdx",
+            "expertTokenNum"
+          ],
+          "writes": [
+            "expertTokenNumsLocalTensor"
+          ]
+        },
+        {
+          "line": 1792,
+          "kind": "brace",
+          "explanation": "在 `SetExpertTokenNums` 的 L1792 结束 else 备选分支 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1793,
+          "kind": "brace",
+          "explanation": "在 `SetExpertTokenNums` 的 L1793 结束 for 循环 `for (uint32_t localExpertIdx = 0; localExpertIdx < localExpertNum; ++localExpertIdx) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1794,
+          "kind": "sync",
+          "explanation": "调用 `SyncFunc`，在本行指定的硬件事件或流水线之间建立先后关系。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "S_MTE3"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1795,
+          "kind": "statement",
+          "explanation": "求值源码语句 `DataCopyExtParams expertTokenNumsCopyParams{1U, static_cast<uint32_t>(localExpertNum * sizeof(int64_t)),`；该语句明确涉及 `expertTokenNumsCopyParams、localExpertNum`。",
+          "reads": [
+            "expertTokenNumsCopyParams",
+            "localExpertNum"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1796,
+          "kind": "statement",
+          "explanation": "求值源码语句 `0U, 0U, 0U};`；该语句明确涉及 `标点/字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1797,
+          "kind": "call",
+          "explanation": "调用 `DataCopyPad` 并更新 `d、expertTokenNumsOutGMTensor_`；本行实参或对象来自 `expertTokenNumsLocalTensor、expertTokenNumsCopyParams`。",
+          "reads": [
+            "expertTokenNumsLocalTensor",
+            "expertTokenNumsCopyParams"
+          ],
+          "writes": [
+            "expertTokenNumsOutGMTensor_"
+          ]
+        },
+        {
+          "line": 1798,
+          "kind": "brace",
+          "explanation": "在 `SetExpertTokenNums` 的 L1798 结束 代码块 `DataCopyParams totalStatusCopyParams{static_cast<uint16_t>(localExpertNum * epWorldSize_), 1, 0…` 作用域。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments":[
+        {"id":"expert-count-window-input","start":1766,"end":1778,"title":"搬入本 Rank 的 local expert×source Rank 状态矩阵","detail":"shared expert Rank 只统计 1 个本地 expert，MoE Rank 统计 moeExpertNumPerRank_；一次 DataCopy 把每 expert 的 epWorldSize_ 个状态块搬入 statusBuf_。","kind":"input","input_state":["windowInstatusFp32Tensor_：状态矩阵","isShareExpertRankFlag_ 与 moeExpertNumPerRank_：本地 expert 数"],"mechanism":"构造 totalStatusCopyParams(localExpertNum*epWorldSize_)，MTE2_V 后建立 int64 输出、float 标量和归约工作视图。","output_state":["totalStatusTensorFp32：完整本地状态矩阵","expertTokenNumsLocalTensor：待写输出 UB"],"why":"按 expert 连续搬入后，每次 ReduceSum 可直接跨 epWorldSize_ 个来源 Rank 汇总。","calls":[{"name":"LocalTensor","line":1771,"type":"external"},{"name":"DataCopy","line":1772,"type":"external"},{"name":"SyncFunc","line":1773,"type":"external"},{"name":"LocalTensor","line":1775,"type":"external"},{"name":"LocalTensor","line":1776,"type":"external"},{"name":"LocalTensor","line":1777,"type":"external"}]},
+        {"id":"expert-count-reduce-and-format","start":1779,"end":1793,"title":"逐本地 expert 汇总所有来源 Rank 并选择累计/非累计格式","detail":"循环按 localExpertIdx 切 statusBuf_，mask=2 选择每状态块 count 槽，ReduceSum 得 expertTokenNum；累计到 expertTokenNumCumsum。","kind":"loop","input_state":["statusBuf_：expert-major 的状态矩阵","expertTokenNumsType_：0 输出累计值，否则输出单 expert 值"],"mechanism":"GetWithOffset 定位 expert 行；S_V→ReduceSum→V_S→GetValue；type 0 写 cumsum，else 写当前 expertTokenNum。","output_state":["expertTokenNumsLocalTensor[localExpertIdx]：所选格式的 int64 计数"],"why":"上层可能需要 expert 分段尾界（前缀和）或原始计数；在同一归约循环切换格式避免二次扫描。","calls":[{"name":"LocalTensor","line":1780,"type":"external"},{"name":"SyncFunc","line":1783,"type":"external"},{"name":"ReduceSum","line":1784,"type":"external"},{"name":"SyncFunc","line":1785,"type":"external"},{"name":"GetValue","line":1786,"type":"external"},{"name":"SetValue","line":1789,"type":"external"},{"name":"SetValue","line":1791,"type":"external"}]},
+        {"id":"expert-count-writeback","start":1794,"end":1798,"title":"把本地 expert token 数写回正式输出","detail":"等待标量写 expertTokenNumsLocalTensor 完成，按 localExpertNum*sizeof(int64_t) 精确写入 expertTokenNumsOutGMTensor_。","kind":"output","input_state":["expertTokenNumsLocalTensor：完整本地 expert 计数","localExpertNum：输出元素数"],"mechanism":"S_MTE3 建立标量到写回顺序；DataCopyExtParams 配精确字节数；DataCopyPad 写 GM。","output_state":["expertTokenNumsOutGMTensor_：本 Rank expert token 数或前缀和"],"why":"输出类型固定为 int64_t，精确字节写回避免把 UB 对齐尾部带入用户张量。","calls":[{"name":"SyncFunc","line":1794,"type":"external"},{"name":"DataCopyPad","line":1797,"type":"external"}]}
+      ]
+    },
+    {
+      "id":"m-moedistributedispatchv2fullmesh-recordrankcommduration-17d0d2c4cf","module_id":"count-control","name":"RecordRankCommDuration","start":1800,"end":1824,"inactive":false,
+      "summary":"在 WaitDispatch 每轮状态搬入后，计算从 performanceTimeStart 到当前 MTE2 完成的微秒数；对本核首次 ready 的每个来源状态只记录一次，并按弹性反向 Rank 映射更新 performanceInfoTensor 对应 Rank 的最大耗时。",
+      "inputs":["performanceInfoTensor","startTime","statusFp32Tensor_","performanceFlagTensor_","recStatusNumPerCore_","startStatusIndex_","epWorldSize_","isScalingDownFlag_","elasticInfoTensor_","epWorldSizeOriginal_"],
+      "outputs":["performanceInfoTensor","performanceFlagTensor_"],
+      "side_effects":["MTE2_S 保证读取的是本轮最新状态快照","performanceFlagTensor_ 将每个状态从未记录 0 改为已记录 1","performanceInfoTensor 只在 duration 大于旧值时更新对应 Rank 槽"],
+      "review":{"status":"PASS","verdict":"PASS","reviewer":"function-block-review-agent","draft_author":"full-analysis-draft-agent","revision":1,"source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","line_range":[1800,1824],"gaps":[],"overlaps":[],"unresolved":[],"required_changes":[]},
+      "line_review_certification":{"complete":true,"reviewed_line_range":[1800,1824],"reviewed_line_count":25,"coverage":"every_source_line_reviewed_once","source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","gaps":[],"overlaps":[]},
+      "line_notes":[
+        {
+          "line": 1800,
+          "kind": "signature",
+          "explanation": "构成函数 `RecordRankCommDuration` 的签名片段 `template <TemplateMC2TypeFullmeshClass>`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1801,
+          "kind": "signature",
+          "explanation": "构成函数 `RecordRankCommDuration` 的签名片段 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::RecordRankCommDuration(`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1802,
+          "kind": "signature",
+          "explanation": "构成函数 `RecordRankCommDuration` 的签名片段 `LocalTensor<int32_t> &performanceInfoTensor, uint64_t startTime)`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1803,
+          "kind": "brace",
+          "explanation": "在 `RecordRankCommDuration` 的 L1803 打开 代码块 `LocalTensor<int32_t> &performanceInfoTensor, uint64_t startTime)` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1804,
+          "kind": "sync",
+          "explanation": "调用 `SyncFunc`，在本行指定的硬件事件或流水线之间建立先后关系。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "MTE2_S"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1805,
+          "kind": "call",
+          "explanation": "调用 `GetSystemCycle` 并更新 `endTime`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": [
+            "endTime"
+          ]
+        },
+        {
+          "line": 1806,
+          "kind": "declaration",
+          "explanation": "声明 `duration`；源码初始化式 `int32_t duration = static_cast<int32_t>((endTime - startTime) / CYCLES_PER_US);`读取 `endTime、startTime、CYCLES_PER_US`。",
+          "reads": [
+            "endTime",
+            "startTime",
+            "CYCLES_PER_US"
+          ],
+          "writes": [
+            "duration"
+          ]
+        },
+        {
+          "line": 1807,
+          "kind": "loop",
+          "explanation": "启动或推进 `for` 循环 `for (uint32_t i = 0; i < recStatusNumPerCore_; i ++) {`；迭代式涉及 `i、recStatusNumPerCore_`。",
+          "reads": [
+            "recStatusNumPerCore_"
+          ],
+          "writes": [
+            "i"
+          ]
+        },
+        {
+          "line": 1808,
+          "kind": "call",
+          "explanation": "调用 `GetValue` 并更新 `statusFp32`；本行实参或对象来自 `statusFp32Tensor_、i、FLAG_OFFSET`。",
+          "reads": [
+            "statusFp32Tensor_",
+            "i",
+            "FLAG_OFFSET"
+          ],
+          "writes": [
+            "statusFp32"
+          ]
+        },
+        {
+          "line": 1809,
+          "kind": "call",
+          "explanation": "调用 `GetValue` 并更新 `performanceFlag`；本行实参或对象来自 `performanceFlagTensor_、i`。",
+          "reads": [
+            "performanceFlagTensor_",
+            "i"
+          ],
+          "writes": [
+            "performanceFlag"
+          ]
+        },
+        {
+          "line": 1810,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (statusFp32 > float(0.5) && performanceFlag == 0) {` 选择 `RecordRankCommDuration` 的后续路径；判定涉及 `statusFp32、performanceFlag`。",
+          "reads": [
+            "statusFp32",
+            "performanceFlag"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1811,
+          "kind": "call",
+          "explanation": "调用 `SetValue` 并更新 `_、performanceFlagTensor_`；本行实参或对象来自 `i`。",
+          "reads": [
+            "i"
+          ],
+          "writes": [
+            "performanceFlagTensor_"
+          ]
+        },
+        {
+          "line": 1812,
+          "kind": "declaration",
+          "explanation": "声明 `fromLocalRankId`；源码初始化式 `uint32_t fromLocalRankId = (startStatusIndex_ + i) % epWorldSize_;`读取 `startStatusIndex_、i、epWorldSize_`。",
+          "reads": [
+            "startStatusIndex_",
+            "i",
+            "epWorldSize_"
+          ],
+          "writes": [
+            "fromLocalRankId"
+          ]
+        },
+        {
+          "line": 1813,
+          "kind": "statement",
+          "explanation": "按表达式 `uint32_t fromRankId = isScalingDownFlag_ ?` 更新 `fromRankId`；右侧读取 `isScalingDownFlag_`。",
+          "reads": [
+            "isScalingDownFlag_"
+          ],
+          "writes": [
+            "fromRankId"
+          ]
+        },
+        {
+          "line": 1814,
+          "kind": "call",
+          "explanation": "调用 `GetValue`，传入或访问 `elasticInfoTensor_、ELASTIC_INFO_OFFSET、epWorldSizeOriginal_、fromLocalRankId`。",
+          "reads": [
+            "elasticInfoTensor_",
+            "ELASTIC_INFO_OFFSET",
+            "epWorldSizeOriginal_",
+            "fromLocalRankId"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1815,
+          "kind": "declaration",
+          "explanation": "声明 `d`；源码初始化式 `fromLocalRankId;`读取 `fromLocalRankId`。",
+          "reads": [
+            "fromLocalRankId"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1816,
+          "kind": "call",
+          "explanation": "调用 `GetValue` 并更新 `savedTime`；本行实参或对象来自 `performanceInfoTensor、fromRankId、DURATION_OFFSET`。",
+          "reads": [
+            "performanceInfoTensor",
+            "fromRankId",
+            "DURATION_OFFSET"
+          ],
+          "writes": [
+            "savedTime"
+          ]
+        },
+        {
+          "line": 1817,
+          "kind": "declaration",
+          "explanation": "声明 `newValue`；源码初始化式 `int32_t newValue = (duration > savedTime) ? duration : savedTime;`读取 `duration、savedTime`。",
+          "reads": [
+            "duration",
+            "savedTime"
+          ],
+          "writes": [
+            "newValue"
+          ]
+        },
+        {
+          "line": 1818,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (newValue != savedTime) {` 选择 `RecordRankCommDuration` 的后续路径；判定涉及 `newValue、savedTime`。",
+          "reads": [
+            "newValue",
+            "savedTime"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1819,
+          "kind": "comment",
+          "explanation": "注释记录 `乘2 使用int32_t是因为atomicAdd不支持int64_t类型，这里只赋值到int64_t的低32位。`，说明 `RecordRankCommDuration` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1820,
+          "kind": "call",
+          "explanation": "调用 `SetValue` 并更新 `r、performanceInfoTensor`；本行实参或对象来自 `fromRankId、DURATION_OFFSET、duration`。",
+          "reads": [
+            "fromRankId",
+            "DURATION_OFFSET",
+            "duration"
+          ],
+          "writes": [
+            "performanceInfoTensor"
+          ]
+        },
+        {
+          "line": 1821,
+          "kind": "brace",
+          "explanation": "在 `RecordRankCommDuration` 的 L1821 结束 if 分支 `if (newValue != savedTime) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1822,
+          "kind": "brace",
+          "explanation": "在 `RecordRankCommDuration` 的 L1822 结束 if 分支 `if (statusFp32 > float(0.5) && performanceFlag == 0) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1823,
+          "kind": "brace",
+          "explanation": "在 `RecordRankCommDuration` 的 L1823 结束 for 循环 `for (uint32_t i = 0; i < recStatusNumPerCore_; i ++) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1824,
+          "kind": "brace",
+          "explanation": "在 `RecordRankCommDuration` 的 L1824 结束 代码块 `LocalTensor<int32_t> &performanceInfoTensor, uint64_t startTime)` 作用域。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments":[
+        {"id":"rank-duration-clock-snapshot","start":1800,"end":1806,"title":"在状态搬入完成后换算当前等待微秒数","detail":"MTE2_S 等待 WaitDispatch 的 DataCopy 完成，读取当前 system cycle，以 (endTime-startTime)/CYCLES_PER_US 得到 duration。","kind":"compute","input_state":["startTime：WaitDispatch 进入轮询前 cycle","statusFp32Tensor_：本轮刚搬入的状态"],"mechanism":"SyncFunc<MTE2_S> 后 GetSystemCycle，使用整数除法换算微秒并收窄为 int32_t。","output_state":["duration：当前轮询时刻距起点的微秒数"],"why":"同步点使 duration 对应状态数据真正可读的时刻，而不是仅发起 MTE2 的时刻。","calls":[{"name":"SyncFunc","line":1804,"type":"external"},{"name":"GetSystemCycle","line":1805,"type":"external"}]},
+        {"id":"rank-duration-first-ready-remap","start":1807,"end":1815,"title":"筛出首次 ready 状态并恢复原始来源 Rank","detail":"逐本核状态读取 flag 与 performanceFlag；仅 flag>0.5 且未记录者置位，并由全局状态索引映射到有效 Rank，再在缩容时通过 elasticInfoTensor_ 反向映射原 Rank。","kind":"loop","input_state":["statusFp32Tensor_：ready flag","performanceFlagTensor_：本核逐状态已记录位","startStatusIndex_：全局状态起点"],"mechanism":"fromLocalRankId=(startStatusIndex_+i)%epWorldSize_；缩容时读取 ELASTIC_INFO_OFFSET+epWorldSizeOriginal_+fromLocalRankId 的反向表。","output_state":["performanceFlagTensor_[i]=1：本状态以后不重复记录","fromRankId：性能输出的原始 Rank 索引"],"why":"轮询会重复看到已 ready 状态；first-ready 标志避免用更晚时刻覆盖真实到达时间，反向映射保持输出 Rank 空间稳定。","calls":[{"name":"GetValue","line":1808,"type":"external"},{"name":"GetValue","line":1809,"type":"external"},{"name":"SetValue","line":1811,"type":"external"},{"name":"GetValue","line":1814,"type":"external"}]},
+        {"id":"rank-duration-max-update","start":1816,"end":1824,"title":"按来源 Rank 保留本核观测到的最大通信耗时","detail":"读取 performanceInfoTensor 对应 Rank 的 savedTime，比较 duration；仅变大时写入 int64 槽的低 32 位。","kind":"output","input_state":["duration：本轮首次 ready 时间","fromRankId：原始 Rank 索引","savedTime：当前 UB 聚合值"],"mechanism":"newValue=max(duration,savedTime)；变化时 SetValue(fromRankId*DURATION_OFFSET,duration)。","output_state":["performanceInfoTensor：对应 Rank 槽更新为更大耗时"],"why":"多个状态/expert 可能映射同一来源 Rank，最大值代表该 Rank 全部相关状态中最慢到达者；最终跨核 atomic max 再合并。","calls":[{"name":"GetValue","line":1816,"type":"external"},{"name":"SetValue","line":1820,"type":"external"}]}
+      ]
+    },
+    {
+      "id":"m-moedistributedispatchv2fullmesh-calcumsum-a5faf2a53a","module_id":"count-control","name":"CalCumSum","start":1826,"end":1857,"inactive":false,
+      "summary":"编排 cumsum 核完整控制面：初始化路由/status UB，重新执行 mask 后统计并发送每 expert token count，切分接收状态，等待所有远端状态，生成并发布全局 recv 前缀和；最后仅由首个 cumsum 核汇总 expertTokenNums。",
+      "inputs":["expertIdsCnt_","maxSize_","statusCntAlign_","rscvStatusNum_","aivUsedCumSum_","aivId_","aivCumSumStart_","tpipe_"],
+      "outputs":["expertIdsBufSize_","workLocalTensor_","statusTensor_","startStatusIndex_","endStatusIndex_","recStatusNumPerCore_"],
+      "side_effects":["ExpIdsCopyAndMaskCal 与 CalAndSendCnt 计算并远端发布每 expert token count","WaitDispatch 消费远端状态并发布本核 recvCount","CalRecvAndSetFlag 写 sendCounts/workspace 和完成 flag","首 cumsum 核 SetExpertTokenNums 写正式 expertTokenNums 输出","多处 DebugClock 仅记录阶段位置，不改变协议数据"],
+      "review":{"status":"PASS","verdict":"PASS","reviewer":"function-block-review-agent","draft_author":"full-analysis-draft-agent","revision":1,"source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","line_range":[1826,1857],"gaps":[],"overlaps":[],"unresolved":[],"required_changes":[]},
+      "line_review_certification":{"complete":true,"reviewed_line_range":[1826,1857],"reviewed_line_count":32,"coverage":"every_source_line_reviewed_once","source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","gaps":[],"overlaps":[]},
+      "line_notes":[
+        {
+          "line": 1826,
+          "kind": "signature",
+          "explanation": "构成函数 `CalCumSum` 的签名片段 `template <TemplateMC2TypeFullmeshClass>`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1827,
+          "kind": "signature",
+          "explanation": "构成函数 `CalCumSum` 的签名片段 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::CalCumSum()`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1828,
+          "kind": "brace",
+          "explanation": "在 `CalCumSum` 的 L1828 打开 代码块 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::CalCumSum()` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1829,
+          "kind": "comment",
+          "explanation": "注释记录 `进来的核统一做发送，各专家的token总数发送`，说明 `CalCumSum` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1830,
+          "kind": "call",
+          "explanation": "调用 `Ceil` 并更新 `expertIdsBufSize_、_`；本行实参或对象来自 `expertIdsCnt_、SIZE_ALIGN_256`。",
+          "reads": [
+            "expertIdsCnt_",
+            "SIZE_ALIGN_256"
+          ],
+          "writes": [
+            "expertIdsBufSize_"
+          ]
+        },
+        {
+          "line": 1831,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer` 并更新 `_`；本行实参或对象来自 `tpipe_、dstExpBuf_、maxSize_`。",
+          "reads": [
+            "tpipe_",
+            "dstExpBuf_",
+            "maxSize_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1832,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer` 并更新 `_`；本行实参或对象来自 `tpipe_、subExpBuf_、maxSize_`。",
+          "reads": [
+            "tpipe_",
+            "subExpBuf_",
+            "maxSize_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1833,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer` 并更新 `_`；本行实参或对象来自 `tpipe_、gatherMaskTBuf_、expertIdsBufSize_`。",
+          "reads": [
+            "tpipe_",
+            "gatherMaskTBuf_",
+            "expertIdsBufSize_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1834,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer` 并更新 `_`；本行实参或对象来自 `tpipe_、expertIdsBuf_、expertIdsBufSize_`。",
+          "reads": [
+            "tpipe_",
+            "expertIdsBuf_",
+            "expertIdsBufSize_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1835,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer` 并更新 `_`；本行实参或对象来自 `tpipe_、statusBuf_、statusCntAlign_、UB_ALIGN`。",
+          "reads": [
+            "tpipe_",
+            "statusBuf_",
+            "statusCntAlign_",
+            "UB_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1836,
+          "kind": "call",
+          "explanation": "调用 `Get` 并更新 `workLocalTensor_、_`；本行实参或对象来自 `gatherMaskTBuf_`。",
+          "reads": [
+            "gatherMaskTBuf_"
+          ],
+          "writes": [
+            "workLocalTensor_"
+          ]
+        },
+        {
+          "line": 1837,
+          "kind": "call",
+          "explanation": "调用 `Get` 并更新 `statusTensor_、_`；本行实参或对象来自 `statusBuf_`。",
+          "reads": [
+            "statusBuf_"
+          ],
+          "writes": [
+            "statusTensor_"
+          ]
+        },
+        {
+          "line": 1838,
+          "kind": "call",
+          "explanation": "调用 `ExpIdsCopyAndMaskCal` 并更新 `l`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1839,
+          "kind": "call",
+          "explanation": "调用 `CalAndSendCnt` 并更新 `t`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1840,
+          "kind": "call",
+          "explanation": "调用 `DebugClock` 并更新 `k`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1841,
+          "kind": "call",
+          "explanation": "调用 `SplitToCore` 并更新 `e`；本行实参或对象来自 `rscvStatusNum_、aivUsedCumSum_、startStatusIndex_、endStatusIndex_、recStatusNumPerCore_`。",
+          "reads": [
+            "rscvStatusNum_",
+            "aivUsedCumSum_",
+            "startStatusIndex_",
+            "endStatusIndex_",
+            "recStatusNumPerCore_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1842,
+          "kind": "call",
+          "explanation": "调用 `Reset` 并更新 `_`；本行实参或对象来自 `tpipe_`。",
+          "reads": [
+            "tpipe_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1843,
+          "kind": "call",
+          "explanation": "调用 `BufferInit` 并更新 `t`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1844,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[cum] rank %d aiv %d before WaitDispatch start %u rec %u\\n\",`；该内容当前不参与 `CalCumSum` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1845,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `epRankId_, aivId_, startStatusIndex_, recStatusNumPerCore_);`；该内容当前不参与 `CalCumSum` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1846,
+          "kind": "call",
+          "explanation": "调用 `WaitDispatch` 并更新 `h`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1847,
+          "kind": "call",
+          "explanation": "调用 `DebugClock` 并更新 `k`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1848,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[cum] rank %d aiv %d after WaitDispatch\\n\", epRankId_, aivId_);`；该内容当前不参与 `CalCumSum` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1849,
+          "kind": "call",
+          "explanation": "调用 `CalRecvAndSetFlag` 并更新 `g`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1850,
+          "kind": "call",
+          "explanation": "调用 `DebugClock` 并更新 `k`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1851,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[cum] rank %d aiv %d after CalRecvAndSetFlag\\n\", epRankId_, aivId_);`；该内容当前不参与 `CalCumSum` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1852,
+          "kind": "comment",
+          "explanation": "注释记录 `使用newAivId为0的核进行计算`，说明 `CalCumSum` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1853,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (aivId_ == aivCumSumStart_) {` 选择 `CalCumSum` 的后续路径；判定涉及 `aivId_、aivCumSumStart_`。",
+          "reads": [
+            "aivId_",
+            "aivCumSumStart_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1854,
+          "kind": "call",
+          "explanation": "调用 `SetExpertTokenNums` 并更新 `s`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1855,
+          "kind": "brace",
+          "explanation": "在 `CalCumSum` 的 L1855 结束 if 分支 `if (aivId_ == aivCumSumStart_) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1856,
+          "kind": "call",
+          "explanation": "调用 `DebugClock` 并更新 `k`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1857,
+          "kind": "brace",
+          "explanation": "在 `CalCumSum` 的 L1857 结束 代码块 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::CalCumSum()` 作用域。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments":[
+        {"id":"cumsum-route-count-setup","start":1826,"end":1840,"title":"初始化路由/status UB 并发送本 Rank expert counts","detail":"为 compare/mask/status 分配 UB，建立工作视图，ExpIdsCopyAndMaskCal 生成有效路由，CalAndSendCnt 统计并发送每 expert token 数。","kind":"input","input_state":["expertIdsCnt_、maxSize_、statusCntAlign_：UB 尺寸","输入 expertIds/mask：由成员 GM 视图提供"],"mechanism":"Ceil 对齐 expertIds；InitBuffer 五个缓冲；Get 建视图；依次调用 ExpIdsCopyAndMaskCal 与 CalAndSendCnt，DebugClock(2) 标记发送结束。","output_state":["有效 expert 路由 UB","远端 Rank 状态区：本 Rank 发送 count 已发布","statusBuf_：后续等待缓冲"],"why":"先发布本 Rank 的 count，所有 Rank 的 cumsum 核才能对称等待并形成接收前缀和。","calls":[{"name":"Ceil","line":1830,"type":"external"},{"name":"InitBuffer","line":1831,"type":"external"},{"name":"InitBuffer","line":1832,"type":"external"},{"name":"InitBuffer","line":1833,"type":"external"},{"name":"InitBuffer","line":1834,"type":"external"},{"name":"InitBuffer","line":1835,"type":"external"},{"name":"ExpIdsCopyAndMaskCal","line":1838,"type":"internal","target":"m-moedistributedispatchv2fullmesh-expidscopyandmaskcal-17a5b857e1"},{"name":"CalAndSendCnt","line":1839,"type":"internal","target":"m-moedistributedispatchv2fullmesh-calandsendcnt-fd76d0d474"},{"name":"DebugClock","line":1840,"type":"external"}]},
+        {"id":"cumsum-wait-and-publish-prefix","start":1841,"end":1851,"title":"切分状态等待范围并生成可消费 recv 前缀和","detail":"SplitToCore 给尾部 cumsum 核分状态范围；Reset 后 BufferInit 重建等待缓冲，WaitDispatch 等全部状态，CalRecvAndSetFlag 写前缀和与完成 flags。","kind":"sync","input_state":["rscvStatusNum_、aivUsedCumSum_：状态切分","远端状态区：所有 Rank 异步写入"],"mechanism":"SplitToCore→TPipe Reset→BufferInit→WaitDispatch→CalRecvAndSetFlag；DebugClock(3/4) 只标记等待结束和发布结束。","output_state":["sendCounts 与每 AIV workspace：recv 前缀和","AIV×cumsum flag 矩阵：本核完成列为 1"],"why":"Reset 隔离前一阶段 UB；只有 WaitDispatch 完成后 count 才稳定，完成 flag 又必须晚于 workspace 写回。","calls":[{"name":"SplitToCore","line":1841,"type":"internal","target":"m-moedistributedispatchv2fullmesh-splittocore-e75b18e982"},{"name":"Reset","line":1842,"type":"external"},{"name":"BufferInit","line":1843,"type":"internal","target":"m-moedistributedispatchv2fullmesh-bufferinit-f41c2b0348"},{"name":"WaitDispatch","line":1846,"type":"internal","target":"m-moedistributedispatchv2fullmesh-waitdispatch-3e9546ab05"},{"name":"DebugClock","line":1847,"type":"external"},{"name":"CalRecvAndSetFlag","line":1849,"type":"internal","target":"m-moedistributedispatchv2fullmesh-calrecvandsetflag-56c1c11bb0"},{"name":"DebugClock","line":1850,"type":"external"}]},
+        {"id":"cumsum-single-core-expert-output","start":1852,"end":1857,"title":"仅由首 cumsum 核汇总 expertTokenNums","detail":"aivId_==aivCumSumStart_ 即 newAivId 0 时调用 SetExpertTokenNums，避免多个 cumsum 核重复写相同输出；DebugClock(5) 标记控制面结束。","kind":"output","input_state":["aivId_ 与 aivCumSumStart_：首 cumsum 核判定","已完整到达的状态窗口：expert count 来源"],"mechanism":"单核 guard 内 SetExpertTokenNums；所有 cumsum 核最终执行 DebugClock(5)。","output_state":["expertTokenNums 输出：恰写一次","cumsum 控制面：完成"],"why":"expertTokenNums 是本 Rank 汇总结果而非分片输出，单核写可避免重复归约和 GM 写冲突。","calls":[{"name":"SetExpertTokenNums","line":1854,"type":"internal","target":"m-moedistributedispatchv2fullmesh-setexperttokennums-06080341cd"},{"name":"DebugClock","line":1856,"type":"external"}]}
+      ]
+    },
+    {
+      "id":"m-moedistributedispatchv2fullmesh-waitcumsumflag-0b3cb9c8cb","module_id":"count-control","name":"WaitCumSumFlag","start":1859,"end":1892,"inactive":false,
+      "summary":"每个 LocalWindowCopy AIV 轮询其在 AIV×cumsum 完成矩阵中的一行，直到 aivUsedCumSum_ 个 32B flag 块的 Sum 等于目标；随后把该行清零并等待 MTE3 完成，保证下一轮不会误用本轮完成标志。",
+      "inputs":["aivUsedCumSum_","rscvStatusNum_","aivId_","scalarBuf_","statusFp32Tensor_","selfRankWinInGMTensor_","statusCleanFp32Tensor_"],
+      "outputs":["selfRankWinInGMTensor_","statusCleanFp32Tensor_"],
+      "side_effects":["DataCacheCleanAndInvalid 使 cumsum 核远端/跨核写入对当前 AIV 可见","轮询阻塞直到所有 cumsum 核完成 recv workspace 写入","清零当前 AIV 的完成 flag 行并以 MTE3_S 等待写回"],
+      "review":{"status":"PASS","verdict":"PASS","reviewer":"function-block-review-agent","draft_author":"full-analysis-draft-agent","revision":1,"source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","line_range":[1859,1892],"gaps":[],"overlaps":[],"unresolved":[],"required_changes":[]},
+      "line_review_certification":{"complete":true,"reviewed_line_range":[1859,1892],"reviewed_line_count":34,"coverage":"every_source_line_reviewed_once","source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","gaps":[],"overlaps":[]},
+      "line_notes":[
+        {
+          "line": 1859,
+          "kind": "signature",
+          "explanation": "构成函数 `WaitCumSumFlag` 的签名片段 `template <TemplateMC2TypeFullmeshClass>`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1860,
+          "kind": "signature",
+          "explanation": "构成函数 `WaitCumSumFlag` 的签名片段 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::WaitCumSumFlag()`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1861,
+          "kind": "brace",
+          "explanation": "在 `WaitCumSumFlag` 的 L1861 打开 代码块 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::WaitCumSum…` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1862,
+          "kind": "comment",
+          "explanation": "注释记录 `Check cumsum is finished`，说明 `WaitCumSumFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1863,
+          "kind": "declaration",
+          "explanation": "声明 `cumSumFlag`；源码初始化式 `int32_t cumSumFlag = 0;`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": [
+            "cumSumFlag"
+          ]
+        },
+        {
+          "line": 1864,
+          "kind": "declaration",
+          "explanation": "声明 `targetFlag`；源码初始化式 `int32_t targetFlag = aivUsedCumSum_ * UB_ALIGN_DATA_COUNT;`读取 `aivUsedCumSum_、UB_ALIGN_DATA_COUNT`。",
+          "reads": [
+            "aivUsedCumSum_",
+            "UB_ALIGN_DATA_COUNT"
+          ],
+          "writes": [
+            "targetFlag"
+          ]
+        },
+        {
+          "line": 1865,
+          "kind": "declaration",
+          "explanation": "声明 `cumSumFlagOffset`；源码初始化式 `uint32_t cumSumFlagOffset = (rscvStatusNum_ * STATE_OFFSET + aivUsedCumSum_ * aivUsedCumSum_ * UB_ALIGN + aivId_ * aivUsedCumSum_ * UB_ALIGN) / sizeof(float);`读取 `rscvStatusNum_、STATE_OFFSET、aivUsedCumSum_、UB_ALIGN、aivId_`。",
+          "reads": [
+            "rscvStatusNum_",
+            "STATE_OFFSET",
+            "aivUsedCumSum_",
+            "UB_ALIGN",
+            "aivId_"
+          ],
+          "writes": [
+            "cumSumFlagOffset"
+          ]
+        },
+        {
+          "line": 1866,
+          "kind": "declaration",
+          "explanation": "声明 `innerSumParams`；源码初始化式 `uint32_t innerSumParams = aivUsedCumSum_ * UB_ALIGN / sizeof(float);`读取 `aivUsedCumSum_、UB_ALIGN`。",
+          "reads": [
+            "aivUsedCumSum_",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "innerSumParams"
+          ]
+        },
+        {
+          "line": 1867,
+          "kind": "declaration",
+          "explanation": "声明 `sumFlagParams`；源码初始化式 `SumParams sumFlagParams{1, innerSumParams, aivUsedCumSum_ * UB_ALIGN_DATA_COUNT};`读取 `SumParams、innerSumParams、aivUsedCumSum_、UB_ALIGN_DATA_COUNT`。",
+          "reads": [
+            "SumParams",
+            "innerSumParams",
+            "aivUsedCumSum_",
+            "UB_ALIGN_DATA_COUNT"
+          ],
+          "writes": [
+            "sumFlagParams"
+          ]
+        },
+        {
+          "line": 1868,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `statusSumOutTensor`；本行实参或对象来自 `scalarBuf_、Get`。",
+          "reads": [
+            "scalarBuf_",
+            "Get"
+          ],
+          "writes": [
+            "statusSumOutTensor"
+          ]
+        },
+        {
+          "line": 1869,
+          "kind": "blank",
+          "explanation": "空行在 `WaitCumSumFlag` 的 L1869 分隔 `LocalTensor<float> statusSumOutTensor = scalarBuf_.Get<float>();` 与 `for (uint32_t i = 0; i < aivUsedCumSum_; ++i) {` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1870,
+          "kind": "loop",
+          "explanation": "启动或推进 `for` 循环 `for (uint32_t i = 0; i < aivUsedCumSum_; ++i) {`；迭代式涉及 `i、aivUsedCumSum_`。",
+          "reads": [
+            "aivUsedCumSum_"
+          ],
+          "writes": [
+            "i"
+          ]
+        },
+        {
+          "line": 1871,
+          "kind": "sync",
+          "explanation": "调用 `DataCacheCleanAndInvalid`，发布或刷新本行涉及地址的缓存可见性。",
+          "reads": [
+            "CacheLine",
+            "SINGLE_CACHE_LINE",
+            "DcciDst",
+            "CACHELINE_OUT"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1872,
+          "kind": "declaration",
+          "explanation": "声明 `_`；源码初始化式 `selfRankWinInGMTensor_[cumSumFlagOffset + i * UB_ALIGN_DATA_COUNT]);`读取 `selfRankWinInGMTensor_、cumSumFlagOffset、i、UB_ALIGN_DATA_COUNT`。",
+          "reads": [
+            "selfRankWinInGMTensor_",
+            "cumSumFlagOffset",
+            "i",
+            "UB_ALIGN_DATA_COUNT"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1873,
+          "kind": "brace",
+          "explanation": "在 `WaitCumSumFlag` 的 L1873 结束 for 循环 `for (uint32_t i = 0; i < aivUsedCumSum_; ++i) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1874,
+          "kind": "blank",
+          "explanation": "空行在 `WaitCumSumFlag` 的 L1874 分隔 `}` 与 `while (true) {` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1875,
+          "kind": "loop",
+          "explanation": "启动或推进 `while` 循环 `while (true) {`；迭代式涉及 `源码常量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1876,
+          "kind": "call",
+          "explanation": "调用 `DataCopy` 并更新 `y、statusFp32Tensor_`；本行实参或对象来自 `selfRankWinInGMTensor_、cumSumFlagOffset、aivUsedCumSum_、UB_ALIGN_DATA_COUNT`。",
+          "reads": [
+            "selfRankWinInGMTensor_",
+            "cumSumFlagOffset",
+            "aivUsedCumSum_",
+            "UB_ALIGN_DATA_COUNT"
+          ],
+          "writes": [
+            "statusFp32Tensor_"
+          ]
+        },
+        {
+          "line": 1877,
+          "kind": "sync",
+          "explanation": "调用 `SyncFunc`，在本行指定的硬件事件或流水线之间建立先后关系。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "MTE2_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1878,
+          "kind": "call",
+          "explanation": "调用 `Sum` 并更新 `m、statusSumOutTensor`；本行实参或对象来自 `statusFp32Tensor_、sumFlagParams`。",
+          "reads": [
+            "statusFp32Tensor_",
+            "sumFlagParams"
+          ],
+          "writes": [
+            "statusSumOutTensor"
+          ]
+        },
+        {
+          "line": 1879,
+          "kind": "sync",
+          "explanation": "调用 `SyncFunc`，在本行指定的硬件事件或流水线之间建立先后关系。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "V_S"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1880,
+          "kind": "call",
+          "explanation": "调用 `ReinterpretCast`、`GetValue` 并更新 `cumSumFlag、g`；本行实参或对象来自 `statusSumOutTensor`。",
+          "reads": [
+            "statusSumOutTensor"
+          ],
+          "writes": [
+            "cumSumFlag"
+          ]
+        },
+        {
+          "line": 1881,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (cumSumFlag == targetFlag) {` 选择 `WaitCumSumFlag` 的后续路径；判定涉及 `cumSumFlag、targetFlag`。",
+          "reads": [
+            "cumSumFlag",
+            "targetFlag"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1882,
+          "kind": "declaration",
+          "explanation": "声明 `k`；源码初始化式 `break;`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1883,
+          "kind": "brace",
+          "explanation": "在 `WaitCumSumFlag` 的 L1883 结束 if 分支 `if (cumSumFlag == targetFlag) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1884,
+          "kind": "brace",
+          "explanation": "在 `WaitCumSumFlag` 的 L1884 结束 while 循环 `while (true) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1885,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `RunPosRecord(RUNPOS_CUMSUMFLAG); // 维测打点`；该内容当前不参与 `WaitCumSumFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1886,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `Clean flag for next round`；该内容当前不参与 `WaitCumSumFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1887,
+          "kind": "call",
+          "explanation": "调用 `Duplicate` 并更新 `e、statusCleanFp32Tensor_`；本行实参或对象来自 `aivUsedCumSum_、UB_ALIGN_DATA_COUNT`。",
+          "reads": [
+            "aivUsedCumSum_",
+            "UB_ALIGN_DATA_COUNT"
+          ],
+          "writes": [
+            "statusCleanFp32Tensor_"
+          ]
+        },
+        {
+          "line": 1888,
+          "kind": "sync",
+          "explanation": "调用 `SyncFunc`，在本行指定的硬件事件或流水线之间建立先后关系。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "S_MTE3"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1889,
+          "kind": "sync",
+          "explanation": "调用 `SyncFunc`，在本行指定的硬件事件或流水线之间建立先后关系。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "V_MTE3"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1890,
+          "kind": "call",
+          "explanation": "调用 `DataCopy` 并更新 `y、selfRankWinInGMTensor_`；本行实参或对象来自 `cumSumFlagOffset、statusCleanFp32Tensor_、aivUsedCumSum_、UB_ALIGN_DATA_COUNT`。",
+          "reads": [
+            "cumSumFlagOffset",
+            "statusCleanFp32Tensor_",
+            "aivUsedCumSum_",
+            "UB_ALIGN_DATA_COUNT"
+          ],
+          "writes": [
+            "selfRankWinInGMTensor_"
+          ]
+        },
+        {
+          "line": 1891,
+          "kind": "sync",
+          "explanation": "调用 `SyncFunc`，在本行指定的硬件事件或流水线之间建立先后关系。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "MTE3_S"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1892,
+          "kind": "brace",
+          "explanation": "在 `WaitCumSumFlag` 的 L1892 结束 代码块 `SumParams sumFlagParams{1, innerSumParams, aivUsedCumSum_ * UB_ALIGN_DATA_COUNT};` 作用域。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments":[
+        {"id":"cumsum-flag-row-contract","start":1859,"end":1869,"title":"定位当前 AIV 的 cumsum 完成 flag 行并配置 Sum","detail":"targetFlag=aivUsedCumSum_*UB_ALIGN_DATA_COUNT，因为每个已完成 flag 是一个 32B float 块的首值 1；cumSumFlagOffset 定位当前 aivId_ 行。","kind":"input","input_state":["aivId_、aivUsedCumSum_：消费者行和生产者列数","rscvStatusNum_：前置状态区长度"],"mechanism":"跳过状态区和 cumsum 方阵，再加 aivId_*aivUsedCumSum_*UB_ALIGN；SumParams 用 innerSumParams 与 block stride 归约。","output_state":["cumSumFlagOffset：当前 AIV flag 行","targetFlag 与 sumFlagParams：完成判定契约"],"why":"CalRecvAndSetFlag 按矩阵列发布；消费者必须定位自己的行并检查所有列，而不能只看任一核。","calls":[{"name":"LocalTensor","line":1868,"type":"external"}]},
+        {"id":"cumsum-flag-cache-poll","start":1870,"end":1884,"title":"失效 cache 并轮询到所有 cumsum flags 就绪","detail":"先逐列失效 cacheline；while 每轮搬整行、Sum 归约并按 int32_t 读取，等于 targetFlag 时退出。","kind":"loop","input_state":["selfRankWinInGMTensor_[cumSumFlagOffset]：异步完成 flag 行","targetFlag：全部列为 1 的期望和"],"mechanism":"DCCI→DataCopy→MTE2_V→Sum→V_S→ReinterpretCast<int32_t>.GetValue；不相等继续轮询。","output_state":["cumSumFlag==targetFlag：所有 cumsum workspace 写入已发布"],"why":"显式 cache 失效与 MTE2/V/S 顺序保证轮询观察跨核写入；全列完成才可读取任一 recv 前缀和片段。","calls":[{"name":"DataCacheCleanAndInvalid","line":1871,"type":"external"},{"name":"DataCopy","line":1876,"type":"external"},{"name":"SyncFunc","line":1877,"type":"external"},{"name":"Sum","line":1878,"type":"external"},{"name":"SyncFunc","line":1879,"type":"external"},{"name":"ReinterpretCast","line":1880,"type":"external"},{"name":"GetValue","line":1880,"type":"external"}]},
+        {"id":"cumsum-flag-row-cleanup","start":1885,"end":1892,"title":"清零当前 AIV flag 行并等待写回完成","detail":"生成 aivUsedCumSum_ 个 32B 零 flag，建立 S/V→MTE3 顺序，写回同一行并用 MTE3_S 等待完成。","kind":"sync","input_state":["statusCleanFp32Tensor_：清理 UB","cumSumFlagOffset：本轮已消费 flag 行"],"mechanism":"Duplicate 0→S_MTE3/V_MTE3→DataCopy→MTE3_S。","output_state":["selfRankWinInGMTensor_ 当前 AIV flag 行：全 0，可供下一轮复用"],"why":"等待清零写回结束后函数才返回，防止下一轮生产者写 1 与上一轮迟到的清零交叉。","calls":[{"name":"Duplicate","line":1887,"type":"external"},{"name":"SyncFunc","line":1888,"type":"external"},{"name":"SyncFunc","line":1889,"type":"external"},{"name":"DataCopy","line":1890,"type":"external"},{"name":"SyncFunc","line":1891,"type":"external"}]}
+      ]
+    }
+  ]
+}

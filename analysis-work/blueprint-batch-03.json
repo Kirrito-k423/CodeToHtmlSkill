@@ -1,0 +1,473 @@
+{
+  "source": {
+    "sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc"
+  },
+  "functions": [
+    {
+      "id": "m-moedistributedispatchv2fullmesh-getwindstateaddrbyrankid-68f65ffa74",
+      "module_id": "source-contract",
+      "name": "GetWindStateAddrByRankId",
+      "start": 492,
+      "end": 495,
+      "inactive": false,
+      "summary": "在指定 Rank 的状态窗口基址上叠加当前双缓冲 dataState_ 对应的 WIN_STATE_OFFSET 槽，返回本轮 dispatch 使用的状态区地址。",
+      "inputs": [
+        "rankId：目标 Rank ID",
+        "dataState_：InitWinState 选择的当前双缓冲状态编号",
+        "WIN_STATE_OFFSET：相邻状态槽的固定字节跨度"
+      ],
+      "outputs": [
+        "返回 GetWindStateBaseAddrByRankId(rankId) + dataState_ * WIN_STATE_OFFSET"
+      ],
+      "side_effects": [],
+      "review": {
+        "status": "PASS",
+        "reviewer": "e2e-architecture-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "line_range": [492, 495],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 492,
+        "reviewed_end": 495,
+        "expected_line_count": 4,
+        "covered_line_count": 4,
+        "covered_ranges": [[492,495]],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {"line": 492, "kind": "signature", "explanation": "声明设备侧内联地址查询 GetWindStateAddrByRankId，并接收目标 rankId。", "reads": [], "writes": []},
+        {"line": 493, "kind": "brace", "explanation": "开始选择目标 Rank 当前状态槽的函数体。", "reads": [], "writes": []},
+        {"line": 494, "kind": "call", "explanation": "取得 rankId 的状态窗口基址，再叠加 dataState_ 个 WIN_STATE_OFFSET，返回当前双缓冲状态槽地址。", "reads": ["GetWindStateBaseAddrByRankId", "rankId", "dataState_", "WIN_STATE_OFFSET"], "writes": []},
+        {"line": 495, "kind": "brace", "explanation": "结束状态槽地址查询。", "reads": [], "writes": []}
+      ],
+      "segments": [
+        {
+          "id": "wind-state-select-double-buffer-slot",
+          "start": 492,
+          "end": 495,
+          "title": "选择目标 Rank 当前 dataState_ 的状态窗口槽",
+          "detail": "函数先通过 GetWindStateBaseAddrByRankId 统一解析 Mc2 或 HCCL 状态窗口基址，再按 dataState_ 乘 WIN_STATE_OFFSET 选择本轮双缓冲状态区。",
+          "kind": "compute",
+          "input_state": ["rankId：目标状态窗口", "dataState_：当前状态槽编号", "WIN_STATE_OFFSET：状态槽步长"],
+          "mechanism": "return GetWindStateBaseAddrByRankId(rankId) + dataState_ * WIN_STATE_OFFSET。",
+          "output_state": ["返回值指向 rankId 当前 dataState_ 的状态区起点"],
+          "why": "连续 dispatch 轮次必须使用不同状态槽，避免上一轮 flag/计数与本轮相互覆盖。",
+          "calls": [
+            {"name":"GetWindStateBaseAddrByRankId","line":494,"type":"internal","target":"m-moedistributedispatchv2fullmesh-getwindstatebaseaddrbyrankid-3d8c15c648"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m-moedistributedispatchv2fullmesh-getsendbufferaddrbytokenid-aee7115d35",
+      "module_id": "source-contract",
+      "name": "GetSendBufferAddrByTokenId",
+      "start": 499,
+      "end": 512,
+      "inactive": false,
+      "summary": "返回本 Rank 本地 token staging buffer 中 tokenId 对应通信包的起始地址；Mc2 路径以 shmemBuffer_ 为基址，HCCL 路径以本 Rank output window 为基址，两者都先跳过 stageDone 区并按 hCommuSize_ 定位 token。",
+      "inputs": [
+        "tokenId：待定位的本地 token 编号",
+        "isMc2Context_：选择 shmemBuffer_ 或 HCCL output window 地址体系",
+        "shmemBuffer_：Mc2 本地共享内存基址",
+        "winContext_[COMM_EP_IDX]、epRankIdOriginal_：HCCL 本 Rank output window 定位参数",
+        "axisBS_、STAGE_DONE_STRIDE：通过 GetStageDoneRegionSize 形成 stageDone 前缀大小",
+        "hCommuSize_：每 token 通信包字节跨度"
+      ],
+      "outputs": [
+        "返回本地 staging buffer 中 tokenId * hCommuSize_ 对应通信包首地址"
+      ],
+      "side_effects": [
+        "第 504、506–508 行是注释掉的旧 WIN_STATE_OFFSET/epHcclBuffer 地址方案，不参与当前地址计算"
+      ],
+      "review": {
+        "status": "PASS",
+        "reviewer": "e2e-architecture-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "line_range": [499, 512],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 499,
+        "reviewed_end": 512,
+        "expected_line_count": 14,
+        "covered_line_count": 14,
+        "covered_ranges": [[499,501],[502,509],[510,512]],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {"line": 499, "kind": "signature", "explanation": "声明设备侧内联地址查询 GetSendBufferAddrByTokenId，并接收 tokenId。", "reads": [], "writes": []},
+        {"line": 500, "kind": "brace", "explanation": "开始按运行上下文定位 token staging 槽。", "reads": [], "writes": []},
+        {"line": 501, "kind": "comment", "explanation": "注释说明 send buffer 中每个 token 固定占用 hCommuSize_ 字节；本行不执行。", "reads": [], "writes": []},
+        {"line": 502, "kind": "branch", "explanation": "读取 isMc2Context_，为真时进入本地共享内存寻址路径。", "reads": ["isMc2Context_"], "writes": []},
+        {"line": 503, "kind": "statement", "explanation": "以 shmemBuffer_ 作为 Mc2 token staging 地址公式的基址，表达式在后续行继续。", "reads": ["shmemBuffer_"], "writes": []},
+        {"line": 504, "kind": "comment", "explanation": "注释保留曾在基址后跳过两个 WIN_STATE_OFFSET 的旧布局项；当前不参与求值。", "reads": [], "writes": []},
+        {"line": 505, "kind": "call", "explanation": "跨过 GetStageDoneRegionSize 返回的标志区，再按 tokenId * hCommuSize_ 定位并完成 Mc2 返回表达式。", "reads": ["GetStageDoneRegionSize", "tokenId", "hCommuSize_"], "writes": []},
+        {"line": 506, "kind": "comment", "explanation": "注释保留从 mc2Context_ 的 epHcclBuffer_ 取基址并按 epRankId_ 索引的旧 return 起始行；当前不执行。", "reads": [], "writes": []},
+        {"line": 507, "kind": "comment", "explanation": "注释保留旧公式中的两个 WIN_STATE_OFFSET 前缀；当前不执行。", "reads": [], "writes": []},
+        {"line": 508, "kind": "comment", "explanation": "注释保留旧公式的 stageDone 前缀与 token 字节偏移；当前不执行。", "reads": [], "writes": []},
+        {"line": 509, "kind": "brace", "explanation": "结束 isMc2Context_ 为真的分支。", "reads": [], "writes": []},
+        {"line": 510, "kind": "call", "explanation": "非 Mc2 路径以 winContext_ 的 COMM_EP_IDX 通信窗口和 epRankIdOriginal_ 查询本 Rank output window 基址。", "reads": ["GetBaseWindOutAddrByRankId", "winContext_", "COMM_EP_IDX", "epRankIdOriginal_"], "writes": []},
+        {"line": 511, "kind": "call", "explanation": "在 HCCL window 基址后跨过 GetStageDoneRegionSize，再按 tokenId * hCommuSize_ 定位并返回 token 槽。", "reads": ["GetStageDoneRegionSize", "tokenId", "hCommuSize_"], "writes": []},
+        {"line": 512, "kind": "brace", "explanation": "结束 token staging 地址查询。", "reads": [], "writes": []}
+      ],
+      "segments": [
+        {
+          "id": "send-buffer-address-contract",
+          "start": 499,
+          "end": 501,
+          "title": "声明 tokenId 到本地 staging 通信包地址的映射",
+          "detail": "签名接收 tokenId；注释明确每个 token 在 send buffer 中占 hCommuSize_ 字节。",
+          "kind": "input",
+          "input_state": ["tokenId：本地 token 索引", "hCommuSize_：单 token 线格式总字节数"],
+          "mechanism": "后续两个上下文分支都使用 tokenId * hCommuSize_ 作为 token 区内偏移。",
+          "output_state": ["建立 token 线性寻址契约，尚未选择地址基址"],
+          "why": "stage 核写入、URMA localAddr 和 self-copy 源地址必须复用完全相同的 token 布局。",
+          "calls": []
+        },
+        {
+          "id": "send-buffer-mc2-shmem-address",
+          "start": 502,
+          "end": 509,
+          "title": "在 Mc2 路径从 shmemBuffer_ 定位 stageDone 后的 token 槽",
+          "detail": "isMc2Context_ 为真时返回 shmemBuffer_ + GetStageDoneRegionSize() + tokenId*hCommuSize_；两个 WIN_STATE_OFFSET 和 mc2Context_->epHcclBuffer_ 方案均已注释。",
+          "kind": "compute",
+          "input_state": ["isMc2Context_：true", "shmemBuffer_：本地共享内存起点", "tokenId/hCommuSize_：目标 token 偏移"],
+          "mechanism": "先跨过所有 stage 核的完成标志区，再按固定 hCommuSize_ 跳到 tokenId 包；不执行注释中的双 WIN_STATE_OFFSET 前缀。",
+          "output_state": ["立即返回 Mc2 本地 staging token 地址"],
+          "why": "共享内存开头保留 stageDone 标志，因此 payload 不能直接从 shmemBuffer_ 起始处写入。",
+          "calls": [
+            {"name":"GetStageDoneRegionSize","line":505,"type":"internal","target":"m-moedistributedispatchv2fullmesh-getstagedoneregionsize-5c2a0cf9f6"}
+          ]
+        },
+        {
+          "id": "send-buffer-hccl-window-address",
+          "start": 510,
+          "end": 512,
+          "title": "在 HCCL 路径从本 Rank output window 定位 token 槽",
+          "detail": "非 Mc2 路径调用 GetBaseWindOutAddrByRankId 获取 epRankIdOriginal_ 的 output window，再叠加相同 stageDone 前缀和 token 字节偏移。",
+          "kind": "compute",
+          "input_state": ["isMc2Context_：false", "winContext_[COMM_EP_IDX]/epRankIdOriginal_：本 Rank HCCL 窗口", "tokenId/hCommuSize_：token 偏移"],
+          "mechanism": "GetBaseWindOutAddrByRankId(...) + GetStageDoneRegionSize() + tokenId*hCommuSize_。",
+          "output_state": ["返回 HCCL output window 中的本地 staging token 地址"],
+          "why": "两种上下文必须保持相同的 stageDone+token 数据布局，后续发送代码才无需区分地址语义。",
+          "calls": [
+            {"name":"GetBaseWindOutAddrByRankId","line":510,"type":"external"},
+            {"name":"GetStageDoneRegionSize","line":511,"type":"internal","target":"m-moedistributedispatchv2fullmesh-getstagedoneregionsize-5c2a0cf9f6"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m-moedistributedispatchv2fullmesh-getstagedoneaddrbyaivid-d0dc00d0d9",
+      "module_id": "source-contract",
+      "name": "GetStageDoneAddrByAivId",
+      "start": 514,
+      "end": 523,
+      "inactive": false,
+      "summary": "返回 stageAivId 独占的完成标志地址；Mc2 和 HCCL 分别使用 shmemBuffer_ 与本 Rank output window 为基址，并以 STAGE_DONE_STRIDE 保证各 stage 核标志位分隔。",
+      "inputs": [
+        "stageAivId：stage 核编号",
+        "isMc2Context_：选择 Mc2 或 HCCL 基址",
+        "shmemBuffer_：Mc2 本地共享内存起点",
+        "winContext_[COMM_EP_IDX]、epRankIdOriginal_：HCCL 本 Rank output window 定位参数",
+        "STAGE_DONE_STRIDE：相邻 stage 核完成标志的字节跨度"
+      ],
+      "outputs": [
+        "返回 stageAivId * STAGE_DONE_STRIDE 对应的完成标志地址"
+      ],
+      "side_effects": [],
+      "review": {
+        "status": "PASS",
+        "reviewer": "e2e-architecture-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "line_range": [514, 523],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 514,
+        "reviewed_end": 523,
+        "expected_line_count": 10,
+        "covered_line_count": 10,
+        "covered_ranges": [[514,516],[517,520],[521,523]],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {"line": 514, "kind": "signature", "explanation": "声明设备侧内联完成标志地址查询 GetStageDoneAddrByAivId，并接收 stageAivId。", "reads": [], "writes": []},
+        {"line": 515, "kind": "brace", "explanation": "开始按 stage 核编号和运行上下文定位完成标志。", "reads": [], "writes": []},
+        {"line": 516, "kind": "comment", "explanation": "注释规定每个 stage core 独占一个 cache-line-aligned completion flag；本行不执行。", "reads": [], "writes": []},
+        {"line": 517, "kind": "branch", "explanation": "读取 isMc2Context_，为真时使用共享内存基址。", "reads": ["isMc2Context_"], "writes": []},
+        {"line": 518, "kind": "statement", "explanation": "以 shmemBuffer_ 作为 Mc2 完成标志地址公式的基址，表达式在下一行继续。", "reads": ["shmemBuffer_"], "writes": []},
+        {"line": 519, "kind": "statement", "explanation": "叠加 stageAivId * STAGE_DONE_STRIDE，完成并返回该 stage 核的独占标志地址。", "reads": ["stageAivId", "STAGE_DONE_STRIDE"], "writes": []},
+        {"line": 520, "kind": "brace", "explanation": "结束 isMc2Context_ 为真的地址分支。", "reads": [], "writes": []},
+        {"line": 521, "kind": "call", "explanation": "非 Mc2 路径使用 winContext_ 的 COMM_EP_IDX 项和 epRankIdOriginal_ 查询本 Rank output window 基址。", "reads": ["GetBaseWindOutAddrByRankId", "winContext_", "COMM_EP_IDX", "epRankIdOriginal_"], "writes": []},
+        {"line": 522, "kind": "statement", "explanation": "在 HCCL window 基址后叠加 stageAivId * STAGE_DONE_STRIDE，返回对应完成标志槽。", "reads": ["stageAivId", "STAGE_DONE_STRIDE"], "writes": []},
+        {"line": 523, "kind": "brace", "explanation": "结束 per-stage completion flag 地址查询。", "reads": [], "writes": []}
+      ],
+      "segments": [
+        {
+          "id": "stage-done-address-contract",
+          "start": 514,
+          "end": 516,
+          "title": "声明每个 stage 核独占一段对齐完成标志",
+          "detail": "函数签名接收 stageAivId；注释说明每个 stage core 拥有独立、cache-line-aligned 的 completion flag。",
+          "kind": "input",
+          "input_state": ["stageAivId：待定位的 stage 核"],
+          "mechanism": "两个地址体系都用 stageAivId * STAGE_DONE_STRIDE 定位。",
+          "output_state": ["建立按核隔离完成标志的寻址语义"],
+          "why": "PublishStageDone 与 WaitAllStageDone 需要无伪共享、可独立轮询的 per-core 标志。",
+          "calls": []
+        },
+        {
+          "id": "stage-done-mc2-address",
+          "start": 517,
+          "end": 520,
+          "title": "在 Mc2 共享内存头部定位 stage 标志",
+          "detail": "isMc2Context_ 为真时以 shmemBuffer_ 为起点，加 stageAivId*STAGE_DONE_STRIDE 后立即返回。",
+          "kind": "compute",
+          "input_state": ["isMc2Context_：true", "shmemBuffer_：共享内存起点", "stageAivId/STAGE_DONE_STRIDE：核槽偏移"],
+          "mechanism": "return (GM_ADDR)shmemBuffer_ + stageAivId * STAGE_DONE_STRIDE。",
+          "output_state": ["返回 Mc2 per-stage completion flag 地址"],
+          "why": "stageDone 区固定放在本地共享内存最前部，便于所有职责核轮询。",
+          "calls": []
+        },
+        {
+          "id": "stage-done-hccl-address",
+          "start": 521,
+          "end": 523,
+          "title": "在 HCCL 本 Rank output window 定位 stage 标志",
+          "detail": "非 Mc2 路径从 epRankIdOriginal_ 的 output window 基址加相同 stageAivId stride 并返回。",
+          "kind": "compute",
+          "input_state": ["isMc2Context_：false", "winContext_[COMM_EP_IDX]/epRankIdOriginal_：HCCL 本 Rank window", "stageAivId/STAGE_DONE_STRIDE：核槽偏移"],
+          "mechanism": "GetBaseWindOutAddrByRankId(...) + stageAivId * STAGE_DONE_STRIDE。",
+          "output_state": ["返回 HCCL per-stage completion flag 地址"],
+          "why": "保持两种上下文一致的标志布局，使清零、发布与汇总逻辑共用同一 helper。",
+          "calls": [
+            {"name":"GetBaseWindOutAddrByRankId","line":521,"type":"external"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m-moedistributedispatchv2fullmesh-getheadreadyaddr-70fab86c3d",
+      "module_id": "source-contract",
+      "name": "GetHeadReadyAddr",
+      "start": 526,
+      "end": 530,
+      "inactive": false,
+      "summary": "返回 headReady 标志区起点：在 shmemBuffer_ 中先跳过全部 stageDone 标志区和 axisBS_ 个 token 的 staging 数据区；注释中的 aclshmem_ptr 远端基址方案当前未启用。",
+      "inputs": [
+        "shmemBuffer_：本地共享内存基址",
+        "axisBS_：staging buffer 中 token 槽数",
+        "hCommuSize_：每 token 通信包字节数",
+        "axisBS_、STAGE_DONE_STRIDE：通过 GetStageDoneRegionSize 计算 stageDone 前缀"
+      ],
+      "outputs": [
+        "返回 shmemBuffer_ + GetStageDoneRegionSize() + axisBS_ * hCommuSize_"
+      ],
+      "side_effects": [
+        "第 527–528 行 aclshmem_ptr 方案仅为注释，不参与当前地址计算"
+      ],
+      "review": {
+        "status": "PASS",
+        "reviewer": "e2e-architecture-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "line_range": [526, 530],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 526,
+        "reviewed_end": 530,
+        "expected_line_count": 5,
+        "covered_line_count": 5,
+        "covered_ranges": [[526,530]],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {"line": 526, "kind": "signature", "explanation": "声明并开始无显式参数的设备侧内联地址查询 GetHeadReadyAddr。", "reads": [], "writes": []},
+        {"line": 527, "kind": "comment", "explanation": "注释保留曾通过 aclshmem_ptr、shmemBuffer_ 和 epRankId_ 取得 Rank 指针的旧 return 起始行；当前不执行。", "reads": [], "writes": []},
+        {"line": 528, "kind": "comment", "explanation": "注释保留旧公式中跨过 GetStageDoneRegionSize 与 axisBS_ * hCommuSize_ 的后半段；当前不执行。", "reads": [], "writes": []},
+        {"line": 529, "kind": "call", "explanation": "从 shmemBuffer_ 起点跨过 GetStageDoneRegionSize 和 axisBS_ * hCommuSize_，返回 headReady 控制区起点。", "reads": ["shmemBuffer_", "GetStageDoneRegionSize", "axisBS_", "hCommuSize_"], "writes": []},
+        {"line": 530, "kind": "brace", "explanation": "结束 headReady 区域地址查询。", "reads": [], "writes": []}
+      ],
+      "segments": [
+        {
+          "id": "head-ready-after-stage-and-token-regions",
+          "start": 526,
+          "end": 530,
+          "title": "把 headReady 区放在 stageDone 与 token staging 区之后",
+          "detail": "当前返回值始终以 shmemBuffer_ 为基址，依次跳过 GetStageDoneRegionSize() 和 axisBS_*hCommuSize_；注释中的 aclshmem_ptr(shmemBuffer_,epRankId_) 版本不执行。",
+          "kind": "compute",
+          "input_state": ["shmemBuffer_：共享内存起点", "stageDone 区与 axisBS_ 个通信包已占据前缀"],
+          "mechanism": "return shmemBuffer_ + GetStageDoneRegionSize() + axisBS_ * hCommuSize_。",
+          "output_state": ["返回第一个 remote-WQE worker 的 headReady 标志区起点"],
+          "why": "控制标志必须避开 stageDone 和 token payload，且其后可按 HEAD_READY_STRIDE 为 WQE 核分配独立槽。",
+          "calls": [
+            {"name":"GetStageDoneRegionSize","line":529,"type":"internal","target":"m-moedistributedispatchv2fullmesh-getstagedoneregionsize-5c2a0cf9f6"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m-moedistributedispatchv2fullmesh-getheadrecordaddr-89abc8e6ef",
+      "module_id": "source-contract",
+      "name": "GetHeadRecordAddr",
+      "start": 532,
+      "end": 536,
+      "inactive": false,
+      "summary": "返回 headRecord bitmap 区起点：从 headReady 区起点跨过 aivUsedRemoteWqe_ 个、每个 HEAD_READY_STRIDE 字节的 worker 标志槽；注释中的直接基址公式不参与执行。",
+      "inputs": [
+        "aivUsedRemoteWqe_：参与远端 WQE 生成的 AIV 数",
+        "HEAD_READY_STRIDE：相邻 WQE worker headReady 标志槽字节跨度",
+        "GetHeadReadyAddr()：headReady 区起点"
+      ],
+      "outputs": [
+        "返回 GetHeadReadyAddr() + aivUsedRemoteWqe_ * HEAD_READY_STRIDE"
+      ],
+      "side_effects": [
+        "第 533–534 行直接从 shmemBuffer_ 推导地址的方案仅为注释"
+      ],
+      "review": {
+        "status": "PASS",
+        "reviewer": "e2e-architecture-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "line_range": [532, 536],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 532,
+        "reviewed_end": 536,
+        "expected_line_count": 5,
+        "covered_line_count": 5,
+        "covered_ranges": [[532,536]],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {"line": 532, "kind": "signature", "explanation": "声明并开始无显式参数的设备侧内联地址查询 GetHeadRecordAddr。", "reads": [], "writes": []},
+        {"line": 533, "kind": "comment", "explanation": "注释保留曾通过 aclshmem_ptr、shmemBuffer_ 和 epRankId_ 直接求地址的旧 return 起始行；当前不执行。", "reads": [], "writes": []},
+        {"line": 534, "kind": "comment", "explanation": "注释保留旧公式中 stageDone 与 token staging 前缀的后半段；当前不执行。", "reads": [], "writes": []},
+        {"line": 535, "kind": "call", "explanation": "取得 GetHeadReadyAddr 后跨过 aivUsedRemoteWqe_ 个 HEAD_READY_STRIDE 槽，返回 headRecord bitmap 区起点。", "reads": ["GetHeadReadyAddr", "aivUsedRemoteWqe_", "HEAD_READY_STRIDE"], "writes": []},
+        {"line": 536, "kind": "brace", "explanation": "结束 headRecord 区域地址查询。", "reads": [], "writes": []}
+      ],
+      "segments": [
+        {
+          "id": "head-record-after-head-ready-slots",
+          "start": 532,
+          "end": 536,
+          "title": "把 WQE 完成 bitmap 放在全部 headReady worker 槽之后",
+          "detail": "GetHeadRecordAddr 复用 GetHeadReadyAddr 的统一前缀，再按 aivUsedRemoteWqe_*HEAD_READY_STRIDE 跳过每个 WQE worker 的独立标志槽。",
+          "kind": "compute",
+          "input_state": ["GetHeadReadyAddr()：headReady 区起点", "aivUsedRemoteWqe_/HEAD_READY_STRIDE：worker 槽总大小"],
+          "mechanism": "return GetHeadReadyAddr() + aivUsedRemoteWqe_ * HEAD_READY_STRIDE。",
+          "output_state": ["返回所有 jetty headRecord bitmap 的控制区起点"],
+          "why": "doorbell 发布 headReady 与 WQE worker 发布 headRecord 使用不同生命周期，必须分离存储避免覆盖。",
+          "calls": [
+            {"name":"GetHeadReadyAddr","line":535,"type":"internal","target":"m-moedistributedispatchv2fullmesh-getheadreadyaddr-70fab86c3d"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m-moedistributedispatchv2fullmesh-getsqsaddr-114b933bf9",
+      "module_id": "source-contract",
+      "name": "GetSqsAddr",
+      "start": 538,
+      "end": 542,
+      "inactive": false,
+      "summary": "返回缓存 HcclAiRMAWQ SQ 上下文数组的区域起点：从 headRecord bitmap 起点跨过对齐后的完整 headRecord 区；紧随其后的地址由调用方用于 CQ 数组。",
+      "inputs": [
+        "GetHeadRecordAddr()：headRecord bitmap 控制区起点",
+        "GetHeadRecordRegionSize()：覆盖全部 jetty bitmap 并完成窗口对齐的字节数"
+      ],
+      "outputs": [
+        "返回 GetHeadRecordAddr() + GetHeadRecordRegionSize()"
+      ],
+      "side_effects": [
+        "第 539–540 行从 shmemBuffer_ 直接推导地址的方案仅为注释"
+      ],
+      "review": {
+        "status": "PASS",
+        "reviewer": "e2e-architecture-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "line_range": [538, 542],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 538,
+        "reviewed_end": 542,
+        "expected_line_count": 5,
+        "covered_line_count": 5,
+        "covered_ranges": [[538,542]],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {"line": 538, "kind": "signature", "explanation": "声明并开始无显式参数的设备侧内联地址查询 GetSqsAddr。", "reads": [], "writes": []},
+        {"line": 539, "kind": "comment", "explanation": "注释保留曾通过 aclshmem_ptr、shmemBuffer_ 和 epRankId_ 直接求地址的旧 return 起始行；当前不执行。", "reads": [], "writes": []},
+        {"line": 540, "kind": "comment", "explanation": "注释保留旧公式中 stageDone 与 token staging 前缀的后半段；当前不执行。", "reads": [], "writes": []},
+        {"line": 541, "kind": "call", "explanation": "从 GetHeadRecordAddr 返回的 bitmap 起点跨过 GetHeadRecordRegionSize，返回 SQ 上下文数组起点。", "reads": ["GetHeadRecordAddr", "GetHeadRecordRegionSize"], "writes": []},
+        {"line": 542, "kind": "brace", "explanation": "结束 SQ 上下文区域地址查询。", "reads": [], "writes": []}
+      ],
+      "segments": [
+        {
+          "id": "sqs-after-head-record-region",
+          "start": 538,
+          "end": 542,
+          "title": "把 SQ 上下文数组放在对齐后的 headRecord 区之后",
+          "detail": "当前公式组合 GetHeadRecordAddr 与 GetHeadRecordRegionSize，得到 SQ 缓存区首地址；URMASendToken 和 RingDoorbell 以该地址解释 HcclAiRMAWQ 数组。",
+          "kind": "compute",
+          "input_state": ["GetHeadRecordAddr()：bitmap 起点", "GetHeadRecordRegionSize()：bitmap 区对齐大小"],
+          "mechanism": "return GetHeadRecordAddr() + GetHeadRecordRegionSize()。",
+          "output_state": ["返回 SQ 上下文数组起点；调用方再加 sizeof(HcclAiRMAWQ)*totalJettyNum 得到 CQ 起点"],
+          "why": "将 handshake bitmap 与 SQ/CQ 元数据顺序排布在控制保留区，避免与 token payload 和状态区重叠。",
+          "calls": [
+            {"name":"GetHeadRecordAddr","line":541,"type":"internal","target":"m-moedistributedispatchv2fullmesh-getheadrecordaddr-89abc8e6ef"},
+            {"name":"GetHeadRecordRegionSize","line":541,"type":"internal","target":"m-moedistributedispatchv2fullmesh-getheadrecordregionsize-f33b3f5132"}
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,3560 @@
+{
+  "source": {"sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc"},
+  "functions": [
+    {
+      "id": "m-moedistributedispatchv2fullmesh-selfcopytoken-2eead1ce43",
+      "module_id": "self-copy",
+      "name": "SelfCopyToken",
+      "start": 3892,
+      "end": 3998,
+      "inactive": false,
+      "summary": "把本 rank 专家按 self-copy AIV 均衡分片，先从 expertIds 构造稳定的专家计数与有序 token 偏移；等待所有 stageDone 后，才按该冻结映射从 staging send buffer 逐 token 搬到本 rank window 的目标专家连续槽位。",
+      "inputs": ["aivId_", "aivUsedRemoteWqe_", "moeExpertNumPerRank_", "aivUsedSelfCopy_", "epRankId_", "expertIdsCnt_", "axisBS_", "axisK_", "expertIdsGMTensor_", "hCommuSize_", "expertPerSizeOnWin_"],
+      "outputs": ["validExpertIdsTensor_", "expertCntListLT", "expertOrderedOffsetListLT", "totalSendNumLT", "tokenDstGMTensor"],
+      "side_effects": [
+        "初始化 self-copy 专属 UB 并由 simt_prepare_mapping 写专家计数、原始偏移的稳定有序排列及总发送数",
+        "WaitAllStageDone 建立 staging token 全部可见的消费前置条件",
+        "逐 token 通过 GM→UB→GM 写本 rank window，MTE2/MTE3 事件防止临时 UB 被相邻迭代覆盖"
+      ],
+      "review": {"status":"PASS","verdict":"PASS","reviewer":"function-block-review-agent","draft_author":"full-analysis-draft-agent","revision":1,"source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","line_range":[3892,3998],"gaps":[],"overlaps":[],"unresolved":[],"required_changes":[]},
+      "line_review_certification": {"complete":true,"reviewed_line_range":[3892,3998],"reviewed_line_count":107,"coverage":"every_source_line_reviewed_once","source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","gaps":[],"overlaps":[]},
+      "line_notes": [
+        {
+          "line": 3892,
+          "kind": "signature",
+          "explanation": "构成函数 `SelfCopyToken` 的签名片段 `template <TemplateMC2TypeFullmeshClass>`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3893,
+          "kind": "signature",
+          "explanation": "构成函数 `SelfCopyToken` 的签名片段 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::SelfCopyToken()`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3894,
+          "kind": "brace",
+          "explanation": "在 `SelfCopyToken` 的 L3894 打开 代码块 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::SelfCopyTo…` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3895,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `if (aivUsedSelfCopy_ == 0U) {`；该内容当前不参与 `SelfCopyToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3896,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `return;`；该内容当前不参与 `SelfCopyToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3897,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `SelfCopyToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3898,
+          "kind": "blank",
+          "explanation": "空行在 `SelfCopyToken` 的 L3898 分隔 `// }` 与 `const uint32_t selfCopyAivId = aivId_ - aivUsedRemoteWqe_;` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3899,
+          "kind": "declaration",
+          "explanation": "声明 `selfCopyAivId`；源码初始化式 `const uint32_t selfCopyAivId = aivId_ - aivUsedRemoteWqe_;`读取 `aivId_、aivUsedRemoteWqe_`。",
+          "reads": [
+            "aivId_",
+            "aivUsedRemoteWqe_"
+          ],
+          "writes": [
+            "selfCopyAivId"
+          ]
+        },
+        {
+          "line": 3900,
+          "kind": "declaration",
+          "explanation": "声明 `baseExpertNum`；源码初始化式 `const uint32_t baseExpertNum = moeExpertNumPerRank_ / aivUsedSelfCopy_;`读取 `moeExpertNumPerRank_、aivUsedSelfCopy_`。",
+          "reads": [
+            "moeExpertNumPerRank_",
+            "aivUsedSelfCopy_"
+          ],
+          "writes": [
+            "baseExpertNum"
+          ]
+        },
+        {
+          "line": 3901,
+          "kind": "declaration",
+          "explanation": "声明 `remainderExpertNum`；源码初始化式 `const uint32_t remainderExpertNum = moeExpertNumPerRank_ % aivUsedSelfCopy_;`读取 `moeExpertNumPerRank_、aivUsedSelfCopy_`。",
+          "reads": [
+            "moeExpertNumPerRank_",
+            "aivUsedSelfCopy_"
+          ],
+          "writes": [
+            "remainderExpertNum"
+          ]
+        },
+        {
+          "line": 3902,
+          "kind": "declaration",
+          "explanation": "声明 `sendExpNum`；源码初始化式 `const uint32_t sendExpNum = baseExpertNum + (selfCopyAivId < remainderExpertNum ? 1U : 0U);`读取 `baseExpertNum、selfCopyAivId、remainderExpertNum`。",
+          "reads": [
+            "baseExpertNum",
+            "selfCopyAivId",
+            "remainderExpertNum"
+          ],
+          "writes": [
+            "sendExpNum"
+          ]
+        },
+        {
+          "line": 3903,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (sendExpNum == 0U) {` 选择 `SelfCopyToken` 的后续路径；判定涉及 `sendExpNum`。",
+          "reads": [
+            "sendExpNum"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3904,
+          "kind": "statement",
+          "explanation": "从 `SelfCopyToken` 返回表达式 `void`，把结果交还直接调用者。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3905,
+          "kind": "brace",
+          "explanation": "在 `SelfCopyToken` 的 L3905 结束 if 分支 `if (sendExpNum == 0U) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3906,
+          "kind": "blank",
+          "explanation": "空行在 `SelfCopyToken` 的 L3906 分隔 `}` 与 `const uint32_t localExpertOffset = selfCopyAivId * baseExpertNum +` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3907,
+          "kind": "statement",
+          "explanation": "按表达式 `const uint32_t localExpertOffset = selfCopyAivId * baseExpertNum +` 更新 `localExpertOffset`；右侧读取 `selfCopyAivId、baseExpertNum`。",
+          "reads": [
+            "selfCopyAivId",
+            "baseExpertNum"
+          ],
+          "writes": [
+            "localExpertOffset"
+          ]
+        },
+        {
+          "line": 3908,
+          "kind": "statement",
+          "explanation": "求值源码语句 `(selfCopyAivId < remainderExpertNum ? selfCopyAivId : remainderExpertNum);`；该语句明确涉及 `selfCopyAivId、remainderExpertNum`。",
+          "reads": [
+            "selfCopyAivId",
+            "remainderExpertNum"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3909,
+          "kind": "declaration",
+          "explanation": "声明 `startExpId`；源码初始化式 `const uint32_t startExpId = epRankId_ * moeExpertNumPerRank_ + localExpertOffset;`读取 `epRankId_、moeExpertNumPerRank_、localExpertOffset`。",
+          "reads": [
+            "epRankId_",
+            "moeExpertNumPerRank_",
+            "localExpertOffset"
+          ],
+          "writes": [
+            "startExpId"
+          ]
+        },
+        {
+          "line": 3910,
+          "kind": "blank",
+          "explanation": "空行在 `SelfCopyToken` 的 L3910 分隔 `const uint32_t startExpId = epRankId_ * moeExpertNumPerRank_ + localExp…` 与 `TBuf<> expertCntListBuf, expertOffsetListBuf, expertOrderedOffsetListBu…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3911,
+          "kind": "statement",
+          "explanation": "求值源码语句 `TBuf<> expertCntListBuf, expertOffsetListBuf, expertOrderedOffsetListBuf,`；该语句明确涉及 `expertCntListBuf、expertOffsetListBuf、expertOrderedOffsetListBuf`。",
+          "reads": [
+            "expertCntListBuf",
+            "expertOffsetListBuf",
+            "expertOrderedOffsetListBuf"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3912,
+          "kind": "statement",
+          "explanation": "求值源码语句 `totalSendNumBuf, sendTokenTempBuf, stageDoneBuf, stageDoneWorkBuf,`；该语句明确涉及 `totalSendNumBuf、sendTokenTempBuf、stageDoneBuf、stageDoneWorkBuf`。",
+          "reads": [
+            "totalSendNumBuf",
+            "sendTokenTempBuf",
+            "stageDoneBuf",
+            "stageDoneWorkBuf"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3913,
+          "kind": "declaration",
+          "explanation": "声明 `f`；源码初始化式 `stageDoneSumBuf;`读取 `stageDoneSumBuf`。",
+          "reads": [
+            "stageDoneSumBuf"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3914,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer`，传入或访问 `tpipe_、expertIdsBuf_`。",
+          "reads": [
+            "tpipe_",
+            "expertIdsBuf_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3915,
+          "kind": "call",
+          "explanation": "调用 `Ceil` 并更新 `l`；本行实参或对象来自 `expertIdsCnt_、UB_ALIGN`。",
+          "reads": [
+            "expertIdsCnt_",
+            "UB_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3916,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer`，传入或访问 `tpipe_、expertCntListBuf`。",
+          "reads": [
+            "tpipe_",
+            "expertCntListBuf"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3917,
+          "kind": "call",
+          "explanation": "调用 `Ceil` 并更新 `l`；本行实参或对象来自 `sendExpNum、UB_ALIGN`。",
+          "reads": [
+            "sendExpNum",
+            "UB_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3918,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer`，传入或访问 `tpipe_、expertOffsetListBuf`。",
+          "reads": [
+            "tpipe_",
+            "expertOffsetListBuf"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3919,
+          "kind": "call",
+          "explanation": "调用 `Ceil` 并更新 `l`；本行实参或对象来自 `sendExpNum、axisBS_、UB_ALIGN`。",
+          "reads": [
+            "sendExpNum",
+            "axisBS_",
+            "UB_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3920,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer`，传入或访问 `tpipe_、expertOrderedOffsetListBuf`。",
+          "reads": [
+            "tpipe_",
+            "expertOrderedOffsetListBuf"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3921,
+          "kind": "call",
+          "explanation": "调用 `Ceil` 并更新 `l`；本行实参或对象来自 `sendExpNum、axisBS_、UB_ALIGN`。",
+          "reads": [
+            "sendExpNum",
+            "axisBS_",
+            "UB_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3922,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer` 并更新 `_`；本行实参或对象来自 `tpipe_、totalSendNumBuf、UB_ALIGN`。",
+          "reads": [
+            "tpipe_",
+            "totalSendNumBuf",
+            "UB_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3923,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer` 并更新 `_`；本行实参或对象来自 `tpipe_、sendTokenTempBuf、hCommuSize_`。",
+          "reads": [
+            "tpipe_",
+            "sendTokenTempBuf",
+            "hCommuSize_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3924,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer`、`GetActiveStageNum` 并更新 `_`；本行实参或对象来自 `tpipe_、stageDoneBuf、UB_ALIGN`。",
+          "reads": [
+            "tpipe_",
+            "stageDoneBuf",
+            "UB_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3925,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer`、`GetActiveStageNum` 并更新 `_`；本行实参或对象来自 `tpipe_、stageDoneWorkBuf、UB_ALIGN`。",
+          "reads": [
+            "tpipe_",
+            "stageDoneWorkBuf",
+            "UB_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3926,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer` 并更新 `_`；本行实参或对象来自 `tpipe_、stageDoneSumBuf、UB_ALIGN`。",
+          "reads": [
+            "tpipe_",
+            "stageDoneSumBuf",
+            "UB_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3927,
+          "kind": "blank",
+          "explanation": "空行在 `SelfCopyToken` 的 L3927 分隔 `tpipe_->InitBuffer(stageDoneSumBuf, UB_ALIGN);` 与 `validExpertIdsTensor_ = expertIdsBuf_.Get<int32_t>();` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3928,
+          "kind": "call",
+          "explanation": "调用 `Get` 并更新 `validExpertIdsTensor_、_`；本行实参或对象来自 `expertIdsBuf_`。",
+          "reads": [
+            "expertIdsBuf_"
+          ],
+          "writes": [
+            "validExpertIdsTensor_"
+          ]
+        },
+        {
+          "line": 3929,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `expertCntListLT`；本行实参或对象来自 `expertCntListBuf、Get`。",
+          "reads": [
+            "expertCntListBuf",
+            "Get"
+          ],
+          "writes": [
+            "expertCntListLT"
+          ]
+        },
+        {
+          "line": 3930,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `expertOffsetListLT`；本行实参或对象来自 `expertOffsetListBuf、Get`。",
+          "reads": [
+            "expertOffsetListBuf",
+            "Get"
+          ],
+          "writes": [
+            "expertOffsetListLT"
+          ]
+        },
+        {
+          "line": 3931,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `expertOrderedOffsetListLT`；本行实参或对象来自 `expertOrderedOffsetListBuf、Get`。",
+          "reads": [
+            "expertOrderedOffsetListBuf",
+            "Get"
+          ],
+          "writes": [
+            "expertOrderedOffsetListLT"
+          ]
+        },
+        {
+          "line": 3932,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `totalSendNumLT`；本行实参或对象来自 `totalSendNumBuf、Get`。",
+          "reads": [
+            "totalSendNumBuf",
+            "Get"
+          ],
+          "writes": [
+            "totalSendNumLT"
+          ]
+        },
+        {
+          "line": 3933,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `sendTokenTempLT`；本行实参或对象来自 `XOutType、sendTokenTempBuf、Get`。",
+          "reads": [
+            "XOutType",
+            "sendTokenTempBuf",
+            "Get"
+          ],
+          "writes": [
+            "sendTokenTempLT"
+          ]
+        },
+        {
+          "line": 3934,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `stageDoneLT`；本行实参或对象来自 `stageDoneBuf、Get`。",
+          "reads": [
+            "stageDoneBuf",
+            "Get"
+          ],
+          "writes": [
+            "stageDoneLT"
+          ]
+        },
+        {
+          "line": 3935,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `stageDoneWorkLT`；本行实参或对象来自 `stageDoneWorkBuf、Get`。",
+          "reads": [
+            "stageDoneWorkBuf",
+            "Get"
+          ],
+          "writes": [
+            "stageDoneWorkLT"
+          ]
+        },
+        {
+          "line": 3936,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `stageDoneSumLT`；本行实参或对象来自 `stageDoneSumBuf、Get`。",
+          "reads": [
+            "stageDoneSumBuf",
+            "Get"
+          ],
+          "writes": [
+            "stageDoneSumLT"
+          ]
+        },
+        {
+          "line": 3937,
+          "kind": "blank",
+          "explanation": "空行在 `SelfCopyToken` 的 L3937 分隔 `LocalTensor<float> stageDoneSumLT = stageDoneSumBuf.Get<float>();` 与 `totalSendNumLT.SetValue(0, 0U);` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3938,
+          "kind": "call",
+          "explanation": "调用 `SetValue` 并更新 `T、totalSendNumLT`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": [
+            "totalSendNumLT"
+          ]
+        },
+        {
+          "line": 3939,
+          "kind": "call",
+          "explanation": "调用 `Duplicate` 并更新 `e、expertCntListLT`；本行实参或对象来自 `sendExpNum`。",
+          "reads": [
+            "sendExpNum"
+          ],
+          "writes": [
+            "expertCntListLT"
+          ]
+        },
+        {
+          "line": 3940,
+          "kind": "blank",
+          "explanation": "空行在 `SelfCopyToken` 的 L3940 分隔 `Duplicate<uint32_t>(expertCntListLT, 0U, sendExpNum);` 与 `DataCopyExtParams expertIdsCopyParams{` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3941,
+          "kind": "statement",
+          "explanation": "求值源码语句 `DataCopyExtParams expertIdsCopyParams{`；该语句明确涉及 `expertIdsCopyParams`。",
+          "reads": [
+            "expertIdsCopyParams"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3942,
+          "kind": "statement",
+          "explanation": "求值源码语句 `1U, static_cast<uint32_t>(expertIdsCnt_ * sizeof(int32_t)), 0U, 0U, 0U};`；该语句明确涉及 `expertIdsCnt_`。",
+          "reads": [
+            "expertIdsCnt_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3943,
+          "kind": "declaration",
+          "explanation": "声明 `expertIdsPadParams`；源码初始化式 `DataCopyPadExtParams<int32_t> expertIdsPadParams{false, 0U, 0U, 0U};`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": [
+            "expertIdsPadParams"
+          ]
+        },
+        {
+          "line": 3944,
+          "kind": "call",
+          "explanation": "调用 `DataCopyPad` 并更新 `validExpertIdsTensor_`；本行实参或对象来自 `expertIdsGMTensor_`。",
+          "reads": [
+            "expertIdsGMTensor_"
+          ],
+          "writes": [
+            "validExpertIdsTensor_"
+          ]
+        },
+        {
+          "line": 3945,
+          "kind": "declaration",
+          "explanation": "声明 `s`；源码初始化式 `expertIdsCopyParams, expertIdsPadParams);`读取 `expertIdsCopyParams、expertIdsPadParams`。",
+          "reads": [
+            "expertIdsCopyParams",
+            "expertIdsPadParams"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3946,
+          "kind": "sync",
+          "explanation": "调用 `PipeBarrier`，等待源码指定流水线上的先前操作完成后再继续。",
+          "reads": [
+            "PIPE_ALL"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3947,
+          "kind": "blank",
+          "explanation": "空行在 `SelfCopyToken` 的 L3947 分隔 `PipeBarrier<PIPE_ALL>();` 与 `AscendC::Simt::VF_CALL<simt_prepare_mapping>(` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3948,
+          "kind": "call",
+          "explanation": "调用 `VF_CALL`，传入或访问 `AscendC、Simt、simt_prepare_mapping`。",
+          "reads": [
+            "AscendC",
+            "Simt",
+            "simt_prepare_mapping"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3949,
+          "kind": "statement",
+          "explanation": "求值源码语句 `AscendC::Simt::Dim3{PREPARE_THREADS_NUM, 1, 1},`；该语句明确涉及 `AscendC、Simt、Dim3、PREPARE_THREADS_NUM`。",
+          "reads": [
+            "AscendC",
+            "Simt",
+            "Dim3",
+            "PREPARE_THREADS_NUM"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3950,
+          "kind": "call",
+          "explanation": "调用 `GetPhyAddr`，传入或访问 `__ubuf__、validExpertIdsTensor_`。",
+          "reads": [
+            "__ubuf__",
+            "validExpertIdsTensor_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3951,
+          "kind": "call",
+          "explanation": "调用 `GetPhyAddr`，传入或访问 `__ubuf__、expertCntListLT`。",
+          "reads": [
+            "__ubuf__",
+            "expertCntListLT"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3952,
+          "kind": "call",
+          "explanation": "调用 `GetPhyAddr`，传入或访问 `__ubuf__、expertOffsetListLT`。",
+          "reads": [
+            "__ubuf__",
+            "expertOffsetListLT"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3953,
+          "kind": "call",
+          "explanation": "调用 `GetPhyAddr`，传入或访问 `__ubuf__、expertOrderedOffsetListLT`。",
+          "reads": [
+            "__ubuf__",
+            "expertOrderedOffsetListLT"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3954,
+          "kind": "call",
+          "explanation": "调用 `GetPhyAddr`，传入或访问 `__ubuf__、totalSendNumLT`。",
+          "reads": [
+            "__ubuf__",
+            "totalSendNumLT"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3955,
+          "kind": "statement",
+          "explanation": "求值源码语句 `axisBS_,`；该语句明确涉及 `axisBS_`。",
+          "reads": [
+            "axisBS_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3956,
+          "kind": "statement",
+          "explanation": "求值源码语句 `axisK_,`；该语句明确涉及 `axisK_`。",
+          "reads": [
+            "axisK_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3957,
+          "kind": "statement",
+          "explanation": "求值源码语句 `startExpId,`；该语句明确涉及 `startExpId`。",
+          "reads": [
+            "startExpId"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3958,
+          "kind": "statement",
+          "explanation": "求值源码语句 `sendExpNum,`；该语句明确涉及 `sendExpNum`。",
+          "reads": [
+            "sendExpNum"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3959,
+          "kind": "statement",
+          "explanation": "求值源码语句 `moeExpertNumPerRank_,`；该语句明确涉及 `moeExpertNumPerRank_`。",
+          "reads": [
+            "moeExpertNumPerRank_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3960,
+          "kind": "declaration",
+          "explanation": "声明 `_`；源码初始化式 `epRankId_);`读取 `epRankId_`。",
+          "reads": [
+            "epRankId_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3961,
+          "kind": "sync",
+          "explanation": "调用 `SyncFunc`，在本行指定的硬件事件或流水线之间建立先后关系。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "V_S"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3962,
+          "kind": "call",
+          "explanation": "调用 `DebugClock` 并更新 `k`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3963,
+          "kind": "blank",
+          "explanation": "空行在 `SelfCopyToken` 的 L3963 分隔 `DebugClock(3);` 与 `// A self-copy core may consume a token staged by any stage core.` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3964,
+          "kind": "comment",
+          "explanation": "注释记录 `A self-copy core may consume a token staged by any stage core.`，说明 `SelfCopyToken` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3965,
+          "kind": "call",
+          "explanation": "调用 `WaitAllStageDone` 并更新 `e`；本行实参或对象来自 `stageDoneLT、stageDoneWorkLT、stageDoneSumLT`。",
+          "reads": [
+            "stageDoneLT",
+            "stageDoneWorkLT",
+            "stageDoneSumLT"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3966,
+          "kind": "call",
+          "explanation": "调用 `DebugClock` 并更新 `k`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3967,
+          "kind": "blank",
+          "explanation": "空行在 `SelfCopyToken` 的 L3967 分隔 `DebugClock(4);` 与 `const uint64_t srcBaseAddr = uint64_t(GetSendBufferAddrByTokenId(0));` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3968,
+          "kind": "call",
+          "explanation": "调用 `uint64_t`、`GetSendBufferAddrByTokenId` 并更新 `srcBaseAddr`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": [
+            "srcBaseAddr"
+          ]
+        },
+        {
+          "line": 3969,
+          "kind": "call",
+          "explanation": "调用 `uint64_t`、`GetWindAddrByRankId` 并更新 `selfWindowBaseAddr`；本行实参或对象来自 `epRankId_`。",
+          "reads": [
+            "epRankId_"
+          ],
+          "writes": [
+            "selfWindowBaseAddr"
+          ]
+        },
+        {
+          "line": 3970,
+          "kind": "declaration",
+          "explanation": "声明 `_`；源码初始化式 `expertPerSizeOnWin_ * (epRankId_ * moeExpertNumPerRank_);`读取 `expertPerSizeOnWin_、epRankId_、moeExpertNumPerRank_`。",
+          "reads": [
+            "expertPerSizeOnWin_",
+            "epRankId_",
+            "moeExpertNumPerRank_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3971,
+          "kind": "declaration",
+          "explanation": "声明 `tokenSrcGMTensor`；源码初始化式 `GlobalTensor<XOutType> tokenSrcGMTensor;`读取 `XOutType`。",
+          "reads": [
+            "XOutType"
+          ],
+          "writes": [
+            "tokenSrcGMTensor"
+          ]
+        },
+        {
+          "line": 3972,
+          "kind": "declaration",
+          "explanation": "声明 `tokenDstGMTensor`；源码初始化式 `GlobalTensor<XOutType> tokenDstGMTensor;`读取 `XOutType`。",
+          "reads": [
+            "XOutType"
+          ],
+          "writes": [
+            "tokenDstGMTensor"
+          ]
+        },
+        {
+          "line": 3973,
+          "kind": "blank",
+          "explanation": "空行在 `SelfCopyToken` 的 L3973 分隔 `GlobalTensor<XOutType> tokenDstGMTensor;` 与 `for (uint32_t localExpIdx = 0; localExpIdx < sendExpNum; ++localExpIdx)…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3974,
+          "kind": "loop",
+          "explanation": "启动或推进 `for` 循环 `for (uint32_t localExpIdx = 0; localExpIdx < sendExpNum; ++localExpIdx) {`；迭代式涉及 `localExpIdx、sendExpNum`。",
+          "reads": [
+            "sendExpNum"
+          ],
+          "writes": [
+            "localExpIdx"
+          ]
+        },
+        {
+          "line": 3975,
+          "kind": "declaration",
+          "explanation": "声明 `targetExpId`；源码初始化式 `const uint32_t targetExpId = startExpId + localExpIdx;`读取 `startExpId、localExpIdx`。",
+          "reads": [
+            "startExpId",
+            "localExpIdx"
+          ],
+          "writes": [
+            "targetExpId"
+          ]
+        },
+        {
+          "line": 3976,
+          "kind": "declaration",
+          "explanation": "声明 `targetExpertOnRank`；源码初始化式 `const uint32_t targetExpertOnRank = targetExpId % moeExpertNumPerRank_;`读取 `targetExpId、moeExpertNumPerRank_`。",
+          "reads": [
+            "targetExpId",
+            "moeExpertNumPerRank_"
+          ],
+          "writes": [
+            "targetExpertOnRank"
+          ]
+        },
+        {
+          "line": 3977,
+          "kind": "call",
+          "explanation": "调用 `expertCntListLT` 并更新 `validOffsetCnt`；本行实参或对象来自 `localExpIdx`。",
+          "reads": [
+            "localExpIdx"
+          ],
+          "writes": [
+            "validOffsetCnt"
+          ]
+        },
+        {
+          "line": 3978,
+          "kind": "loop",
+          "explanation": "启动或推进 `for` 循环 `for (uint32_t targetExpOffset = 0; targetExpOffset < validOffsetCnt; ++targetExpOffset) {`；迭代式涉及 `targetExpOffset、validOffsetCnt`。",
+          "reads": [
+            "validOffsetCnt"
+          ],
+          "writes": [
+            "targetExpOffset"
+          ]
+        },
+        {
+          "line": 3979,
+          "kind": "statement",
+          "explanation": "按表达式 `const int32_t offsetValue =` 更新 `offsetValue`；右侧读取 `字面量`。",
+          "reads": [],
+          "writes": [
+            "offsetValue"
+          ]
+        },
+        {
+          "line": 3980,
+          "kind": "call",
+          "explanation": "调用 `expertOrderedOffsetListLT` 并更新 `T`；本行实参或对象来自 `localExpIdx、axisBS_、targetExpOffset`。",
+          "reads": [
+            "localExpIdx",
+            "axisBS_",
+            "targetExpOffset"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3981,
+          "kind": "declaration",
+          "explanation": "声明 `tokenId`；源码初始化式 `const uint32_t tokenId = static_cast<uint32_t>(offsetValue) / axisK_;`读取 `offsetValue、axisK_`。",
+          "reads": [
+            "offsetValue",
+            "axisK_"
+          ],
+          "writes": [
+            "tokenId"
+          ]
+        },
+        {
+          "line": 3982,
+          "kind": "declaration",
+          "explanation": "声明 `srcAddr`；源码初始化式 `const uint64_t srcAddr = srcBaseAddr + tokenId * hCommuSize_;`读取 `srcBaseAddr、tokenId、hCommuSize_`。",
+          "reads": [
+            "srcBaseAddr",
+            "tokenId",
+            "hCommuSize_"
+          ],
+          "writes": [
+            "srcAddr"
+          ]
+        },
+        {
+          "line": 3983,
+          "kind": "statement",
+          "explanation": "按表达式 `const uint64_t dstAddr = selfWindowBaseAddr +` 更新 `dstAddr`；右侧读取 `selfWindowBaseAddr`。",
+          "reads": [
+            "selfWindowBaseAddr"
+          ],
+          "writes": [
+            "dstAddr"
+          ]
+        },
+        {
+          "line": 3984,
+          "kind": "statement",
+          "explanation": "求值源码语句 `(targetExpertOnRank * axisBS_ + targetExpOffset) * hCommuSize_;`；该语句明确涉及 `targetExpertOnRank、axisBS_、targetExpOffset、hCommuSize_`。",
+          "reads": [
+            "targetExpertOnRank",
+            "axisBS_",
+            "targetExpOffset",
+            "hCommuSize_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3985,
+          "kind": "blank",
+          "explanation": "空行在 `SelfCopyToken` 的 L3985 分隔 `(targetExpertOnRank * axisBS_ + targetExpOffset) * hCommuSize_;` 与 `tokenSrcGMTensor.SetGlobalBuffer(reinterpret_cast<__gm__ XOutType*>(src…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3986,
+          "kind": "call",
+          "explanation": "调用 `SetGlobalBuffer` 并更新 `r`；本行实参或对象来自 `tokenSrcGMTensor、__gm__、XOutType、srcAddr`。",
+          "reads": [
+            "tokenSrcGMTensor",
+            "__gm__",
+            "XOutType",
+            "srcAddr"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3987,
+          "kind": "call",
+          "explanation": "调用 `SetGlobalBuffer` 并更新 `r`；本行实参或对象来自 `tokenDstGMTensor、__gm__、XOutType、dstAddr`。",
+          "reads": [
+            "tokenDstGMTensor",
+            "__gm__",
+            "XOutType",
+            "dstAddr"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3988,
+          "kind": "call",
+          "explanation": "调用 `DataCopy` 并更新 `sendTokenTempLT`；本行实参或对象来自 `tokenSrcGMTensor`。",
+          "reads": [
+            "tokenSrcGMTensor"
+          ],
+          "writes": [
+            "sendTokenTempLT"
+          ]
+        },
+        {
+          "line": 3989,
+          "kind": "declaration",
+          "explanation": "声明 `_`；源码初始化式 `hCommuSize_ / sizeof(XOutType));`读取 `hCommuSize_、XOutType`。",
+          "reads": [
+            "hCommuSize_",
+            "XOutType"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3990,
+          "kind": "sync",
+          "explanation": "调用 `SyncFunc`，在本行指定的硬件事件或流水线之间建立先后关系。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "MTE2_MTE3"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3991,
+          "kind": "call",
+          "explanation": "调用 `DataCopy` 并更新 `tokenDstGMTensor`；本行实参或对象来自 `sendTokenTempLT`。",
+          "reads": [
+            "sendTokenTempLT"
+          ],
+          "writes": [
+            "tokenDstGMTensor"
+          ]
+        },
+        {
+          "line": 3992,
+          "kind": "declaration",
+          "explanation": "声明 `_`；源码初始化式 `hCommuSize_ / sizeof(XOutType));`读取 `hCommuSize_、XOutType`。",
+          "reads": [
+            "hCommuSize_",
+            "XOutType"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3993,
+          "kind": "sync",
+          "explanation": "调用 `SyncFunc`，在本行指定的硬件事件或流水线之间建立先后关系。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "MTE3_MTE2"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3994,
+          "kind": "brace",
+          "explanation": "在 `SelfCopyToken` 的 L3994 结束 for 循环 `for (uint32_t targetExpOffset = 0; targetExpOffset < validOffsetCnt; ++targetExpOffset) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3995,
+          "kind": "brace",
+          "explanation": "在 `SelfCopyToken` 的 L3995 结束 for 循环 `for (uint32_t localExpIdx = 0; localExpIdx < sendExpNum; ++localExpIdx) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3996,
+          "kind": "sync",
+          "explanation": "调用 `SyncFunc`，在本行指定的硬件事件或流水线之间建立先后关系。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "MTE3_S"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3997,
+          "kind": "call",
+          "explanation": "调用 `DebugClock` 并更新 `k`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3998,
+          "kind": "brace",
+          "explanation": "在 `SelfCopyToken` 的 L3998 结束 代码块 `AscendC::Simt::Dim3{PREPARE_THREADS_NUM, 1, 1},` 作用域。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments": [
+        {"id":"self-copy-partition-experts","start":3892,"end":3910,"title":"把本 rank 专家均衡分给 self-copy AIV","detail":"selfCopyAivId 由 aivId_ 减去远端 WQE AIV 数；商和余数把本 rank 专家分成大小最多差一的连续区间，余数优先给较小 AIV ID，空分片直接返回。","kind":"guard","input_state":["aivId_、aivUsedRemoteWqe_：当前 self-copy AIV 的局部编号来源","moeExpertNumPerRank_、aivUsedSelfCopy_：分片规模","epRankId_：全局专家区间所属 rank"],"mechanism":"sendExpNum=baseExpertNum+(selfCopyAivId<remainderExpertNum)，localExpertOffset=selfCopyAivId*baseExpertNum+min(selfCopyAivId,remainderExpertNum)，startExpId=epRankId_*moeExpertNumPerRank_+localExpertOffset。","output_state":["sendExpNum：本 AIV 负责的专家数","startExpId：连续专家分片首 ID"],"why":"无锁地覆盖本 rank 全部专家且不重复；空分片退出避免后续零长 UB 分配和搬运。","calls":[]},
+        {"id":"self-copy-init-mapping-buffers","start":3911,"end":3939,"title":"按专家分片和 stage 数初始化映射 UB","detail":"为 expertIds、每专家计数、原始/有序偏移、总数、单 token 临时区和三组 stageDone 归约区分配 UB，取得 LocalTensor 视图并清零计数。","kind":"input","input_state":["expertIdsCnt_、sendExpNum、axisBS_：映射数组尺寸","hCommuSize_：单 token 搬运字节数","GetActiveStageNum()：完成标志数量"],"mechanism":"所有可变数组按 UB_ALIGN 向上取整；expertCntListLT 和 totalSendNumLT 清零，为 SIMT 原子计数/前缀构造准备确定初值。","output_state":["validExpertIdsTensor_ 与七个 LocalTensor：已绑定 UB","expertCntListLT、totalSendNumLT：全零"],"why":"映射构造和 stageDone 等待复用本 AIV UB，精确尺寸与初值是后续并行写入的契约。","calls":[{"name":"GetActiveStageNum","line":3924,"type":"internal","target":"m-moedistributedispatchv2fullmesh-getactivestagenum-6043683614"},{"name":"GetActiveStageNum","line":3925,"type":"internal","target":"m-moedistributedispatchv2fullmesh-getactivestagenum-6043683614"},{"name":"InitBuffer","line":3914,"type":"external"},{"name":"Duplicate","line":3939,"type":"external"}]},
+        {"id":"self-copy-build-stable-mapping","start":3940,"end":3962,"title":"搬入 expertIds 并生成稳定专家映射","detail":"DataCopyPad 将完整 expertIds 搬到 UB；simt_prepare_mapping 以 startExpId/sendExpNum 过滤本 AIV 专家，写每专家计数、偏移和按原 token 次序整理的 expertOrderedOffsetListLT。","kind":"compute","input_state":["expertIdsGMTensor_：BS×K 路由 ID","startExpId、sendExpNum：本 AIV 专家范围","axisBS_、axisK_：偏移解码形状"],"mechanism":"GM→UB 后 PIPE_ALL；VF_CALL 的输出缓冲包含计数、原始偏移、有序偏移和总数，V_S 等待 SIMT 写回供标量循环读取。","output_state":["expertCntListLT：每专家有效偏移数","expertOrderedOffsetListLT：按原始 offset 稳定排序的二维列表","totalSendNumLT：总 self-copy 路由数"],"why":"稳定有序偏移使同一专家的目标槽顺序与原 token/top-k 扫描顺序一致，等待前即可完成纯路由计算。","calls":[{"name":"simt_prepare_mapping","line":3948,"type":"internal","target":"f-moedistributedispatchv2fullmeshimpl-simt-prepare-mapping-afc96d238b"},{"name":"DataCopyPad","line":3944,"type":"external"},{"name":"PipeBarrier","line":3946,"type":"external"},{"name":"VF_CALL","line":3948,"type":"external"},{"name":"SyncFunc","line":3961,"type":"external"}]},
+        {"id":"self-copy-wait-and-bind-windows","start":3963,"end":3973,"title":"等待所有 stageDone 后冻结 staging 消费基址","detail":"WaitAllStageDone 确保任意 stage core 生产的 token 已完成；随后取得 token 0 的 staging 基址和本 rank window 专家区基址。","kind":"sync","input_state":["stageDoneLT/work/sum：所有活跃 stage 的完成状态","epRankId_、expertPerSizeOnWin_：本 rank window 布局"],"mechanism":"归约等待全部 stage flag；srcBaseAddr 指向连续 token staging，selfWindowBaseAddr 跳过此前 rank 的专家区。","output_state":["srcBaseAddr：稳定可读 staging 根","selfWindowBaseAddr：本 rank 专家 0 的 window 根"],"why":"self-copy AIV 可能消费任一 stage core 写的 token；不先等待会读取尚未落盘或正在覆盖的数据。","calls":[{"name":"WaitAllStageDone","line":3965,"type":"internal","target":"m-moedistributedispatchv2fullmesh-waitallstagedone-3314d3ceaf"},{"name":"GetSendBufferAddrByTokenId","line":3968,"type":"internal","target":"m-moedistributedispatchv2fullmesh-getsendbufferaddrbytokenid-aee7115d35"},{"name":"GetWindAddrByRankId","line":3969,"type":"internal","target":"m-moedistributedispatchv2fullmesh-getwindaddrbyrankid-994ab853c1"}]},
+        {"id":"self-copy-token-window-transfer","start":3974,"end":3995,"title":"按稳定专家映射写本地 window 连续槽","detail":"外层遍历本 AIV 的专家，内层遍历该专家的有序偏移；offsetValue/axisK_ 还原 tokenId，源地址取 staging token，目标地址用专家局部 ID 与 targetExpOffset 形成连续专家槽。","kind":"loop","input_state":["expertCntListLT、expertOrderedOffsetListLT：已冻结映射","srcBaseAddr、selfWindowBaseAddr：GM 两端根地址","hCommuSize_：token 字节跨度"],"mechanism":"src=srcBaseAddr+tokenId*hCommuSize_；dst=selfWindowBaseAddr+(targetExpertOnRank*axisBS_+targetExpOffset)*hCommuSize_；每项 DataCopy GM→UB，MTE2_MTE3 后 UB→GM，再 MTE3_MTE2 保护下一项。","output_state":["tokenDstGMTensor：本 rank window 中每专家的前 validOffsetCnt 个槽已连续填充"],"why":"按专家聚集且保持映射顺序，为后续本地 window 消费提供与远端 dispatch 相同的专家分区布局。","calls":[{"name":"DataCopy","line":3988,"type":"external"},{"name":"SyncFunc","line":3990,"type":"external"},{"name":"DataCopy","line":3991,"type":"external"},{"name":"SyncFunc","line":3993,"type":"external"}]},
+        {"id":"self-copy-drain-store-pipeline","start":3996,"end":3998,"title":"等待最后一次 window 写回完成","detail":"MTE3_S 将最后一笔 UB→GM 写入与标量阶段对齐，记录 DebugClock 后结束。","kind":"sync","input_state":["可能仍在 MTE3 流水线中的最后一笔 token 写回"],"mechanism":"SyncFunc<MTE3_S>() 等待 store 完成。","output_state":["本 AIV 负责的 self-copy window 内容全局可见"],"why":"避免函数返回后复用资源或后续阶段观察到尾部 token 尚未提交。","calls":[{"name":"SyncFunc","line":3996,"type":"external"},{"name":"DebugClock","line":3997,"type":"external"}]}
+      ]
+    },
+    {
+      "id": "m-moedistributedispatchv2fullmesh-ringdoorbell-a0c423ce68",
+      "module_id": "doorbell",
+      "name": "RingDoorbell",
+      "start": 4001,
+      "end": 4276,
+      "inactive": false,
+      "summary": "构造并刷写远端 SQ/CQ context，清零 headRecord、采样旧 SQ head 后发布 headReady；计算各远端 rank 待发 token，等待 staging 完成，再循环扫描每个 SQ 的连续就绪 bitmap，按连续 WQE 数推进环形 head 并通过 st_dev 写 doorbell，直到所有 rank 发送完。",
+      "inputs": ["axisBS_", "axisK_", "totalJettyNum", "epWorldSize_", "aivUsedRemoteWqe_", "epRankId_", "headReadyFlag", "isTokenMaskFlag_", "activeMaskBsCnt_", "expertIdsCnt_", "moeExpertNumPerRank_"],
+      "outputs": ["headRecordGM", "headReadyGM", "prevHeadLT", "rankTokenCntLT", "finishedTokenLT", "sqTailLT", "ranksLeftToSend", "currHead"],
+      "side_effects": [
+        "将 aclshmem SQ/CQ context 物化到 GM 并 cache write-through",
+        "批量清零 headRecord，随后发布 headReadyFlag 允许 WQE AIV 修改 head 并填 WQE",
+        "读取 headRecord bitmap 和 SQ head，按连续就绪 WQE 推进软件 tail，并用 st_dev 写硬件 dbAddr",
+        "busy-poll 直到所有有 token 的远端 rank 完成，依赖 stageDone、S/MTE2/V 事件排序"
+      ],
+      "review": {"status":"PASS","verdict":"PASS","reviewer":"function-block-review-agent","draft_author":"full-analysis-draft-agent","revision":1,"source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","line_range":[4001,4276],"gaps":[],"overlaps":[],"unresolved":[],"required_changes":[]},
+      "line_review_certification": {"complete":true,"reviewed_line_range":[4001,4276],"reviewed_line_count":276,"coverage":"every_source_line_reviewed_once","source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","gaps":[],"overlaps":[]},
+      "line_notes": [
+        {
+          "line": 4001,
+          "kind": "signature",
+          "explanation": "构成函数 `RingDoorbell` 的签名片段 `template <TemplateMC2TypeFullmeshClass>`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4002,
+          "kind": "signature",
+          "explanation": "构成函数 `RingDoorbell` 的签名片段 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::RingDoorbell()`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4003,
+          "kind": "brace",
+          "explanation": "在 `RingDoorbell` 的 L4003 打开 代码块 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::RingDoorbe…` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4004,
+          "kind": "blank",
+          "explanation": "空行在 `RingDoorbell` 的 L4004 分隔 `{` 与 `uint32_t HEAD_RECORD_BATCH = 128;` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4005,
+          "kind": "declaration",
+          "explanation": "声明 `HEAD_RECORD_BATCH`；源码初始化式 `uint32_t HEAD_RECORD_BATCH = 128;`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": [
+            "HEAD_RECORD_BATCH"
+          ]
+        },
+        {
+          "line": 4006,
+          "kind": "call",
+          "explanation": "调用 `Ceil` 并更新 `N32numPerJetty`；本行实参或对象来自 `axisBS_、axisK_`。",
+          "reads": [
+            "axisBS_",
+            "axisK_"
+          ],
+          "writes": [
+            "N32numPerJetty"
+          ]
+        },
+        {
+          "line": 4007,
+          "kind": "declaration",
+          "explanation": "声明 `maxHeadRecordSlot`；源码初始化式 `uint32_t maxHeadRecordSlot = N32numPerJetty * 32U;`读取 `N32numPerJetty`。",
+          "reads": [
+            "N32numPerJetty"
+          ],
+          "writes": [
+            "maxHeadRecordSlot"
+          ]
+        },
+        {
+          "line": 4008,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `uint32_t headRecordSize = maxHeadRecordSlot * UB_ALIGN;`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4009,
+          "kind": "call",
+          "explanation": "调用 `GetActiveStageNum` 并更新 `activeStageNum`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": [
+            "activeStageNum"
+          ]
+        },
+        {
+          "line": 4010,
+          "kind": "blank",
+          "explanation": "空行在 `RingDoorbell` 的 L4010 分隔 `uint32_t activeStageNum = GetActiveStageNum();` 与 `TBuf<> prevHeadBuf, headRecordBuf, rankTokenCntBuf, finishedTokenBuf, s…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4011,
+          "kind": "statement",
+          "explanation": "求值源码语句 `TBuf<> prevHeadBuf, headRecordBuf, rankTokenCntBuf, finishedTokenBuf, sqTailBuf, headReadyBuf,`；该语句明确涉及 `prevHeadBuf、headRecordBuf、rankTokenCntBuf、finishedTokenBuf、sqTailBuf、headReadyBuf`。",
+          "reads": [
+            "prevHeadBuf",
+            "headRecordBuf",
+            "rankTokenCntBuf",
+            "finishedTokenBuf",
+            "sqTailBuf",
+            "headReadyBuf"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4012,
+          "kind": "declaration",
+          "explanation": "声明 `f`；源码初始化式 `stageDoneBuf, stageDoneWorkBuf, stageDoneSumBuf, remoteRankNumBuf;`读取 `stageDoneBuf、stageDoneWorkBuf、stageDoneSumBuf、remoteRankNumBuf`。",
+          "reads": [
+            "stageDoneBuf",
+            "stageDoneWorkBuf",
+            "stageDoneSumBuf",
+            "remoteRankNumBuf"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4013,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer`、`Ceil` 并更新 `_`；本行实参或对象来自 `tpipe_、prevHeadBuf、totalJettyNum、UB_ALIGN`。",
+          "reads": [
+            "tpipe_",
+            "prevHeadBuf",
+            "totalJettyNum",
+            "UB_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4014,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer` 并更新 `_`；本行实参或对象来自 `tpipe_、headRecordBuf、UB_ALIGN`。",
+          "reads": [
+            "tpipe_",
+            "headRecordBuf",
+            "UB_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4015,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer`、`Ceil` 并更新 `_`；本行实参或对象来自 `tpipe_、rankTokenCntBuf、epWorldSize_、UB_ALIGN`。",
+          "reads": [
+            "tpipe_",
+            "rankTokenCntBuf",
+            "epWorldSize_",
+            "UB_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4016,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer`、`Ceil` 并更新 `_`；本行实参或对象来自 `tpipe_、finishedTokenBuf、epWorldSize_、UB_ALIGN`。",
+          "reads": [
+            "tpipe_",
+            "finishedTokenBuf",
+            "epWorldSize_",
+            "UB_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4017,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer`、`Ceil` 并更新 `_`；本行实参或对象来自 `tpipe_、sqTailBuf、totalJettyNum、UB_ALIGN`。",
+          "reads": [
+            "tpipe_",
+            "sqTailBuf",
+            "totalJettyNum",
+            "UB_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4018,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer`、`Ceil` 并更新 `_`；本行实参或对象来自 `tpipe_、headReadyBuf、aivUsedRemoteWqe_、UB_ALIGN`。",
+          "reads": [
+            "tpipe_",
+            "headReadyBuf",
+            "aivUsedRemoteWqe_",
+            "UB_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4019,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer` 并更新 `_`；本行实参或对象来自 `tpipe_、stageDoneBuf、activeStageNum、UB_ALIGN`。",
+          "reads": [
+            "tpipe_",
+            "stageDoneBuf",
+            "activeStageNum",
+            "UB_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4020,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer` 并更新 `_`；本行实参或对象来自 `tpipe_、stageDoneWorkBuf、activeStageNum、UB_ALIGN`。",
+          "reads": [
+            "tpipe_",
+            "stageDoneWorkBuf",
+            "activeStageNum",
+            "UB_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4021,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer` 并更新 `_`；本行实参或对象来自 `tpipe_、stageDoneSumBuf、UB_ALIGN`。",
+          "reads": [
+            "tpipe_",
+            "stageDoneSumBuf",
+            "UB_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4022,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer` 并更新 `_`；本行实参或对象来自 `tpipe_、remoteRankNumBuf、UB_ALIGN`。",
+          "reads": [
+            "tpipe_",
+            "remoteRankNumBuf",
+            "UB_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4023,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `prevHeadLT`；本行实参或对象来自 `prevHeadBuf、Get`。",
+          "reads": [
+            "prevHeadBuf",
+            "Get"
+          ],
+          "writes": [
+            "prevHeadLT"
+          ]
+        },
+        {
+          "line": 4024,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `headRecordLT`；本行实参或对象来自 `headRecordBuf、Get`。",
+          "reads": [
+            "headRecordBuf",
+            "Get"
+          ],
+          "writes": [
+            "headRecordLT"
+          ]
+        },
+        {
+          "line": 4025,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `rankTokenCntLT`；本行实参或对象来自 `rankTokenCntBuf、Get`。",
+          "reads": [
+            "rankTokenCntBuf",
+            "Get"
+          ],
+          "writes": [
+            "rankTokenCntLT"
+          ]
+        },
+        {
+          "line": 4026,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `finishedTokenLT`；本行实参或对象来自 `finishedTokenBuf、Get`。",
+          "reads": [
+            "finishedTokenBuf",
+            "Get"
+          ],
+          "writes": [
+            "finishedTokenLT"
+          ]
+        },
+        {
+          "line": 4027,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `sqTailLT`；本行实参或对象来自 `sqTailBuf、Get`。",
+          "reads": [
+            "sqTailBuf",
+            "Get"
+          ],
+          "writes": [
+            "sqTailLT"
+          ]
+        },
+        {
+          "line": 4028,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `headReadyLT`；本行实参或对象来自 `headReadyBuf、Get`。",
+          "reads": [
+            "headReadyBuf",
+            "Get"
+          ],
+          "writes": [
+            "headReadyLT"
+          ]
+        },
+        {
+          "line": 4029,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `stageDoneLT`；本行实参或对象来自 `stageDoneBuf、Get`。",
+          "reads": [
+            "stageDoneBuf",
+            "Get"
+          ],
+          "writes": [
+            "stageDoneLT"
+          ]
+        },
+        {
+          "line": 4030,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `stageDoneWorkLT`；本行实参或对象来自 `stageDoneWorkBuf、Get`。",
+          "reads": [
+            "stageDoneWorkBuf",
+            "Get"
+          ],
+          "writes": [
+            "stageDoneWorkLT"
+          ]
+        },
+        {
+          "line": 4031,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `stageDoneSumLT`；本行实参或对象来自 `stageDoneSumBuf、Get`。",
+          "reads": [
+            "stageDoneSumBuf",
+            "Get"
+          ],
+          "writes": [
+            "stageDoneSumLT"
+          ]
+        },
+        {
+          "line": 4032,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `remoteRankNumLT`；本行实参或对象来自 `remoteRankNumBuf、Get`。",
+          "reads": [
+            "remoteRankNumBuf",
+            "Get"
+          ],
+          "writes": [
+            "remoteRankNumLT"
+          ]
+        },
+        {
+          "line": 4033,
+          "kind": "blank",
+          "explanation": "空行在 `RingDoorbell` 的 L4033 分隔 `LocalTensor<uint32_t> remoteRankNumLT = remoteRankNumBuf.Get<uint32_t>(…` 与 `GM_ADDR sqsGM = GetSqsAddr();` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4034,
+          "kind": "call",
+          "explanation": "调用 `GetSqsAddr` 并更新 `sqsGM`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": [
+            "sqsGM"
+          ]
+        },
+        {
+          "line": 4035,
+          "kind": "declaration",
+          "explanation": "声明 `cqsGM`；源码初始化式 `GM_ADDR cqsGM = sqsGM + sizeof(HcclAiRMAWQ) * totalJettyNum;`读取 `sqsGM、HcclAiRMAWQ、totalJettyNum`。",
+          "reads": [
+            "sqsGM",
+            "HcclAiRMAWQ",
+            "totalJettyNum"
+          ],
+          "writes": [
+            "cqsGM"
+          ]
+        },
+        {
+          "line": 4036,
+          "kind": "call",
+          "explanation": "调用 `GetHeadReadyAddr` 并更新 `headReadyGM`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": [
+            "headReadyGM"
+          ]
+        },
+        {
+          "line": 4037,
+          "kind": "call",
+          "explanation": "调用 `GetHeadRecordAddr` 并更新 `headRecordGM`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": [
+            "headRecordGM"
+          ]
+        },
+        {
+          "line": 4038,
+          "kind": "declaration",
+          "explanation": "声明 `HcclAiRMAWQ`；源码初始化式 `__gm__ HcclAiRMAWQ* sqs = reinterpret_cast<__gm__ HcclAiRMAWQ *>(sqsGM);`读取 `__gm__、sqsGM`。",
+          "reads": [
+            "__gm__",
+            "sqsGM"
+          ],
+          "writes": [
+            "sqs",
+            "HcclAiRMAWQ"
+          ]
+        },
+        {
+          "line": 4039,
+          "kind": "blank",
+          "explanation": "空行在 `RingDoorbell` 的 L4039 分隔 `__gm__ HcclAiRMAWQ* sqs = reinterpret_cast<__gm__ HcclAiRMAWQ *>(sqsGM);` 与 `GlobalTensor<uint32_t> headReadyGT;` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4040,
+          "kind": "declaration",
+          "explanation": "声明 `headReadyGT`；源码初始化式 `GlobalTensor<uint32_t> headReadyGT;`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": [
+            "headReadyGT"
+          ]
+        },
+        {
+          "line": 4041,
+          "kind": "call",
+          "explanation": "调用 `SetGlobalBuffer` 并更新 `T`；本行实参或对象来自 `headReadyGT、__gm__、headReadyGM`。",
+          "reads": [
+            "headReadyGT",
+            "__gm__",
+            "headReadyGM"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4042,
+          "kind": "declaration",
+          "explanation": "声明 `headRecordGT`；源码初始化式 `GlobalTensor<uint32_t> headRecordGT;`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": [
+            "headRecordGT"
+          ]
+        },
+        {
+          "line": 4043,
+          "kind": "call",
+          "explanation": "调用 `SetGlobalBuffer` 并更新 `T`；本行实参或对象来自 `headRecordGT、__gm__、headRecordGM`。",
+          "reads": [
+            "headRecordGT",
+            "__gm__",
+            "headRecordGM"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4044,
+          "kind": "comment",
+          "explanation": "注释记录 `准备sqs cqs`，说明 `RingDoorbell` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4045,
+          "kind": "call",
+          "explanation": "调用 `get_sqs_and_cqs_xb` 并更新 `b`；本行实参或对象来自 `sqsGM、cqsGM`。",
+          "reads": [
+            "sqsGM",
+            "cqsGM"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4046,
+          "kind": "call",
+          "explanation": "调用 `cacheWriteThrough` 并更新 `h`；本行实参或对象来自 `sqsGM、HcclAiRMAWQ、totalJettyNum`。",
+          "reads": [
+            "sqsGM",
+            "HcclAiRMAWQ",
+            "totalJettyNum"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4047,
+          "kind": "call",
+          "explanation": "调用 `cacheWriteThrough` 并更新 `h`；本行实参或对象来自 `cqsGM、HcclAiRMACQ、totalJettyNum`。",
+          "reads": [
+            "cqsGM",
+            "HcclAiRMACQ",
+            "totalJettyNum"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4048,
+          "kind": "blank",
+          "explanation": "空行在 `RingDoorbell` 的 L4048 分隔 `cacheWriteThrough(cqsGM, sizeof(HcclAiRMACQ) * totalJettyNum);` 与 `DebugClock(1);` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4049,
+          "kind": "call",
+          "explanation": "调用 `DebugClock` 并更新 `k`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4050,
+          "kind": "blank",
+          "explanation": "空行在 `RingDoorbell` 的 L4050 分隔 `DebugClock(1);` 与 `// 清理headRecord` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4051,
+          "kind": "comment",
+          "explanation": "注释记录 `清理headRecord`，说明 `RingDoorbell` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4052,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `TBuf<> cleanRecordBuf;`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4053,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `tpipe_->InitBuffer(cleanRecordBuf, headRecordSize);`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4054,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `LocalTensor<uint32_t> cleanRecordTensor = cleanRecordBuf.Get<uint32_t>();`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4055,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `Duplicate<uint32_t>(cleanRecordTensor, 0U, headRecordSize / sizeof(uint32_t));`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4056,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `SyncFunc<AscendC::HardEvent::V_MTE3>();`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4057,
+          "kind": "blank",
+          "explanation": "空行在 `RingDoorbell` 的 L4057 分隔 `// SyncFunc<AscendC::HardEvent::V_MTE3>();` 与 `// GlobalTensor<uint32_t> headRecordTensor;` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4058,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `GlobalTensor<uint32_t> headRecordTensor;`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4059,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `DataCopyParams cleanRecordParams{static_cast<uint16_t>(maxHeadRecordSlot), 1, 0, static_cast<uint16_t>(WIN_ADDR_ALIGN / UB_ALIGN …`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4060,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `for (uint32_t jettyId = 0; jettyId < totalJettyNum; ++jettyId) {`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4061,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `headRecordTensor.SetGlobalBuffer((__gm__ uint32_t*)(GetHeadRecordAddr() + jettyId * axisBS_ * axisK_ * WIN_ADDR_ALIGN));`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4062,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `DataCopy(headRecordTensor, cleanRecordTensor, cleanRecordParams);`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4063,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4064,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `SyncFunc<AscendC::HardEvent::MTE3_S>();`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4065,
+          "kind": "blank",
+          "explanation": "空行在 `RingDoorbell` 的 L4065 分隔 `// SyncFunc<AscendC::HardEvent::MTE3_S>();` 与 `AscendC::Simt::VF_CALL<set_gm_value>(` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4066,
+          "kind": "call",
+          "explanation": "调用 `VF_CALL`，传入或访问 `AscendC、Simt、set_gm_value`。",
+          "reads": [
+            "AscendC",
+            "Simt",
+            "set_gm_value"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4067,
+          "kind": "statement",
+          "explanation": "求值源码语句 `AscendC::Simt::Dim3{SET_GM_VALUE_THREAD_NUM, 1, 1},`；该语句明确涉及 `AscendC、Simt、Dim3、SET_GM_VALUE_THREAD_NUM`。",
+          "reads": [
+            "AscendC",
+            "Simt",
+            "Dim3",
+            "SET_GM_VALUE_THREAD_NUM"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4068,
+          "kind": "statement",
+          "explanation": "求值源码语句 `reinterpret_cast<__gm__ uint32_t*>(headRecordGM),`；该语句明确涉及 `__gm__、headRecordGM`。",
+          "reads": [
+            "__gm__",
+            "headRecordGM"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4069,
+          "kind": "statement",
+          "explanation": "求值源码语句 `totalJettyNum * (N32numPerJetty + UB_ALIGN_DATA_COUNT),`；该语句明确涉及 `totalJettyNum、N32numPerJetty、UB_ALIGN_DATA_COUNT`。",
+          "reads": [
+            "totalJettyNum",
+            "N32numPerJetty",
+            "UB_ALIGN_DATA_COUNT"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4070,
+          "kind": "statement",
+          "explanation": "求值源码语句 `sizeof(uint32_t),`；该语句明确涉及 `标点/字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4071,
+          "kind": "statement",
+          "explanation": "求值源码语句 `0U`；该语句明确涉及 `标点/字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4072,
+          "kind": "brace",
+          "explanation": "在 `RingDoorbell` 的 L4072 打开 代码块 `);` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4073,
+          "kind": "sync",
+          "explanation": "调用 `SyncFunc`，在本行指定的硬件事件或流水线之间建立先后关系。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "V_S"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4074,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `PipeBarrier<PIPE_V>();`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4075,
+          "kind": "call",
+          "explanation": "调用 `DebugClock` 并更新 `k`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4076,
+          "kind": "blank",
+          "explanation": "空行在 `RingDoorbell` 的 L4076 分隔 `DebugClock(2);` 与 `// 读取prevHead` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4077,
+          "kind": "comment",
+          "explanation": "注释记录 `读取prevHead`，说明 `RingDoorbell` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4078,
+          "kind": "loop",
+          "explanation": "启动或推进 `for` 循环 `for (uint32_t i = 0; i < totalJettyNum; ++i) {`；迭代式涉及 `i、totalJettyNum`。",
+          "reads": [
+            "totalJettyNum"
+          ],
+          "writes": [
+            "i"
+          ]
+        },
+        {
+          "line": 4079,
+          "kind": "declaration",
+          "explanation": "声明 `currentHead`；源码初始化式 `uint32_t currentHead = 0;`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": [
+            "currentHead"
+          ]
+        },
+        {
+          "line": 4080,
+          "kind": "declaration",
+          "explanation": "声明 `rankId`；源码初始化式 `uint32_t rankId = i / (PORT_NUM * JETTY_NUM);`读取 `i、PORT_NUM、JETTY_NUM`。",
+          "reads": [
+            "i",
+            "PORT_NUM",
+            "JETTY_NUM"
+          ],
+          "writes": [
+            "rankId"
+          ]
+        },
+        {
+          "line": 4081,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if ((rankId != epRankId_) && (sqs[i].headAddr != 0)) {` 选择 `RingDoorbell` 的后续路径；判定涉及 `rankId、epRankId_、sqs、i、headAddr`。",
+          "reads": [
+            "rankId",
+            "epRankId_",
+            "sqs",
+            "i",
+            "headAddr"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4082,
+          "kind": "declaration",
+          "explanation": "声明 `d`；源码初始化式 `currentHead = *reinterpret_cast<__gm__ uint32_t *>(sqs[i].headAddr);`读取 `__gm__、sqs、i、headAddr`。",
+          "reads": [
+            "__gm__",
+            "sqs",
+            "i",
+            "headAddr"
+          ],
+          "writes": [
+            "currentHead"
+          ]
+        },
+        {
+          "line": 4083,
+          "kind": "brace",
+          "explanation": "在 `RingDoorbell` 的 L4083 结束 if 分支 `if ((rankId != epRankId_) && (sqs[i].headAddr != 0)) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4084,
+          "kind": "call",
+          "explanation": "调用 `SetValue` 并更新 `T、prevHeadLT`；本行实参或对象来自 `i、currentHead`。",
+          "reads": [
+            "i",
+            "currentHead"
+          ],
+          "writes": [
+            "prevHeadLT"
+          ]
+        },
+        {
+          "line": 4085,
+          "kind": "brace",
+          "explanation": "在 `RingDoorbell` 的 L4085 结束 for 循环 `for (uint32_t i = 0; i < totalJettyNum; ++i) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4086,
+          "kind": "call",
+          "explanation": "调用 `DebugClock` 并更新 `k`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4087,
+          "kind": "blank",
+          "explanation": "空行在 `RingDoorbell` 的 L4087 分隔 `DebugClock(3);` 与 `// 设置headReady flag` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4088,
+          "kind": "comment",
+          "explanation": "注释记录 `设置headReady flag`，说明 `RingDoorbell` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4089,
+          "kind": "comment",
+          "explanation": "注释记录 `已读取prevHead，设置flag通知WQE核可以修改Head值并写入WQE`，说明 `RingDoorbell` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4090,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `DataCopyParams readyFlagCopyParams{`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4091,
+          "kind": "comment",
+          "explanation": "注释记录 `static_cast<uint16_t>(aivUsedRemoteWqe_), 1, 0,`，说明 `RingDoorbell` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4092,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `static_cast<uint16_t>(HEAD_READY_STRIDE / UB_ALIGN - 1)};`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4093,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `Duplicate<uint32_t>(headReadyLT, headReadyFlag, SIZE_ALIGN_256 / sizeof(uint32_t), Ceil(aivUsedRemoteWqe_, 8), 1, 8); // repeatTi…`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4094,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `SyncFunc<AscendC::HardEvent::V_MTE3>();`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4095,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `DataCopy(headReadyGT, headReadyLT, readyFlagCopyParams);`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4096,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `SyncFunc<AscendC::HardEvent::MTE3_S>();`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4097,
+          "kind": "call",
+          "explanation": "调用 `VF_CALL`，传入或访问 `AscendC、Simt、set_gm_value`。",
+          "reads": [
+            "AscendC",
+            "Simt",
+            "set_gm_value"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4098,
+          "kind": "statement",
+          "explanation": "求值源码语句 `AscendC::Simt::Dim3{128, 1, 1},`；该语句明确涉及 `AscendC、Simt、Dim3`。",
+          "reads": [
+            "AscendC",
+            "Simt",
+            "Dim3"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4099,
+          "kind": "statement",
+          "explanation": "求值源码语句 `reinterpret_cast<__gm__ uint32_t*>(headReadyGM),`；该语句明确涉及 `__gm__、headReadyGM`。",
+          "reads": [
+            "__gm__",
+            "headReadyGM"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4100,
+          "kind": "statement",
+          "explanation": "求值源码语句 `aivUsedRemoteWqe_,`；该语句明确涉及 `aivUsedRemoteWqe_`。",
+          "reads": [
+            "aivUsedRemoteWqe_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4101,
+          "kind": "statement",
+          "explanation": "求值源码语句 `HEAD_READY_STRIDE,`；该语句明确涉及 `HEAD_READY_STRIDE`。",
+          "reads": [
+            "HEAD_READY_STRIDE"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4102,
+          "kind": "statement",
+          "explanation": "求值源码语句 `headReadyFlag`；该语句明确涉及 `headReadyFlag`。",
+          "reads": [
+            "headReadyFlag"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4103,
+          "kind": "brace",
+          "explanation": "在 `RingDoorbell` 的 L4103 打开 代码块 `);` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4104,
+          "kind": "sync",
+          "explanation": "调用 `SyncFunc`，在本行指定的硬件事件或流水线之间建立先后关系。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "V_S"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4105,
+          "kind": "blank",
+          "explanation": "空行在 `RingDoorbell` 的 L4105 分隔 `SyncFunc<AscendC::HardEvent::V_S>();` 与 `DebugClock(4);` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4106,
+          "kind": "call",
+          "explanation": "调用 `DebugClock` 并更新 `k`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4107,
+          "kind": "blank",
+          "explanation": "空行在 `RingDoorbell` 的 L4107 分隔 `DebugClock(4);` 与 `// 计算token发送总数` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4108,
+          "kind": "comment",
+          "explanation": "注释记录 `计算token发送总数`，说明 `RingDoorbell` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4109,
+          "kind": "comment",
+          "explanation": "注释记录 `CalTokenSendExpertCnt depends on the same four UB buffers initialized by CalCumSum.`，说明 `RingDoorbell` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4110,
+          "kind": "call",
+          "explanation": "调用 `Ceil` 并更新 `expertIdsBufSize_、_`；本行实参或对象来自 `expertIdsCnt_、SIZE_ALIGN_256`。",
+          "reads": [
+            "expertIdsCnt_",
+            "SIZE_ALIGN_256"
+          ],
+          "writes": [
+            "expertIdsBufSize_"
+          ]
+        },
+        {
+          "line": 4111,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer` 并更新 `_`；本行实参或对象来自 `tpipe_、dstExpBuf_、maxSize_`。",
+          "reads": [
+            "tpipe_",
+            "dstExpBuf_",
+            "maxSize_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4112,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer` 并更新 `_`；本行实参或对象来自 `tpipe_、subExpBuf_、maxSize_`。",
+          "reads": [
+            "tpipe_",
+            "subExpBuf_",
+            "maxSize_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4113,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer` 并更新 `_`；本行实参或对象来自 `tpipe_、gatherMaskTBuf_、expertIdsBufSize_`。",
+          "reads": [
+            "tpipe_",
+            "gatherMaskTBuf_",
+            "expertIdsBufSize_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4114,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer` 并更新 `_`；本行实参或对象来自 `tpipe_、expertIdsBuf_、expertIdsBufSize_`。",
+          "reads": [
+            "tpipe_",
+            "expertIdsBuf_",
+            "expertIdsBufSize_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4115,
+          "kind": "call",
+          "explanation": "调用 `Get` 并更新 `workLocalTensor_、_`；本行实参或对象来自 `gatherMaskTBuf_`。",
+          "reads": [
+            "gatherMaskTBuf_"
+          ],
+          "writes": [
+            "workLocalTensor_"
+          ]
+        },
+        {
+          "line": 4116,
+          "kind": "call",
+          "explanation": "调用 `ExpIdsCopyAndMaskCal` 并更新 `l`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4117,
+          "kind": "blank",
+          "explanation": "空行在 `RingDoorbell` 的 L4117 分隔 `ExpIdsCopyAndMaskCal();` 与 `// Duplicate<uint32_t>(rankTokenCntLT, 0U, epWorldSize_);` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4118,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `Duplicate<uint32_t>(rankTokenCntLT, 0U, epWorldSize_);`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4119,
+          "kind": "call",
+          "explanation": "调用 `Duplicate` 并更新 `e、finishedTokenLT`；本行实参或对象来自 `epWorldSize_`。",
+          "reads": [
+            "epWorldSize_"
+          ],
+          "writes": [
+            "finishedTokenLT"
+          ]
+        },
+        {
+          "line": 4120,
+          "kind": "call",
+          "explanation": "调用 `Duplicate` 并更新 `e、sqTailLT`；本行实参或对象来自 `totalJettyNum`。",
+          "reads": [
+            "totalJettyNum"
+          ],
+          "writes": [
+            "sqTailLT"
+          ]
+        },
+        {
+          "line": 4121,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `Duplicate<uint32_t>(remoteRankNumLT, 0U, UB_ALIGN_DATA_COUNT);`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4122,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `SyncFunc<AscendC::HardEvent::V_S>();`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4123,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `uint32_t ranksLeftToSend = 0;`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4124,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `uint32_t expertIdsCalCnt = isTokenMaskFlag_ ? (activeMaskBsCnt_ * axisK_) : expertIdsCnt_;`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4125,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `for (uint32_t remoteRank = 0; remoteRank < epWorldSize_; ++remoteRank) {`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4126,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `uint32_t tokenCntTotal = 0;`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4127,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `if (remoteRank == epRankId_) continue;`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4128,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `for (uint32_t expIdx = 0; expIdx < moeExpertNumPerRank_; ++expIdx) {`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4129,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `int32_t tokenCntCurrExp = 0;`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4130,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `uint32_t expertId = remoteRank * moeExpertNumPerRank_ + expIdx;`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4131,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `CalTokenSendExpertCnt(expertId, expertIdsCalCnt, tokenCntCurrExp);`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4132,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `tokenCntTotal += tokenCntCurrExp;`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4133,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4134,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `rankTokenCntLT.SetValue(remoteRank, tokenCntTotal);`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4135,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `if (tokenCntTotal > 0) {`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4136,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `ranksLeftToSend++;`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4137,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4138,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4139,
+          "kind": "blank",
+          "explanation": "空行在 `RingDoorbell` 的 L4139 分隔 `// }` 与 `remoteRankNumLT(0) = 0;` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4140,
+          "kind": "call",
+          "explanation": "调用 `remoteRankNumLT` 并更新 `T`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4141,
+          "kind": "sync",
+          "explanation": "调用 `SyncFunc`，在本行指定的硬件事件或流水线之间建立先后关系。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "S_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4142,
+          "kind": "call",
+          "explanation": "调用 `VF_CALL`，传入或访问 `AscendC、Simt、calc_rank_token_cnt`。",
+          "reads": [
+            "AscendC",
+            "Simt",
+            "calc_rank_token_cnt"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4143,
+          "kind": "statement",
+          "explanation": "求值源码语句 `AscendC::Simt::Dim3{CALC_CNT_THREADS_NUM, 1, 1},`；该语句明确涉及 `AscendC、Simt、Dim3、CALC_CNT_THREADS_NUM`。",
+          "reads": [
+            "AscendC",
+            "Simt",
+            "Dim3",
+            "CALC_CNT_THREADS_NUM"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4144,
+          "kind": "call",
+          "explanation": "调用 `GetPhyAddr`，传入或访问 `__ubuf__、validExpertIdsTensor_`。",
+          "reads": [
+            "__ubuf__",
+            "validExpertIdsTensor_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4145,
+          "kind": "call",
+          "explanation": "调用 `GetPhyAddr`，传入或访问 `__ubuf__、rankTokenCntLT`。",
+          "reads": [
+            "__ubuf__",
+            "rankTokenCntLT"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4146,
+          "kind": "statement",
+          "explanation": "求值源码语句 `isTokenMaskFlag_ ? (activeMaskBsCnt_ * axisK_) : expertIdsCnt_,`；该语句明确涉及 `isTokenMaskFlag_、activeMaskBsCnt_、axisK_、expertIdsCnt_`。",
+          "reads": [
+            "isTokenMaskFlag_",
+            "activeMaskBsCnt_",
+            "axisK_",
+            "expertIdsCnt_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4147,
+          "kind": "statement",
+          "explanation": "求值源码语句 `moeExpertNumPerRank_,`；该语句明确涉及 `moeExpertNumPerRank_`。",
+          "reads": [
+            "moeExpertNumPerRank_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4148,
+          "kind": "call",
+          "explanation": "调用 `GetPhyAddr`，传入或访问 `__ubuf__、remoteRankNumLT`。",
+          "reads": [
+            "__ubuf__",
+            "remoteRankNumLT"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4149,
+          "kind": "statement",
+          "explanation": "求值源码语句 `epRankId_,`；该语句明确涉及 `epRankId_`。",
+          "reads": [
+            "epRankId_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4150,
+          "kind": "statement",
+          "explanation": "求值源码语句 `epWorldSize_`；该语句明确涉及 `epWorldSize_`。",
+          "reads": [
+            "epWorldSize_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4151,
+          "kind": "brace",
+          "explanation": "在 `RingDoorbell` 的 L4151 打开 代码块 `);` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4152,
+          "kind": "sync",
+          "explanation": "调用 `SyncFunc`，在本行指定的硬件事件或流水线之间建立先后关系。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "V_S"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4153,
+          "kind": "call",
+          "explanation": "调用 `remoteRankNumLT` 并更新 `ranksLeftToSend`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": [
+            "ranksLeftToSend"
+          ]
+        },
+        {
+          "line": 4154,
+          "kind": "blank",
+          "explanation": "空行在 `RingDoorbell` 的 L4154 分隔 `uint32_t ranksLeftToSend = remoteRankNumLT(0);` 与 `DebugClock(5);` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4155,
+          "kind": "call",
+          "explanation": "调用 `DebugClock` 并更新 `k`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4156,
+          "kind": "blank",
+          "explanation": "空行在 `RingDoorbell` 的 L4156 分隔 `DebugClock(5);` 与 `// 等待token本卡搬运到到位` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4157,
+          "kind": "comment",
+          "explanation": "注释记录 `等待token本卡搬运到到位`，说明 `RingDoorbell` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4158,
+          "kind": "call",
+          "explanation": "调用 `WaitAllStageDone` 并更新 `e`；本行实参或对象来自 `stageDoneLT、stageDoneWorkLT、stageDoneSumLT`。",
+          "reads": [
+            "stageDoneLT",
+            "stageDoneWorkLT",
+            "stageDoneSumLT"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4159,
+          "kind": "blank",
+          "explanation": "空行在 `RingDoorbell` 的 L4159 分隔 `WaitAllStageDone(stageDoneLT, stageDoneWorkLT, stageDoneSumLT);` 与 `uint32_t prevHead = 0;` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4160,
+          "kind": "declaration",
+          "explanation": "声明 `prevHead`；源码初始化式 `uint32_t prevHead = 0;`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": [
+            "prevHead"
+          ]
+        },
+        {
+          "line": 4161,
+          "kind": "declaration",
+          "explanation": "声明 `currHead`；源码初始化式 `uint32_t currHead = 0;`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": [
+            "currHead"
+          ]
+        },
+        {
+          "line": 4162,
+          "kind": "blank",
+          "explanation": "空行在 `RingDoorbell` 的 L4162 分隔 `uint32_t currHead = 0;` 与 `// 轮询headRead敲门铃` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4163,
+          "kind": "comment",
+          "explanation": "注释记录 `轮询headRead敲门铃`，说明 `RingDoorbell` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4164,
+          "kind": "declaration",
+          "explanation": "声明 `loopIndex`；源码初始化式 `uint32_t loopIndex = 0;`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": [
+            "loopIndex"
+          ]
+        },
+        {
+          "line": 4165,
+          "kind": "declaration",
+          "explanation": "声明 `max_batch_N32_num`；源码初始化式 `uint32_t max_batch_N32_num = UB_ALIGN_DATA_COUNT;`读取 `UB_ALIGN_DATA_COUNT`。",
+          "reads": [
+            "UB_ALIGN_DATA_COUNT"
+          ],
+          "writes": [
+            "max_batch_N32_num"
+          ]
+        },
+        {
+          "line": 4166,
+          "kind": "loop",
+          "explanation": "启动或推进 `while` 循环 `while (true) {`；迭代式涉及 `源码常量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4167,
+          "kind": "loop",
+          "explanation": "启动或推进 `for` 循环 `for (uint32_t sqIdx = 0; sqIdx < totalJettyNum; ++sqIdx) {`；迭代式涉及 `sqIdx、totalJettyNum`。",
+          "reads": [
+            "totalJettyNum"
+          ],
+          "writes": [
+            "sqIdx"
+          ]
+        },
+        {
+          "line": 4168,
+          "kind": "declaration",
+          "explanation": "声明 `rankId`；源码初始化式 `uint32_t rankId = sqIdx / (PORT_NUM * JETTY_NUM);`读取 `sqIdx、PORT_NUM、JETTY_NUM`。",
+          "reads": [
+            "sqIdx",
+            "PORT_NUM",
+            "JETTY_NUM"
+          ],
+          "writes": [
+            "rankId"
+          ]
+        },
+        {
+          "line": 4169,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (rankId == epRankId_) continue;` 选择 `RingDoorbell` 的后续路径；判定涉及 `rankId、epRankId_`。",
+          "reads": [
+            "rankId",
+            "epRankId_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4170,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (rankTokenCntLT(rankId) == 0 ||` 选择 `RingDoorbell` 的后续路径；判定涉及 `rankId`。",
+          "reads": [
+            "rankId"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4171,
+          "kind": "call",
+          "explanation": "调用 `finishedTokenLT`、`rankTokenCntLT`，传入或访问 `rankId`。",
+          "reads": [
+            "rankId"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4172,
+          "kind": "declaration",
+          "explanation": "声明 `e`；源码初始化式 `continue;`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4173,
+          "kind": "brace",
+          "explanation": "在 `RingDoorbell` 的 L4173 结束 代码块 `finishedTokenLT(rankId) >= rankTokenCntLT(rankId)) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4174,
+          "kind": "call",
+          "explanation": "调用 `prevHeadLT`、`sqTailLT` 并更新 `prevHead、d`；本行实参或对象来自 `sqIdx`。",
+          "reads": [
+            "sqIdx"
+          ],
+          "writes": [
+            "prevHead"
+          ]
+        },
+        {
+          "line": 4175,
+          "kind": "blank",
+          "explanation": "空行在 `RingDoorbell` 的 L4175 分隔 `prevHead = prevHeadLT(sqIdx) + sqTailLT(sqIdx);` 与 `uint32_t wqeCount = 0;` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4176,
+          "kind": "declaration",
+          "explanation": "声明 `wqeCount`；源码初始化式 `uint32_t wqeCount = 0;`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": [
+            "wqeCount"
+          ]
+        },
+        {
+          "line": 4177,
+          "kind": "call",
+          "explanation": "调用 `rankTokenCntLT`、`finishedTokenLT` 并更新 `remainingTokenCnt`；本行实参或对象来自 `rankId`。",
+          "reads": [
+            "rankId"
+          ],
+          "writes": [
+            "remainingTokenCnt"
+          ]
+        },
+        {
+          "line": 4178,
+          "kind": "declaration",
+          "explanation": "声明 `headRecordBase`；源码初始化式 `uint32_t headRecordBase = sqIdx * (N32numPerJetty + UB_ALIGN_DATA_COUNT);`读取 `sqIdx、N32numPerJetty、UB_ALIGN_DATA_COUNT`。",
+          "reads": [
+            "sqIdx",
+            "N32numPerJetty",
+            "UB_ALIGN_DATA_COUNT"
+          ],
+          "writes": [
+            "headRecordBase"
+          ]
+        },
+        {
+          "line": 4179,
+          "kind": "blank",
+          "explanation": "空行在 `RingDoorbell` 的 L4179 分隔 `uint32_t headRecordBase = sqIdx * (N32numPerJetty + UB_ALIGN_DATA_COUNT…` 与 `while (wqeCount < maxHeadRecordSlot && wqeCount < remainingTokenCnt) {` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4180,
+          "kind": "loop",
+          "explanation": "启动或推进 `while` 循环 `while (wqeCount < maxHeadRecordSlot && wqeCount < remainingTokenCnt) {`；迭代式涉及 `wqeCount、maxHeadRecordSlot、remainingTokenCnt`。",
+          "reads": [
+            "wqeCount",
+            "maxHeadRecordSlot",
+            "remainingTokenCnt"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4181,
+          "kind": "declaration",
+          "explanation": "声明 `prevHeadNew`；源码初始化式 `uint32_t prevHeadNew = prevHead + wqeCount;`读取 `prevHead、wqeCount`。",
+          "reads": [
+            "prevHead",
+            "wqeCount"
+          ],
+          "writes": [
+            "prevHeadNew"
+          ]
+        },
+        {
+          "line": 4182,
+          "kind": "declaration",
+          "explanation": "声明 `recordSlot`；源码初始化式 `uint32_t recordSlot = prevHeadNew % maxHeadRecordSlot;`读取 `prevHeadNew、maxHeadRecordSlot`。",
+          "reads": [
+            "prevHeadNew",
+            "maxHeadRecordSlot"
+          ],
+          "writes": [
+            "recordSlot"
+          ]
+        },
+        {
+          "line": 4183,
+          "kind": "declaration",
+          "explanation": "声明 `batchCount`；源码初始化式 `uint32_t batchCount = max_batch_N32_num;`读取 `max_batch_N32_num`。",
+          "reads": [
+            "max_batch_N32_num"
+          ],
+          "writes": [
+            "batchCount"
+          ]
+        },
+        {
+          "line": 4184,
+          "kind": "declaration",
+          "explanation": "声明 `recordSlotN32Base`；源码初始化式 `uint32_t recordSlotN32Base = recordSlot >> 5U;`读取 `recordSlot`。",
+          "reads": [
+            "recordSlot"
+          ],
+          "writes": [
+            "recordSlotN32Base"
+          ]
+        },
+        {
+          "line": 4185,
+          "kind": "declaration",
+          "explanation": "声明 `recPos`；源码初始化式 `uint32_t recPos = recordSlot & 31U;`读取 `recordSlot`。",
+          "reads": [
+            "recordSlot"
+          ],
+          "writes": [
+            "recPos"
+          ]
+        },
+        {
+          "line": 4186,
+          "kind": "declaration",
+          "explanation": "声明 `untilWrap`；源码初始化式 `uint32_t untilWrap = N32numPerJetty - recordSlotN32Base;`读取 `N32numPerJetty、recordSlotN32Base`。",
+          "reads": [
+            "N32numPerJetty",
+            "recordSlotN32Base"
+          ],
+          "writes": [
+            "untilWrap"
+          ]
+        },
+        {
+          "line": 4187,
+          "kind": "declaration",
+          "explanation": "声明 `t`；源码初始化式 `batchCount = batchCount > untilWrap ? untilWrap : batchCount;`读取 `untilWrap`。",
+          "reads": [
+            "untilWrap"
+          ],
+          "writes": [
+            "batchCount"
+          ]
+        },
+        {
+          "line": 4188,
+          "kind": "declaration",
+          "explanation": "声明 `remainingInScan`；源码初始化式 `uint32_t remainingInScan = remainingTokenCnt - wqeCount;`读取 `remainingTokenCnt、wqeCount`。",
+          "reads": [
+            "remainingTokenCnt",
+            "wqeCount"
+          ],
+          "writes": [
+            "remainingInScan"
+          ]
+        },
+        {
+          "line": 4189,
+          "kind": "call",
+          "explanation": "调用 `Ceil` 并更新 `maxRemainingN32`；本行实参或对象来自 `remainingInScan、recPos`。",
+          "reads": [
+            "remainingInScan",
+            "recPos"
+          ],
+          "writes": [
+            "maxRemainingN32"
+          ]
+        },
+        {
+          "line": 4190,
+          "kind": "declaration",
+          "explanation": "声明 `t`；源码初始化式 `batchCount = batchCount > maxRemainingN32 ? maxRemainingN32 : batchCount;`读取 `maxRemainingN32`。",
+          "reads": [
+            "maxRemainingN32"
+          ],
+          "writes": [
+            "batchCount"
+          ]
+        },
+        {
+          "line": 4191,
+          "kind": "declaration",
+          "explanation": "声明 `scanLimit`；源码初始化式 `uint32_t scanLimit = (batchCount << 5U) - recPos;`读取 `batchCount、recPos`。",
+          "reads": [
+            "batchCount",
+            "recPos"
+          ],
+          "writes": [
+            "scanLimit"
+          ]
+        },
+        {
+          "line": 4192,
+          "kind": "declaration",
+          "explanation": "声明 `t`；源码初始化式 `scanLimit = scanLimit > remainingInScan ? remainingInScan : scanLimit;`读取 `remainingInScan`。",
+          "reads": [
+            "remainingInScan"
+          ],
+          "writes": [
+            "scanLimit"
+          ]
+        },
+        {
+          "line": 4193,
+          "kind": "sync",
+          "explanation": "调用 `SyncFunc`，在本行指定的硬件事件或流水线之间建立先后关系。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "S_MTE2"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4194,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `DataCopyParams copyRecordParams{static_cast<uint16_t>(batchCount), 1, static_cast<uint16_t>(WIN_ADDR_ALIGN / UB_ALIGN - 1), 0};`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4195,
+          "kind": "call",
+          "explanation": "调用 `DataCopy` 并更新 `y、headRecordLT`；本行实参或对象来自 `headRecordGT、headRecordBase、recordSlotN32Base、UB_ALIGN_DATA_COUNT`。",
+          "reads": [
+            "headRecordGT",
+            "headRecordBase",
+            "recordSlotN32Base",
+            "UB_ALIGN_DATA_COUNT"
+          ],
+          "writes": [
+            "headRecordLT"
+          ]
+        },
+        {
+          "line": 4196,
+          "kind": "sync",
+          "explanation": "调用 `SyncFunc`，在本行指定的硬件事件或流水线之间建立先后关系。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "MTE2_S"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4197,
+          "kind": "blank",
+          "explanation": "空行在 `RingDoorbell` 的 L4197 分隔 `SyncFunc<AscendC::HardEvent::MTE2_S>();` 与 `int32_t readyCount = 0;` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4198,
+          "kind": "declaration",
+          "explanation": "声明 `readyCount`；源码初始化式 `int32_t readyCount = 0;`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": [
+            "readyCount"
+          ]
+        },
+        {
+          "line": 4199,
+          "kind": "loop",
+          "explanation": "启动或推进 `for` 循环 `for (uint32_t n32Idx = 0; n32Idx < batchCount; n32Idx++) {`；迭代式涉及 `n32Idx、batchCount`。",
+          "reads": [
+            "batchCount"
+          ],
+          "writes": [
+            "n32Idx"
+          ]
+        },
+        {
+          "line": 4200,
+          "kind": "call",
+          "explanation": "调用 `headRecordLT` 并更新 `maskWord`；本行实参或对象来自 `n32Idx`。",
+          "reads": [
+            "n32Idx"
+          ],
+          "writes": [
+            "maskWord"
+          ]
+        },
+        {
+          "line": 4201,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (n32Idx == 0 && recPos != 0U) {` 选择 `RingDoorbell` 的后续路径；判定涉及 `n32Idx、recPos`。",
+          "reads": [
+            "n32Idx",
+            "recPos"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4202,
+          "kind": "comment",
+          "explanation": "注释记录 `只统计从 recPos 起的连续置位：右移后低位（已消费/未置位）不再参与，`，说明 `RingDoorbell` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4203,
+          "kind": "comment",
+          "explanation": "注释记录 `高位补0保证 ScalarGetSFFValue<0> 必然找到终止位，返回值=从recPos起就绪个数。`，说明 `RingDoorbell` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4204,
+          "kind": "declaration",
+          "explanation": "声明 `shifted`；源码初始化式 `uint32_t shifted = maskWord >> recPos;`读取 `maskWord、recPos`。",
+          "reads": [
+            "maskWord",
+            "recPos"
+          ],
+          "writes": [
+            "shifted"
+          ]
+        },
+        {
+          "line": 4205,
+          "kind": "call",
+          "explanation": "调用 `ScalarGetSFFValue` 并更新 `cnt`；本行实参或对象来自 `shifted`。",
+          "reads": [
+            "shifted"
+          ],
+          "writes": [
+            "cnt"
+          ]
+        },
+        {
+          "line": 4206,
+          "kind": "declaration",
+          "explanation": "声明 `t`；源码初始化式 `readyCount += cnt;`读取 `cnt`。",
+          "reads": [
+            "cnt"
+          ],
+          "writes": [
+            "readyCount"
+          ]
+        },
+        {
+          "line": 4207,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (cnt < static_cast<int32_t>(32U - recPos)) {` 选择 `RingDoorbell` 的后续路径；判定涉及 `recPos`。",
+          "reads": [
+            "recPos"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4208,
+          "kind": "declaration",
+          "explanation": "声明 `k`；源码初始化式 `break;`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4209,
+          "kind": "brace",
+          "explanation": "在 `RingDoorbell` 的 L4209 结束 if 分支 `if (cnt < static_cast<int32_t>(32U - recPos)) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4210,
+          "kind": "declaration",
+          "explanation": "声明 `e`；源码初始化式 `continue;`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4211,
+          "kind": "brace",
+          "explanation": "在 `RingDoorbell` 的 L4211 结束 if 分支 `if (n32Idx == 0 && recPos != 0U) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4212,
+          "kind": "call",
+          "explanation": "调用 `ScalarGetSFFValue` 并更新 `firstInvalidIdx`；本行实参或对象来自 `maskWord`。",
+          "reads": [
+            "maskWord"
+          ],
+          "writes": [
+            "firstInvalidIdx"
+          ]
+        },
+        {
+          "line": 4213,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (firstInvalidIdx == -1) {` 选择 `RingDoorbell` 的后续路径；判定涉及 `firstInvalidIdx`。",
+          "reads": [
+            "firstInvalidIdx"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4214,
+          "kind": "declaration",
+          "explanation": "声明 `t`；源码初始化式 `readyCount += 32U;`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": [
+            "readyCount"
+          ]
+        },
+        {
+          "line": 4215,
+          "kind": "declaration",
+          "explanation": "声明 `e`；源码初始化式 `continue;`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4216,
+          "kind": "branch",
+          "explanation": "按分支表达式 `} else {` 选择 `RingDoorbell` 的后续路径；判定涉及 `编译期/字面量条件`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4217,
+          "kind": "declaration",
+          "explanation": "声明 `t`；源码初始化式 `readyCount += firstInvalidIdx;`读取 `firstInvalidIdx`。",
+          "reads": [
+            "firstInvalidIdx"
+          ],
+          "writes": [
+            "readyCount"
+          ]
+        },
+        {
+          "line": 4218,
+          "kind": "declaration",
+          "explanation": "声明 `k`；源码初始化式 `break;`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4219,
+          "kind": "brace",
+          "explanation": "在 `RingDoorbell` 的 L4219 结束 else 备选分支 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4220,
+          "kind": "brace",
+          "explanation": "在 `RingDoorbell` 的 L4220 结束 for 循环 `for (uint32_t n32Idx = 0; n32Idx < batchCount; n32Idx++) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4221,
+          "kind": "statement",
+          "explanation": "按表达式 `readyCount = readyCount > static_cast<int32_t>(scanLimit) ?` 更新 `readyCount`；右侧读取 `scanLimit`。",
+          "reads": [
+            "scanLimit"
+          ],
+          "writes": [
+            "readyCount"
+          ]
+        },
+        {
+          "line": 4222,
+          "kind": "declaration",
+          "explanation": "声明 `t`；源码初始化式 `static_cast<int32_t>(scanLimit) : readyCount;`读取 `scanLimit、readyCount`。",
+          "reads": [
+            "scanLimit",
+            "readyCount"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4223,
+          "kind": "declaration",
+          "explanation": "声明 `t`；源码初始化式 `wqeCount += readyCount;`读取 `readyCount`。",
+          "reads": [
+            "readyCount"
+          ],
+          "writes": [
+            "wqeCount"
+          ]
+        },
+        {
+          "line": 4224,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (readyCount < static_cast<int32_t>(scanLimit)) break;` 选择 `RingDoorbell` 的后续路径；判定涉及 `scanLimit`。",
+          "reads": [
+            "scanLimit"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4225,
+          "kind": "brace",
+          "explanation": "在 `RingDoorbell` 的 L4225 结束 while 循环 `while (wqeCount < maxHeadRecordSlot && wqeCount < remainingTokenCnt) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4226,
+          "kind": "blank",
+          "explanation": "空行在 `RingDoorbell` 的 L4226 分隔 `}` 与 `// DataCopyParams copyRecordParams{static_cast<uint16_t>(batchCount), 1…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4227,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `DataCopyParams copyRecordParams{static_cast<uint16_t>(batchCount), 1, static_cast<uint16_t>(WIN_ADDR_ALIGN / UB_ALIGN - 1), 0};`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4228,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `DataCopy(headRecordLT, headRecordGT[headRecordBase + recordSlot * WIN_ADDR_ALIGN / sizeof(uint32_t)],`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4229,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `copyRecordParams);`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4230,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `SyncFunc<AscendC::HardEvent::MTE2_S>();`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4231,
+          "kind": "blank",
+          "explanation": "空行在 `RingDoorbell` 的 L4231 分隔 `// SyncFunc<AscendC::HardEvent::MTE2_S>();` 与 `// // uint32_t readyCount = 0;` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4232,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `// uint32_t readyCount = 0;`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4233,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `for (uint32_t i = 0; i < batchCount; ++i) {`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4234,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `uint32_t currExpectHead = prevHeadNew + i;`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4235,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `if (headRecordLT(i * UB_ALIGN_DATA_COUNT) != currExpectHead + 1U) break;`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4236,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `// readyCount++;`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4237,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `wqeCount++;`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4238,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4239,
+          "kind": "blank",
+          "explanation": "空行在 `RingDoorbell` 的 L4239 分隔 `// }` 与 `// wqeCount += readyCount;` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4240,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `wqeCount += readyCount;`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4241,
+          "kind": "blank",
+          "explanation": "空行在 `RingDoorbell` 的 L4241 分隔 `// wqeCount += readyCount;` 与 `// if (readyCount < batchCount) break;` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4242,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `if (readyCount < batchCount) break;`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4243,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4244,
+          "kind": "call",
+          "explanation": "调用 `sqTailLT` 并更新 `T`；本行实参或对象来自 `sqIdx、wqeCount`。",
+          "reads": [
+            "sqIdx",
+            "wqeCount"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4245,
+          "kind": "blank",
+          "explanation": "空行在 `RingDoorbell` 的 L4245 分隔 `sqTailLT(sqIdx) += wqeCount;` 与 `if (wqeCount > 0) {` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4246,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (wqeCount > 0) {` 选择 `RingDoorbell` 的后续路径；判定涉及 `wqeCount`。",
+          "reads": [
+            "wqeCount"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4247,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `DebugClock(6 + loopIndex);`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4248,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `else if (loopIndex == 1) {`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4249,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `DebugClock(7);`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4250,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4251,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `else if (loopIndex == 2) {`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4252,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `DebugClock(8);`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4253,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4254,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4255,
+          "kind": "comment",
+          "explanation": "注释记录 `\"[db] rank=%u dst=%u prev=%u publish=%u \"`，说明 `RingDoorbell` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4256,
+          "kind": "comment",
+          "explanation": "注释记录 `\"batch=%u finished=%u target=%u\\n\",`，说明 `RingDoorbell` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4257,
+          "kind": "comment",
+          "explanation": "注释记录 `epRankId_, rankId, prevHead,`，说明 `RingDoorbell` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4258,
+          "kind": "comment",
+          "explanation": "注释记录 `prevHead + sqTailLT(sqIdx),`，说明 `RingDoorbell` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4259,
+          "kind": "comment",
+          "explanation": "注释记录 `wqeCount,`，说明 `RingDoorbell` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4260,
+          "kind": "comment",
+          "explanation": "注释记录 `finishedTokenLT(rankId) + wqeCount,`，说明 `RingDoorbell` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4261,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `rankTokenCntLT(rankId));`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4262,
+          "kind": "declaration",
+          "explanation": "声明 `d`；源码初始化式 `currHead = prevHead + wqeCount;`读取 `prevHead、wqeCount`。",
+          "reads": [
+            "prevHead",
+            "wqeCount"
+          ],
+          "writes": [
+            "currHead"
+          ]
+        },
+        {
+          "line": 4263,
+          "kind": "sync",
+          "explanation": "调用同步相关 API `st_dev`，完成其源码参数指定的通知或可见性动作。",
+          "reads": [
+            "currHead",
+            "__gm__",
+            "sqs",
+            "sqIdx",
+            "dbAddr"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4264,
+          "kind": "declaration",
+          "explanation": "声明 `x`；源码初始化式 `loopIndex++;`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": [
+            "loopIndex"
+          ]
+        },
+        {
+          "line": 4265,
+          "kind": "brace",
+          "explanation": "在 `RingDoorbell` 的 L4265 结束 if 分支 `if (wqeCount > 0) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4266,
+          "kind": "blank",
+          "explanation": "空行在 `RingDoorbell` 的 L4266 分隔 `}` 与 `finishedTokenLT(rankId) += wqeCount;` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4267,
+          "kind": "call",
+          "explanation": "调用 `finishedTokenLT` 并更新 `T`；本行实参或对象来自 `rankId、wqeCount`。",
+          "reads": [
+            "rankId",
+            "wqeCount"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4268,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (finishedTokenLT(rankId) >= rankTokenCntLT(rankId)) {` 选择 `RingDoorbell` 的后续路径；判定涉及 `rankId`。",
+          "reads": [
+            "rankId"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4269,
+          "kind": "declaration",
+          "explanation": "声明 `d`；源码初始化式 `ranksLeftToSend--;`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": [
+            "ranksLeftToSend"
+          ]
+        },
+        {
+          "line": 4270,
+          "kind": "brace",
+          "explanation": "在 `RingDoorbell` 的 L4270 结束 if 分支 `if (finishedTokenLT(rankId) >= rankTokenCntLT(rankId)) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4271,
+          "kind": "brace",
+          "explanation": "在 `RingDoorbell` 的 L4271 结束 for 循环 `for (uint32_t sqIdx = 0; sqIdx < totalJettyNum; ++sqIdx) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4272,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (ranksLeftToSend == 0) break;` 选择 `RingDoorbell` 的后续路径；判定涉及 `ranksLeftToSend`。",
+          "reads": [
+            "ranksLeftToSend"
+          ],
+          "writes": []
+        },
+        {
+          "line": 4273,
+          "kind": "brace",
+          "explanation": "在 `RingDoorbell` 的 L4273 结束 while 循环 `while (true) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4274,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `DebugClock(6 + loopIndex);`；该内容当前不参与 `RingDoorbell` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4275,
+          "kind": "call",
+          "explanation": "调用 `DebugClock` 并更新 `k`；本行实参或对象来自 `字面量`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 4276,
+          "kind": "brace",
+          "explanation": "在 `RingDoorbell` 的 L4276 结束 代码块 `AscendC::Simt::Dim3{CALC_CNT_THREADS_NUM, 1, 1},` 作用域。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments": [
+        {"id":"doorbell-size-and-buffer-state","start":4001,"end":4032,"title":"计算每 jetty bitmap 环尺寸并初始化轮询状态 UB","detail":"N32numPerJetty=ceil(BS*K/32)，maxHeadRecordSlot 为 32 位对齐后的槽数；为旧 head、单批 bitmap、rank 计数、完成数、SQ tail、headReady、stageDone 与远端 rank 数分配 UB。","kind":"input","input_state":["axisBS_*axisK_：每 jetty 最大 WQE/bitmap 位数","totalJettyNum、epWorldSize_、aivUsedRemoteWqe_：状态数组维度","activeStageNum：等待标志数"],"mechanism":"按 UB_ALIGN 向上取整分配各 TBuf，再 Get 对应 uint32_t/float LocalTensor。","output_state":["N32numPerJetty、maxHeadRecordSlot：bitmap 环几何","prevHeadLT 等十个轮询 LocalTensor：已绑定"],"why":"doorbell 只可提交从旧 head 起连续就绪的 WQE，因此必须保存每 SQ 基线、累计 tail 和按 rank 完成量。","calls":[{"name":"GetActiveStageNum","line":4009,"type":"internal","target":"m-moedistributedispatchv2fullmesh-getactivestagenum-6043683614"},{"name":"Ceil","line":4006,"type":"external"},{"name":"InitBuffer","line":4013,"type":"external"}]},
+        {"id":"doorbell-materialize-sq-cq-context","start":4033,"end":4049,"title":"绑定 SQ/CQ、headReady/headRecord GM 并刷写 context","detail":"从统一 sqs GM 后紧接 cqs 区，建立 SQ 指针和两个控制 GlobalTensor；get_sqs_and_cqs_xb 填 context 后分别 cacheWriteThrough，保证硬件/其他核看到最新内容。","kind":"output","input_state":["totalJettyNum：SQ/CQ 数","aclshmem UDMA context：SQ/CQ 源"],"mechanism":"cqsGM=sqsGM+sizeof(HcclAiRMAWQ)*totalJettyNum；装载 SQ/CQ 后对两段 GM 做 write-through。","output_state":["sqs/cqs GM：远端 jetty 硬件 context 已物化并刷出","headReadyGT/headRecordGT：绑定控制区"],"why":"后续读取 headAddr、写 dbAddr 和 WQE AIV 协作都依赖同一份可见 context。","calls":[{"name":"GetSqsAddr","line":4034,"type":"internal","target":"m-moedistributedispatchv2fullmesh-getsqsaddr-114b933bf9"},{"name":"GetHeadReadyAddr","line":4036,"type":"internal","target":"m-moedistributedispatchv2fullmesh-getheadreadyaddr-70fab86c3d"},{"name":"GetHeadRecordAddr","line":4037,"type":"internal","target":"m-moedistributedispatchv2fullmesh-getheadrecordaddr-89abc8e6ef"},{"name":"get_sqs_and_cqs_xb","line":4045,"type":"internal","target":"m-moedistributedispatchv2fullmesh-get-sqs-and-cqs-xb-9ca4595de6"},{"name":"cacheWriteThrough","line":4046,"type":"internal","target":"f-moedistributedispatchv2fullmeshimpl-cachewritethrough-7000c8c3d6"},{"name":"cacheWriteThrough","line":4047,"type":"internal","target":"f-moedistributedispatchv2fullmeshimpl-cachewritethrough-7000c8c3d6"}]},
+        {"id":"doorbell-clear-head-record","start":4050,"end":4075,"title":"批量清零所有 jetty 的 headRecord bitmap","detail":"保留的 MTE3 清零方案已注释；当前用 set_gm_value 将 totalJettyNum*(N32numPerJetty+UB_ALIGN_DATA_COUNT) 个 uint32_t 以 stride 4 写 0，并等待 SIMT 完成。","kind":"sync","input_state":["headRecordGM：bitmap 控制区根","N32numPerJetty 与额外 UB_ALIGN_DATA_COUNT：每 jetty 布局"],"mechanism":"VF_CALL<set_gm_value>(线程数, 地址, 总元素数, sizeof(uint32_t), 0U)，随后 V_S。","output_state":["所有 SQ 的 bitmap 与额外对齐区：归零"],"why":"消除上次 dispatch 残留置位，避免把旧 WQE 错判为本轮连续就绪。","calls":[{"name":"set_gm_value","line":4066,"type":"internal","target":"f-moedistributedispatchv2fullmeshimpl-set-gm-value-b3c17ca3da"},{"name":"VF_CALL","line":4066,"type":"external"},{"name":"SyncFunc","line":4073,"type":"external"}]},
+        {"id":"doorbell-snapshot-head-and-publish-ready","start":4076,"end":4106,"title":"采样远端 SQ head 后发布 headReady","detail":"逐 jetty 解析 rank，跳过本 rank 或空 headAddr，其余从硬件 headAddr 读取基线写 prevHeadLT；随后 set_gm_value 按 HEAD_READY_STRIDE 为每个远端 WQE AIV 写 headReadyFlag。","kind":"sync","input_state":["sqs[i].headAddr：硬件当前 head","epRankId_：排除本 rank","aivUsedRemoteWqe_、HEAD_READY_STRIDE：发布布局"],"mechanism":"先完成全 SQ 基线快照，再 VF_CALL 批量发布 ready flag 并 V_S。","output_state":["prevHeadLT：各 SQ 本轮起始 head","headReadyGM：所有远端 WQE 核可开始改 head/写 WQE"],"why":"严格的“先读旧 head、后发 ready”避免 WQE 核提前推进 head，使 doorbell 基线与本轮记录错位。","calls":[{"name":"set_gm_value","line":4097,"type":"internal","target":"f-moedistributedispatchv2fullmeshimpl-set-gm-value-b3c17ca3da"},{"name":"VF_CALL","line":4097,"type":"external"},{"name":"SyncFunc","line":4104,"type":"external"}]},
+        {"id":"doorbell-calculate-remote-rank-counts","start":4107,"end":4155,"title":"构造有效 expertIds 并统计每个远端 rank 待发 token","detail":"初始化 mask 路径依赖的四个 UB，ExpIdsCopyAndMaskCal 生成 validExpertIdsTensor_；清零完成/tail 状态，calc_rank_token_cnt 并行写 rankTokenCntLT 和有数据的远端 rank 数。","kind":"compute","input_state":["expertIds 及 token/expert mask 配置","epWorldSize_、moeExpertNumPerRank_：expert→rank 映射","epRankId_：排除本 rank"],"mechanism":"有效路由数取 activeMaskBsCnt_*axisK_ 或 expertIdsCnt_；remoteRankNumLT 先清零并 S_V，VF_CALL 写计数后 V_S，标量读 ranksLeftToSend。","output_state":["rankTokenCntLT：每 rank 本轮 WQE 目标数","finishedTokenLT、sqTailLT：全零","ranksLeftToSend：仍需完成的非空远端 rank 数"],"why":"全局退出按 rank 而非 SQ 判断；先算精确 token 数才能限制 bitmap 扫描并识别 rank 完成。","calls":[{"name":"ExpIdsCopyAndMaskCal","line":4116,"type":"internal","target":"m-moedistributedispatchv2fullmesh-expidscopyandmaskcal-17a5b857e1"},{"name":"calc_rank_token_cnt","line":4142,"type":"internal","target":"f-moedistributedispatchv2fullmeshimpl-calc-rank-token-cnt-dbb2600941"},{"name":"VF_CALL","line":4142,"type":"external"},{"name":"SyncFunc","line":4141,"type":"external"},{"name":"SyncFunc","line":4152,"type":"external"}]},
+        {"id":"doorbell-wait-staging-and-enter-poll","start":4156,"end":4165,"title":"等待所有 stageDone 后进入 busy-poll","detail":"WaitAllStageDone 保证 token staging 到位；初始化 prevHead/currHead、轮询次数和每批最多读取一个 UB_ALIGN 的 uint32_t bitmap word 数。","kind":"sync","input_state":["stageDone 三个 LocalTensor：生产者完成状态","ranksLeftToSend：轮询退出目标"],"mechanism":"完成归约等待后令 loopIndex=0、max_batch_N32_num=UB_ALIGN_DATA_COUNT。","output_state":["staging token：可供已写 WQE 引用","轮询临时状态：初始化"],"why":"doorbell 一旦推进 head，硬件可立即消费 WQE 指向的 token；必须先确保数据搬运完成。","calls":[{"name":"WaitAllStageDone","line":4158,"type":"internal","target":"m-moedistributedispatchv2fullmesh-waitallstagedone-3314d3ceaf"}]},
+        {"id":"doorbell-select-active-sq","start":4166,"end":4179,"title":"遍历远端 SQ 并过滤已完成 rank","detail":"无限外循环中逐 sqIdx 映射 rank；跳过本 rank、零 token rank 和 finishedToken 已达目标的 rank，计算该 SQ 的逻辑起点 prevHeadLT+sqTailLT、剩余 token 与 bitmap 区基址。","kind":"loop","input_state":["prevHeadLT、sqTailLT：每 SQ 起始/累计推进","rankTokenCntLT、finishedTokenLT：rank 目标/完成量"],"mechanism":"rankId=sqIdx/(PORT_NUM*JETTY_NUM)，prevHead=基线+软件 tail，remainingTokenCnt=目标-完成。","output_state":["当前可轮询 SQ 的 prevHead、remainingTokenCnt、headRecordBase","wqeCount=0"],"why":"同 rank 可有多个 jetty；每个 SQ 独立扫描，但 rank 级剩余量防止总提交超过路由数。","calls":[]},
+        {"id":"doorbell-bound-bitmap-batch","start":4180,"end":4197,"title":"计算不跨环回且不越过剩余量的 bitmap 批次","detail":"把 prevHead+wqeCount 映射到 maxHeadRecordSlot 环，得到 word 基址与首 word 位偏移；batchCount 同时受 UB 容量、环尾 word 数和 remaining token 所需 word 数限制。","kind":"loop","input_state":["prevHead、wqeCount：下一个待确认 WQE","N32numPerJetty/maxHeadRecordSlot：bitmap 环","remainingTokenCnt：rank 余量"],"mechanism":"recordSlot=(prevHead+wqeCount)%maxHeadRecordSlot；recPos=slot&31；scanLimit=min(batchCount*32-recPos,remainingInScan)；S_MTE2 后搬一个对齐块并 MTE2_S。","output_state":["headRecordLT：包含当前扫描起点后的 bitmap words","scanLimit：本批最多认可的连续 WQE 位数"],"why":"禁止单次扫描跨 bitmap 环尾或越过 rank 目标，同时用对齐块搬运满足 MTE2 粒度。","calls":[{"name":"SyncFunc","line":4193,"type":"external"},{"name":"DataCopy","line":4195,"type":"external"},{"name":"SyncFunc","line":4196,"type":"external"}]},
+        {"id":"doorbell-scan-contiguous-ready-bits","start":4198,"end":4225,"title":"只累计从当前 head 起连续置位的 bitmap 前缀","detail":"首 word 若从中间开始则先右移 recPos，用 ScalarGetSFFValue<0> 找第一个 0；后续完整 word 中 -1 表示 32 位全 1，否则返回第一个 0 下标并停止。结果再 clamp 到 scanLimit。","kind":"compute","input_state":["headRecordLT：本批 bitmap","recPos、batchCount、scanLimit：扫描范围"],"mechanism":"逐 word 累加 readyCount；任何首个未置位立即 break，只有整段全满才继续下一 word/批；wqeCount 累加连续前缀。","output_state":["wqeCount：从 prevHead 起可安全一次提交的连续 WQE 数"],"why":"doorbell head 不能越过空洞；即使后方 WQE 已就绪，也必须停在第一个 0 之前维护 SQ 顺序。","calls":[{"name":"ScalarGetSFFValue","line":4205,"type":"external"},{"name":"ScalarGetSFFValue","line":4212,"type":"external"}]},
+        {"id":"doorbell-retire-legacy-scan-and-advance-tail","start":4226,"end":4245,"title":"忽略旧 head 值扫描方案并累计软件 SQ tail","detail":"按逐槽期望 head 值判断的旧实现整段注释；当前逻辑仅把连续 bitmap 结果 wqeCount 加入 sqTailLT。","kind":"output","input_state":["wqeCount：当前 SQ 新确认的连续 WQE 数","sqTailLT(sqIdx)：本轮已发布累计数"],"mechanism":"sqTailLT(sqIdx)+=wqeCount。","output_state":["sqTailLT：保留下一轮从哪个逻辑 head 继续扫描"],"why":"软件 tail 避免重复提交已敲过门铃的 bitmap 位，并支持 headRecord 环回。","calls":[]},
+        {"id":"doorbell-submit-and-finish-ranks","start":4246,"end":4276,"title":"推进 head、写 doorbell 并按 rank 完成退出","detail":"wqeCount>0 时 currHead=prevHead+wqeCount，st_dev 写当前 SQ 的 dbAddr；无论本轮是否推进都累计 rank finished，首次达到目标时 ranksLeftToSend--，所有非空远端 rank 完成后退出 busy-poll。","kind":"output","input_state":["prevHead、wqeCount：本次可提交 head 增量","sqs[sqIdx].dbAddr：硬件 doorbell 地址","finishedTokenLT/rankTokenCntLT：rank 完成判据"],"mechanism":"st_dev(currHead,dbAddr,0) 提交；finished+=wqeCount；finished>=target 时减少 ranksLeftToSend；外层以 0 退出。","output_state":["硬件 SQ head：只跨过连续就绪 WQE","finishedTokenLT：各 rank 已发布数","ranksLeftToSend=0：所有目标 rank 已完成"],"why":"doorbell store 是 WQE 对硬件可消费的提交点；rank 计数把多个 jetty 的进展汇总为确定终止条件。","calls":[{"name":"st_dev","line":4263,"type":"external"},{"name":"DebugClock","line":4275,"type":"external"}]}
+      ]
+    }
+  ]
+}

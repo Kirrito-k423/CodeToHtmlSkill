@@ -1,0 +1,4034 @@
+{
+  "source": {
+    "sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc"
+  },
+  "functions": [
+    {
+      "id": "m-moedistributedispatchv2fullmesh-urmasendtoken-d440368f92",
+      "module_id": "remote-send",
+      "name": "URMASendToken",
+      "start": 3518,
+      "end": 3889,
+      "inactive": false,
+      "summary": "当前远端发送主路径：把本 rank expert 空洞两侧的远端 expert 按 AIV 均衡切分，申请并布局映射/WQE/SQ/head 状态 UB；通过 simt_prepare_mapping 生成稳定的 expert→原始路由 offset 顺序，预计算目标窗口地址，消费 headReady 后分批生成 WRITE 描述，再由 simt_nw_mj 批量预留 SQ head、写 SQE，并在 fence 后把完成槽发布到 headRecord bitmap。源码中的标量 doorbell 与 aclshmemx_udma_quiet/CQ 完成等待均未启用。",
+      "inputs": [
+        "aivUsedRemoteWqe_：远端 WQE writer AIV 总数",
+        "aivId_：当前 writer 与 jetty 轮转起点",
+        "epRankId_：本 rank 及 self expert 空洞位置",
+        "moeExpertNumPerRank_：global expert 到 rank/卡内 expert 的换算基数",
+        "moeExpertNum_：全局 MoE expert 总数",
+        "axisBS_：每 expert offset 行容量与远端 expert 槽跨度",
+        "axisK_：BS×K 路由宽度及 originalOffset→tokenId 除数",
+        "expertIdsCnt_：待搬入的 expert ID 路由项数",
+        "expertIdsGMTensor_：原始 BS×K expert ID GM",
+        "epWorldSize_：SQ 路由的 rank 数",
+        "totalJettyNum：SQ/CQ 控制项与 per-SQ 工作区长度",
+        "expertPerSizeOnWin_：远端窗口中每个源 rank expert 段跨度",
+        "hCommuSize_：单 token WRITE 字节数",
+        "headReadyFlag：允许本 AIV 开始预留 SQ head 的发布值",
+        "tpipe_：全部 UB 工作区分配器"
+      ],
+      "outputs": [
+        "expertCntListLT：当前 AIV 每 expert 的有效路由数",
+        "expertOrderedOffsetListLT：每 expert 按原始 BS×K offset 升序的稳定映射",
+        "totalSendNumLT：排除本 rank expert 后的远端 token/WQE 总数",
+        "remoteAddrListLT：按连续目标 rank 索引的远端接收段基址",
+        "tokenSendWqeDesc：每批紧凑的 local/remote/dstRank/len/opcode 描述",
+        "sqsGM：simt_nw_mj 直接写入并推进 head 的 SQ 控制与 SQE GM",
+        "headRecordGM：在 SQE threadfence 之后原子发布的 head 完成 bitmap",
+        "headReadyGT：消费 headReadyFlag 后回写 0 的当前 AIV GM 槽"
+      ],
+      "side_effects": [
+        "消费当前 aivId_ 的 headReady GM flag，并通过 GM→UB 轮询后清零回写",
+        "buildRemoteWqeDesc 与 simt_nw_mj 共同更新多块 UB scratch、远端 SQ head/SQE 和 headRecord GM bitmap",
+        "当前函数不直接 ring doorbell；注释掉的 st_dev 标量门铃方案不执行",
+        "当前函数不执行 aclshmemx_udma_quiet 或 URMAPollCQ，因此返回不等价于远端 WRITE/CQ 已完成",
+        "DebugClock(3/4/5) 写入调试时钟状态；timepoint 数组的系统周期采样已注释"
+      ],
+      "review": {
+        "status": "PASS",
+        "verdict": "PASS",
+        "reviewer": "code-index-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "source_sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc",
+        "line_range": [
+          3518,
+          3889
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "complete": true,
+        "reviewed_line_range": [
+          3518,
+          3889
+        ],
+        "reviewed_line_count": 372,
+        "coverage": "every_source_line_reviewed_once",
+        "source_sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc",
+        "gaps": [],
+        "overlaps": []
+      },
+      "line_notes": [
+        {
+          "line": 3518,
+          "kind": "signature",
+          "explanation": "声明 URMASendToken 所属类模板参数，使发送逻辑绑定当前 X/量化配置。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3519,
+          "kind": "signature",
+          "explanation": "定义无显式参数的 URMASendToken；拓扑、expertIds、窗口和流水线均取自对象成员。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3520,
+          "kind": "brace",
+          "explanation": "开始为当前远端 WQE AIV 构造并提交 URMA WRITE。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3521,
+          "kind": "declaration",
+          "explanation": "保留 10 个周期采样槽 timepoint；当前所有采样写入都已注释。",
+          "reads": [],
+          "writes": [
+            "timepoint"
+          ]
+        },
+        {
+          "line": 3522,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `timepoint[0] = AscendC::GetSystemCycle();`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3523,
+          "kind": "declaration",
+          "explanation": "声明当前 AIV 的远端 expert 数 sendExpNum 及半开区间 [startExpId,endExpId)。",
+          "reads": [],
+          "writes": [
+            "sendExpNum",
+            "startExpId",
+            "endExpId"
+          ]
+        },
+        {
+          "line": 3524,
+          "kind": "declaration",
+          "explanation": "开始声明 expert 映射、远端地址、完成计数和 head 握手所需的 UB 缓冲对象。",
+          "reads": [],
+          "writes": [
+            "expertCntListBuf",
+            "expertOffsetListBuf",
+            "expertOrderedOffsetListBuf"
+          ]
+        },
+        {
+          "line": 3525,
+          "kind": "declaration",
+          "explanation": "补齐 remoteAddrListBuf、finishedWqeDescNumBuf、totalSendNumBuf、headReadyBuf、headRecordBuf。",
+          "reads": [],
+          "writes": [
+            "remoteAddrListBuf",
+            "finishedWqeDescNumBuf",
+            "totalSendNumBuf",
+            "headReadyBuf",
+            "headRecordBuf"
+          ]
+        },
+        {
+          "line": 3526,
+          "kind": "declaration",
+          "explanation": "用 epRankId_ * moeExpertNumPerRank_ 得到本 rank expert 半开区间起点 selfExpertBegin。",
+          "reads": [
+            "epRankId_",
+            "moeExpertNumPerRank_"
+          ],
+          "writes": [
+            "selfExpertBegin"
+          ]
+        },
+        {
+          "line": 3527,
+          "kind": "declaration",
+          "explanation": "在 selfExpertBegin 上加 moeExpertNumPerRank_ 得到本 rank expert 终点 selfExpertEnd。",
+          "reads": [
+            "selfExpertBegin",
+            "moeExpertNumPerRank_"
+          ],
+          "writes": [
+            "selfExpertEnd"
+          ]
+        },
+        {
+          "line": 3528,
+          "kind": "declaration",
+          "explanation": "本 rank 之前的远端 expert 数恰为 selfExpertBegin，记录到 expertNumBeforeSelf。",
+          "reads": [
+            "selfExpertBegin"
+          ],
+          "writes": [
+            "expertNumBeforeSelf"
+          ]
+        },
+        {
+          "line": 3529,
+          "kind": "declaration",
+          "explanation": "用 moeExpertNum_ - selfExpertEnd 计算本 rank 之后的远端 expert 数 expertNumAfterSelf。",
+          "reads": [
+            "moeExpertNum_",
+            "selfExpertEnd"
+          ],
+          "writes": [
+            "expertNumAfterSelf"
+          ]
+        },
+        {
+          "line": 3530,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3530 分隔 `const uint32_t expertNumAfterSelf = moeExpertNum_ - selfExpertEnd;` 与 `if (aivUsedRemoteWqe_ == 1U && expertNumBeforeSelf > 0U && expertNumAft…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3531,
+          "kind": "branch",
+          "explanation": "当仅有一个远端 WQE AIV 且本 rank 两侧都存在 expert 时，进入无法表示两个不连续区间的回退路径。",
+          "reads": [
+            "aivUsedRemoteWqe_",
+            "expertNumBeforeSelf",
+            "expertNumAfterSelf"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3532,
+          "kind": "comment",
+          "explanation": "说明单个 WQE AIV 不能独占 self 前后两个不连续 expert 区间。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3533,
+          "kind": "comment",
+          "explanation": "说明回退为全 expert 区间，后续 buildRemoteWqeDesc 会过滤本 rank expert。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3534,
+          "kind": "statement",
+          "explanation": "把 startExpId 设为 0，使单 AIV 回退从全局 expert 0 开始。",
+          "reads": [],
+          "writes": [
+            "startExpId"
+          ]
+        },
+        {
+          "line": 3535,
+          "kind": "statement",
+          "explanation": "把 sendExpNum 设为 moeExpertNum_，覆盖全局 expert 范围。",
+          "reads": [
+            "moeExpertNum_"
+          ],
+          "writes": [
+            "sendExpNum"
+          ]
+        },
+        {
+          "line": 3536,
+          "kind": "statement",
+          "explanation": "把 endExpId 设为 moeExpertNum_，形成 [0,moeExpertNum_)。",
+          "reads": [
+            "moeExpertNum_"
+          ],
+          "writes": [
+            "endExpId"
+          ]
+        },
+        {
+          "line": 3537,
+          "kind": "branch",
+          "explanation": "多 AIV 或仅单侧有远端 expert 时，进入连续区间的比例分核路径。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3538,
+          "kind": "declaration",
+          "explanation": "先把分给 self 前区间的 AIV 数 beforeSelfAivNum 初始化为 0。",
+          "reads": [],
+          "writes": [
+            "beforeSelfAivNum"
+          ]
+        },
+        {
+          "line": 3539,
+          "kind": "branch",
+          "explanation": "若 self 前没有远端 expert，则该侧不分配 AIV。",
+          "reads": [
+            "expertNumBeforeSelf"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3540,
+          "kind": "statement",
+          "explanation": "保持 beforeSelfAivNum 为 0。",
+          "reads": [],
+          "writes": [
+            "beforeSelfAivNum"
+          ]
+        },
+        {
+          "line": 3541,
+          "kind": "branch",
+          "explanation": "若 self 后没有远端 expert，则全部远端 WQE AIV 分配给前区间。",
+          "reads": [
+            "expertNumAfterSelf"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3542,
+          "kind": "statement",
+          "explanation": "把 beforeSelfAivNum 设为 aivUsedRemoteWqe_。",
+          "reads": [
+            "aivUsedRemoteWqe_"
+          ],
+          "writes": [
+            "beforeSelfAivNum"
+          ]
+        },
+        {
+          "line": 3543,
+          "kind": "branch",
+          "explanation": "self 两侧都有远端 expert 时，按两侧 expert 数比例分配 AIV 并钳制可行范围。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3544,
+          "kind": "declaration",
+          "explanation": "开始以 64 位乘法计算 floor(aivUsedRemoteWqe_ * expertNumBeforeSelf / 远端 expert 总数)。",
+          "reads": [
+            "aivUsedRemoteWqe_"
+          ],
+          "writes": [
+            "beforeSelfAivNum"
+          ]
+        },
+        {
+          "line": 3545,
+          "kind": "statement",
+          "explanation": "比例分配分子使用 aivUsedRemoteWqe_ * expertNumBeforeSelf，64 位转换避免乘法溢出。",
+          "reads": [
+            "aivUsedRemoteWqe_",
+            "expertNumBeforeSelf"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3546,
+          "kind": "statement",
+          "explanation": "除以 expertNumBeforeSelf + expertNumAfterSelf，得到前区间的初始 AIV 数。",
+          "reads": [
+            "expertNumBeforeSelf",
+            "expertNumAfterSelf"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3547,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3547 分隔 `(expertNumBeforeSelf + expertNumAfterSelf));` 与 `uint32_t minBeforeSelfAivNum =` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3548,
+          "kind": "declaration",
+          "explanation": "开始计算前区间 AIV 数下界，确保后区间至少能一核覆盖一个或多个 expert。",
+          "reads": [],
+          "writes": [
+            "minBeforeSelfAivNum"
+          ]
+        },
+        {
+          "line": 3549,
+          "kind": "branch",
+          "explanation": "若 AIV 数多于后区间 expert 数，下界为 aivUsedRemoteWqe_ - expertNumAfterSelf。",
+          "reads": [
+            "aivUsedRemoteWqe_",
+            "expertNumAfterSelf"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3550,
+          "kind": "statement",
+          "explanation": "否则下界为 1，保证前区间至少获得一个 AIV。",
+          "reads": [
+            "aivUsedRemoteWqe_",
+            "expertNumAfterSelf"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3551,
+          "kind": "declaration",
+          "explanation": "开始计算前区间 AIV 数上界，不让其超过 AIV 总数或前区间 expert 数。",
+          "reads": [],
+          "writes": [
+            "maxBeforeSelfAivNum"
+          ]
+        },
+        {
+          "line": 3552,
+          "kind": "branch",
+          "explanation": "比较 aivUsedRemoteWqe_ 与 expertNumBeforeSelf 选取较小值。",
+          "reads": [
+            "aivUsedRemoteWqe_",
+            "expertNumBeforeSelf"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3553,
+          "kind": "statement",
+          "explanation": "结束三元式并得到 maxBeforeSelfAivNum。",
+          "reads": [
+            "aivUsedRemoteWqe_",
+            "expertNumBeforeSelf"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3554,
+          "kind": "branch",
+          "explanation": "若上界仍等于全部 AIV，则还需为后区间保留一个 AIV。",
+          "reads": [
+            "maxBeforeSelfAivNum",
+            "aivUsedRemoteWqe_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3555,
+          "kind": "statement",
+          "explanation": "把 maxBeforeSelfAivNum 收紧到 aivUsedRemoteWqe_ - 1。",
+          "reads": [
+            "aivUsedRemoteWqe_"
+          ],
+          "writes": [
+            "maxBeforeSelfAivNum"
+          ]
+        },
+        {
+          "line": 3556,
+          "kind": "brace",
+          "explanation": "在 `URMASendToken` 的 L3556 结束 if 分支 `if (maxBeforeSelfAivNum >= aivUsedRemoteWqe_) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3557,
+          "kind": "branch",
+          "explanation": "初始比例结果低于可行下界时执行向上钳制。",
+          "reads": [
+            "beforeSelfAivNum",
+            "minBeforeSelfAivNum"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3558,
+          "kind": "statement",
+          "explanation": "用 minBeforeSelfAivNum 覆盖 beforeSelfAivNum。",
+          "reads": [
+            "minBeforeSelfAivNum"
+          ],
+          "writes": [
+            "beforeSelfAivNum"
+          ]
+        },
+        {
+          "line": 3559,
+          "kind": "brace",
+          "explanation": "在 `URMASendToken` 的 L3559 结束 if 分支 `if (beforeSelfAivNum < minBeforeSelfAivNum) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3560,
+          "kind": "branch",
+          "explanation": "初始比例结果高于可行上界时执行向下钳制。",
+          "reads": [
+            "beforeSelfAivNum",
+            "maxBeforeSelfAivNum"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3561,
+          "kind": "statement",
+          "explanation": "用 maxBeforeSelfAivNum 覆盖 beforeSelfAivNum。",
+          "reads": [
+            "maxBeforeSelfAivNum"
+          ],
+          "writes": [
+            "beforeSelfAivNum"
+          ]
+        },
+        {
+          "line": 3562,
+          "kind": "brace",
+          "explanation": "在 `URMASendToken` 的 L3562 结束 if 分支 `if (beforeSelfAivNum > maxBeforeSelfAivNum) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3563,
+          "kind": "brace",
+          "explanation": "在 `URMASendToken` 的 L3563 结束 else 备选分支 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3564,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3564 分隔 `}` 与 `uint32_t workerId = aivId_;` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3565,
+          "kind": "declaration",
+          "explanation": "默认当前 workerId 为全局 aivId_，随后会在后区间重编号。",
+          "reads": [
+            "aivId_"
+          ],
+          "writes": [
+            "workerId"
+          ]
+        },
+        {
+          "line": 3566,
+          "kind": "declaration",
+          "explanation": "默认当前连续区间是 self 前的 expertNumBeforeSelf。",
+          "reads": [
+            "expertNumBeforeSelf"
+          ],
+          "writes": [
+            "rangeExpertNum"
+          ]
+        },
+        {
+          "line": 3567,
+          "kind": "declaration",
+          "explanation": "默认该区间使用 beforeSelfAivNum 个 AIV。",
+          "reads": [
+            "beforeSelfAivNum"
+          ],
+          "writes": [
+            "rangeAivNum"
+          ]
+        },
+        {
+          "line": 3568,
+          "kind": "declaration",
+          "explanation": "self 前区间从全局 expert 0 开始。",
+          "reads": [],
+          "writes": [
+            "rangeBeginExpertId"
+          ]
+        },
+        {
+          "line": 3569,
+          "kind": "branch",
+          "explanation": "aivId_ 落在 beforeSelfAivNum 之后时，切换到 self 后连续区间。",
+          "reads": [
+            "aivId_",
+            "beforeSelfAivNum"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3570,
+          "kind": "statement",
+          "explanation": "后区间 workerId 减去 beforeSelfAivNum，重新从 0 编号。",
+          "reads": [
+            "aivId_",
+            "beforeSelfAivNum"
+          ],
+          "writes": [
+            "workerId"
+          ]
+        },
+        {
+          "line": 3571,
+          "kind": "statement",
+          "explanation": "后区间待分配 expert 数为 expertNumAfterSelf。",
+          "reads": [
+            "expertNumAfterSelf"
+          ],
+          "writes": [
+            "rangeExpertNum"
+          ]
+        },
+        {
+          "line": 3572,
+          "kind": "statement",
+          "explanation": "后区间 AIV 数为 aivUsedRemoteWqe_ - beforeSelfAivNum。",
+          "reads": [
+            "aivUsedRemoteWqe_",
+            "beforeSelfAivNum"
+          ],
+          "writes": [
+            "rangeAivNum"
+          ]
+        },
+        {
+          "line": 3573,
+          "kind": "statement",
+          "explanation": "后区间从 selfExpertEnd 开始，从切分结果中排除本 rank expert。",
+          "reads": [
+            "selfExpertEnd"
+          ],
+          "writes": [
+            "rangeBeginExpertId"
+          ]
+        },
+        {
+          "line": 3574,
+          "kind": "brace",
+          "explanation": "在 `URMASendToken` 的 L3574 结束 if 分支 `if (aivId_ >= beforeSelfAivNum) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3575,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3575 分隔 `}` 与 `const uint32_t baseExpertNum = rangeExpertNum / rangeAivNum;` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3576,
+          "kind": "declaration",
+          "explanation": "计算整除基数 baseExpertNum = rangeExpertNum / rangeAivNum。",
+          "reads": [
+            "rangeExpertNum",
+            "rangeAivNum"
+          ],
+          "writes": [
+            "baseExpertNum"
+          ]
+        },
+        {
+          "line": 3577,
+          "kind": "declaration",
+          "explanation": "计算余数 remainderExpertNum，前若干 worker 各多承担一个 expert。",
+          "reads": [
+            "rangeExpertNum",
+            "rangeAivNum"
+          ],
+          "writes": [
+            "remainderExpertNum"
+          ]
+        },
+        {
+          "line": 3578,
+          "kind": "statement",
+          "explanation": "sendExpNum 取 baseExpertNum，并在 workerId < remainderExpertNum 时加 1。",
+          "reads": [
+            "baseExpertNum",
+            "workerId",
+            "remainderExpertNum"
+          ],
+          "writes": [
+            "sendExpNum"
+          ]
+        },
+        {
+          "line": 3579,
+          "kind": "declaration",
+          "explanation": "开始计算当前 worker 在连续区间内的前缀 expertOffset。",
+          "reads": [
+            "workerId",
+            "baseExpertNum"
+          ],
+          "writes": [
+            "expertOffset"
+          ]
+        },
+        {
+          "line": 3580,
+          "kind": "statement",
+          "explanation": "额外偏移取 min(workerId,remainderExpertNum)，对应余数前缀分配。",
+          "reads": [
+            "workerId",
+            "remainderExpertNum"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3581,
+          "kind": "statement",
+          "explanation": "startExpId = rangeBeginExpertId + expertOffset。",
+          "reads": [
+            "rangeBeginExpertId",
+            "expertOffset"
+          ],
+          "writes": [
+            "startExpId"
+          ]
+        },
+        {
+          "line": 3582,
+          "kind": "statement",
+          "explanation": "endExpId = startExpId + sendExpNum，固定当前 AIV 的半开区间。",
+          "reads": [
+            "startExpId",
+            "sendExpNum"
+          ],
+          "writes": [
+            "endExpId"
+          ]
+        },
+        {
+          "line": 3583,
+          "kind": "brace",
+          "explanation": "在 `URMASendToken` 的 L3583 结束 else 备选分支 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3584,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `printf(\"URMASendToken Info aiv %d, total %d, compareTokenOriginalOffset %d, e %d, n %d\\n\",`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3585,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `aivId_, epWorldSize_, startRankId, endRankId, sendRankNum);`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3586,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm] rankId %d, aivId %d, startRankId %d, endRankId %d, sendRankNum %d\",`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3587,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `epRankId_, aivId_, startRankId, endRankId, sendRankNum);`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3588,
+          "kind": "branch",
+          "explanation": "若均衡切分得到 sendExpNum 为 0，则该 AIV 不申请 UB、也不产生 WQE。",
+          "reads": [
+            "sendExpNum"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3589,
+          "kind": "statement",
+          "explanation": "直接返回，避免后续以空 expert 区间计算 rank 和缓冲容量。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3590,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3590 分隔 `return;` 与 `uint32_t startRankId = startExpId / moeExpertNumPerRank_;` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3591,
+          "kind": "declaration",
+          "explanation": "用 startExpId / moeExpertNumPerRank_ 得到区间首 expert 所在 startRankId。",
+          "reads": [
+            "startExpId",
+            "moeExpertNumPerRank_"
+          ],
+          "writes": [
+            "startRankId"
+          ]
+        },
+        {
+          "line": 3592,
+          "kind": "declaration",
+          "explanation": "用 endExpId / moeExpertNumPerRank_ 得到半开终点所在的 endRankId。",
+          "reads": [
+            "endExpId",
+            "moeExpertNumPerRank_"
+          ],
+          "writes": [
+            "endRankId"
+          ]
+        },
+        {
+          "line": 3593,
+          "kind": "declaration",
+          "explanation": "若 endExpId 卡内余数为 0，sendRankNum 不含 endRankId；否则额外覆盖终点所在 rank。",
+          "reads": [
+            "endExpId",
+            "moeExpertNumPerRank_",
+            "endRankId",
+            "startRankId"
+          ],
+          "writes": [
+            "sendRankNum"
+          ]
+        },
+        {
+          "line": 3594,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3594 分隔 `uint32_t sendRankNum = (endExpId % moeExpertNumPerRank_ == 0) ? (endRan…` 与 `uint32_t N32numPerJetty = Ceil(axisBS_ * axisK_, 32U);` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3595,
+          "kind": "call",
+          "explanation": "把 BS×K 路由槽数按 32 bit 一组上取整，得到每 jetty 的 bitmap word 数 N32numPerJetty。",
+          "reads": [
+            "axisBS_",
+            "axisK_"
+          ],
+          "writes": [
+            "N32numPerJetty"
+          ]
+        },
+        {
+          "line": 3596,
+          "kind": "declaration",
+          "explanation": "maxHeadRecordSlot = N32numPerJetty * 32，定义 SQ head 环形 bitmap 槽数。",
+          "reads": [
+            "N32numPerJetty"
+          ],
+          "writes": [
+            "maxHeadRecordSlot"
+          ]
+        },
+        {
+          "line": 3597,
+          "kind": "declaration",
+          "explanation": "按完整 rank 数加 2 估计 UB 中最大 jetty 数，覆盖跨 rank 边界及跨过本 rank 的情况。",
+          "reads": [
+            "sendExpNum",
+            "moeExpertNumPerRank_"
+          ],
+          "writes": [
+            "maxJettyNumOnUB"
+          ]
+        },
+        {
+          "line": 3598,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"====== kfm1 ======\\n\");`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3599,
+          "kind": "call",
+          "explanation": "把 expertIdsBuf_ 按 expertIdsCnt_ 个 uint32_t 上取整到 UB_ALIGN，用于 GM→UB expert ID 快照。",
+          "reads": [
+            "tpipe_",
+            "expertIdsCnt_",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "expertIdsBuf_"
+          ]
+        },
+        {
+          "line": 3600,
+          "kind": "call",
+          "explanation": "为 sendExpNum 个 uint32_t expert 计数申请 expertCntListBuf。",
+          "reads": [
+            "tpipe_",
+            "sendExpNum"
+          ],
+          "writes": [
+            "expertCntListBuf"
+          ]
+        },
+        {
+          "line": 3601,
+          "kind": "call",
+          "explanation": "为 sendExpNum × axisBS_ 个原始路由偏移申请 expertOffsetListBuf。",
+          "reads": [
+            "tpipe_",
+            "sendExpNum",
+            "axisBS_"
+          ],
+          "writes": [
+            "expertOffsetListBuf"
+          ]
+        },
+        {
+          "line": 3602,
+          "kind": "call",
+          "explanation": "为同形状的稳定有序偏移申请 expertOrderedOffsetListBuf。",
+          "reads": [
+            "tpipe_",
+            "sendExpNum",
+            "axisBS_"
+          ],
+          "writes": [
+            "expertOrderedOffsetListBuf"
+          ]
+        },
+        {
+          "line": 3603,
+          "kind": "call",
+          "explanation": "为远端 token 总数标量申请一个 UB_ALIGN 槽。",
+          "reads": [
+            "tpipe_",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "totalSendNumBuf"
+          ]
+        },
+        {
+          "line": 3604,
+          "kind": "call",
+          "explanation": "为每批已生成 WQE 数标量申请一个 UB_ALIGN 槽。",
+          "reads": [
+            "tpipe_",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "finishedWqeDescNumBuf"
+          ]
+        },
+        {
+          "line": 3605,
+          "kind": "call",
+          "explanation": "为 sendRankNum 个 64 位远端窗口基址申请 remoteAddrListBuf。",
+          "reads": [
+            "tpipe_",
+            "sendRankNum"
+          ],
+          "writes": [
+            "remoteAddrListBuf"
+          ]
+        },
+        {
+          "line": 3606,
+          "kind": "call",
+          "explanation": "为 headReady 轮询与回写申请一个 UB_ALIGN staging 槽。",
+          "reads": [
+            "tpipe_",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "headReadyBuf"
+          ]
+        },
+        {
+          "line": 3607,
+          "kind": "call",
+          "explanation": "开始为 headRecordBuf 申请按 jetty × bitmap word 排列的 UB。",
+          "reads": [
+            "tpipe_"
+          ],
+          "writes": [
+            "headRecordBuf"
+          ]
+        },
+        {
+          "line": 3608,
+          "kind": "call",
+          "explanation": "容量为 maxJettyNumOnUB × N32numPerJetty 个 uint32_t，再上取整到 UB_ALIGN。",
+          "reads": [
+            "maxJettyNumOnUB",
+            "N32numPerJetty",
+            "UB_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3609,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3609 分隔 `Ceil(maxJettyNumOnUB * N32numPerJetty * sizeof(uint32_t), UB_ALIGN) * U…` 与 `validExpertIdsTensor_ = expertIdsBuf_.Get<int32_t>();` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3610,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3610 分隔 `Ceil(maxJettyNumOnUB * N32numPerJetty * sizeof(uint32_t), UB_ALIGN) * U…` 与 `validExpertIdsTensor_ = expertIdsBuf_.Get<int32_t>();` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3611,
+          "kind": "call",
+          "explanation": "从 expertIdsBuf_ 取得 int32_t 视图 validExpertIdsTensor_。",
+          "reads": [
+            "expertIdsBuf_"
+          ],
+          "writes": [
+            "validExpertIdsTensor_"
+          ]
+        },
+        {
+          "line": 3612,
+          "kind": "call",
+          "explanation": "取得每 expert token 计数视图 expertCntListLT。",
+          "reads": [
+            "expertCntListBuf"
+          ],
+          "writes": [
+            "expertCntListLT"
+          ]
+        },
+        {
+          "line": 3613,
+          "kind": "call",
+          "explanation": "取得按 expert 分行、原子追加的原始路由偏移表 expertOffsetListLT。",
+          "reads": [
+            "expertOffsetListBuf"
+          ],
+          "writes": [
+            "expertOffsetListLT"
+          ]
+        },
+        {
+          "line": 3614,
+          "kind": "call",
+          "explanation": "取得按源 token 偏移稳定升序的 expertOrderedOffsetListLT。",
+          "reads": [
+            "expertOrderedOffsetListBuf"
+          ],
+          "writes": [
+            "expertOrderedOffsetListLT"
+          ]
+        },
+        {
+          "line": 3615,
+          "kind": "call",
+          "explanation": "取得仅统计远端 rank token 数的 totalSendNumLT。",
+          "reads": [
+            "totalSendNumBuf"
+          ],
+          "writes": [
+            "totalSendNumLT"
+          ]
+        },
+        {
+          "line": 3616,
+          "kind": "call",
+          "explanation": "取得当前 buildRemoteWqeDesc 批次输出数量标量。",
+          "reads": [
+            "finishedWqeDescNumBuf"
+          ],
+          "writes": [
+            "finishedWqeDescNumLT"
+          ]
+        },
+        {
+          "line": 3617,
+          "kind": "call",
+          "explanation": "取得按 [startRankId,startRankId+sendRankNum) 索引的远端地址表。",
+          "reads": [
+            "remoteAddrListBuf"
+          ],
+          "writes": [
+            "remoteAddrListLT"
+          ]
+        },
+        {
+          "line": 3618,
+          "kind": "call",
+          "explanation": "取得 headReady GM↔UB 握手 staging 视图。",
+          "reads": [
+            "headReadyBuf"
+          ],
+          "writes": [
+            "headReadyLT"
+          ]
+        },
+        {
+          "line": 3619,
+          "kind": "call",
+          "explanation": "取得当前批 SQ head 完成 bitmap 的 UB 视图。",
+          "reads": [
+            "headRecordBuf"
+          ],
+          "writes": [
+            "headRecordLT"
+          ]
+        },
+        {
+          "line": 3620,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3620 分隔 `LocalTensor<uint32_t> headRecordLT = headRecordBuf.Get<uint32_t>();` 与 `TBuf<> tokenSendWqeDescBuf, wqeSqIdxBuf, dstRankWqeCountBuf,` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3621,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3621 分隔 `LocalTensor<uint32_t> headRecordLT = headRecordBuf.Get<uint32_t>();` 与 `TBuf<> tokenSendWqeDescBuf, wqeSqIdxBuf, dstRankWqeCountBuf,` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3622,
+          "kind": "declaration",
+          "explanation": "开始声明批量 WQE 描述及 SQ 路由、计数、head、cursor 五类 UB 工作区。",
+          "reads": [],
+          "writes": [
+            "tokenSendWqeDescBuf",
+            "wqeSqIdxBuf",
+            "dstRankWqeCountBuf"
+          ]
+        },
+        {
+          "line": 3623,
+          "kind": "declaration",
+          "explanation": "补齐 sqWqeCountBuf、sqBaseHeadBuf 和 sqCursorBuf。",
+          "reads": [],
+          "writes": [
+            "sqWqeCountBuf",
+            "sqBaseHeadBuf",
+            "sqCursorBuf"
+          ]
+        },
+        {
+          "line": 3624,
+          "kind": "call",
+          "explanation": "开始为最多 MAX_WQE_CNT 个描述到 SQ 索引申请 wqeSqIdxBuf。",
+          "reads": [
+            "tpipe_"
+          ],
+          "writes": [
+            "wqeSqIdxBuf"
+          ]
+        },
+        {
+          "line": 3625,
+          "kind": "call",
+          "explanation": "容量按 MAX_WQE_CNT 个 uint32_t 对齐到 UB_ALIGN。",
+          "reads": [
+            "MAX_WQE_CNT",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "wqeSqIdxBuf"
+          ]
+        },
+        {
+          "line": 3626,
+          "kind": "call",
+          "explanation": "开始为每个 EP rank 的本批 WQE 计数申请 dstRankWqeCountBuf。",
+          "reads": [
+            "tpipe_"
+          ],
+          "writes": [
+            "dstRankWqeCountBuf"
+          ]
+        },
+        {
+          "line": 3627,
+          "kind": "call",
+          "explanation": "容量按 epWorldSize_ 个 uint32_t 对齐。",
+          "reads": [
+            "epWorldSize_",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "dstRankWqeCountBuf"
+          ]
+        },
+        {
+          "line": 3628,
+          "kind": "call",
+          "explanation": "开始为所有 jetty 的本批 WQE 计数申请 sqWqeCountBuf。",
+          "reads": [
+            "tpipe_"
+          ],
+          "writes": [
+            "sqWqeCountBuf"
+          ]
+        },
+        {
+          "line": 3629,
+          "kind": "call",
+          "explanation": "容量按 totalJettyNum 个 uint32_t 对齐。",
+          "reads": [
+            "totalJettyNum",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "sqWqeCountBuf"
+          ]
+        },
+        {
+          "line": 3630,
+          "kind": "call",
+          "explanation": "开始为每个 SQ 一次性预留的基准 head 申请 sqBaseHeadBuf。",
+          "reads": [
+            "tpipe_"
+          ],
+          "writes": [
+            "sqBaseHeadBuf"
+          ]
+        },
+        {
+          "line": 3631,
+          "kind": "call",
+          "explanation": "容量按 totalJettyNum 个 uint32_t 对齐。",
+          "reads": [
+            "totalJettyNum",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "sqBaseHeadBuf"
+          ]
+        },
+        {
+          "line": 3632,
+          "kind": "call",
+          "explanation": "开始为批内每个 SQ 的局部 cursor 申请 sqCursorBuf。",
+          "reads": [
+            "tpipe_"
+          ],
+          "writes": [
+            "sqCursorBuf"
+          ]
+        },
+        {
+          "line": 3633,
+          "kind": "call",
+          "explanation": "容量按 totalJettyNum 个 uint32_t 对齐。",
+          "reads": [
+            "totalJettyNum",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "sqCursorBuf"
+          ]
+        },
+        {
+          "line": 3634,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3634 分隔 `Ceil(totalJettyNum * sizeof(uint32_t), UB_ALIGN) * UB_ALIGN);` 与 `LocalTensor<uint32_t> wqeSqIdxLT = wqeSqIdxBuf.Get<uint32_t>();` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3635,
+          "kind": "call",
+          "explanation": "取得每条 WQE 被路由到的 SQ 索引表。",
+          "reads": [
+            "wqeSqIdxBuf"
+          ],
+          "writes": [
+            "wqeSqIdxLT"
+          ]
+        },
+        {
+          "line": 3636,
+          "kind": "call",
+          "explanation": "取得每目标 rank 的 WQE ordinal 计数表。",
+          "reads": [
+            "dstRankWqeCountBuf"
+          ],
+          "writes": [
+            "dstRankWqeCountLT"
+          ]
+        },
+        {
+          "line": 3637,
+          "kind": "call",
+          "explanation": "取得每 SQ 的本批 WQE 数表。",
+          "reads": [
+            "sqWqeCountBuf"
+          ],
+          "writes": [
+            "sqWqeCountLT"
+          ]
+        },
+        {
+          "line": 3638,
+          "kind": "call",
+          "explanation": "取得每 SQ 原子预留的 head 区间起点表。",
+          "reads": [
+            "sqBaseHeadBuf"
+          ],
+          "writes": [
+            "sqBaseHeadLT"
+          ]
+        },
+        {
+          "line": 3639,
+          "kind": "call",
+          "explanation": "取得每 SQ 批内写入 cursor 表。",
+          "reads": [
+            "sqCursorBuf"
+          ],
+          "writes": [
+            "sqCursorLT"
+          ]
+        },
+        {
+          "line": 3640,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3640 分隔 `LocalTensor<uint32_t> sqCursorLT = sqCursorBuf.Get<uint32_t>();` 与 `GM_ADDR sqsGM = GetSqsAddr();` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3641,
+          "kind": "call",
+          "explanation": "调用 GetSqsAddr 取得控制区内 HcclAiRMAWQ GM 数组起点 sqsGM。",
+          "reads": [
+            "GetSqsAddr"
+          ],
+          "writes": [
+            "sqsGM"
+          ]
+        },
+        {
+          "line": 3642,
+          "kind": "declaration",
+          "explanation": "CQ 数组紧跟 totalJettyNum 个 HcclAiRMAWQ，按结构体字节数计算 cqsGM；当前发送路径不消费 CQ。",
+          "reads": [
+            "sqsGM",
+            "HcclAiRMAWQ",
+            "totalJettyNum"
+          ],
+          "writes": [
+            "cqsGM"
+          ]
+        },
+        {
+          "line": 3643,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3643 分隔 `GM_ADDR cqsGM = sqsGM + sizeof(HcclAiRMAWQ) * totalJettyNum;` 与 `// auto sqs = reinterpret_cast<__gm__ HcclAiRMAWQ *>(sqsGM);` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3644,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `auto sqs = reinterpret_cast<__gm__ HcclAiRMAWQ *>(sqsGM);`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3645,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3645 分隔 `// auto sqs = reinterpret_cast<__gm__ HcclAiRMAWQ *>(sqsGM);` 与 `// for (uint32_t i = 0; i < totalJettyNum; ++i) {` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3646,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `for (uint32_t i = 0; i < totalJettyNum; ++i) {`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3647,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `uint32_t currentHead = 0;`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3648,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3648 分隔 `// uint32_t currentHead = 0;` 与 `// if (sqs[i].headAddr != 0) {` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3649,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `if (sqs[i].headAddr != 0) {`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3650,
+          "kind": "comment",
+          "explanation": "注释记录 `currentHead =`，说明 `URMASendToken` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3651,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `*reinterpret_cast<__gm__ uint32_t *>(sqs[i].headAddr) % sqs[i].sqDepth;`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3652,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3653,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3653 分隔 `// }` 与 `// PrevHeadArr.SetValue(i, currentHead);` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3654,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `PrevHeadArr.SetValue(i, currentHead);`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3655,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3656,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3656 分隔 `// }` 与 `// PipeBarrier<PIPE_ALL>();` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3657,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `PipeBarrier<PIPE_ALL>();`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3658,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3658 分隔 `// PipeBarrier<PIPE_ALL>();` 与 `SyncFunc<AscendC::HardEvent::V_S>();` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3659,
+          "kind": "sync",
+          "explanation": "SyncFunc<V_S> 等待先前向量侧 UB 初始化对标量侧可见。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3660,
+          "kind": "sync",
+          "explanation": "PipeBarrier<PIPE_ALL> 在复用 UB 并建立 WQE 描述指针前完成全流水线排序。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3661,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3661 分隔 `PipeBarrier<PIPE_ALL>();` 与 `tpipe_->InitBuffer(tokenSendWqeDescBuf, Ceil(sizeof(wqe_desc_array_t), …` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3662,
+          "kind": "call",
+          "explanation": "为一个 wqe_desc_array_t 申请对齐 UB；该结构容纳最多 MAX_WQE_CNT 条批量描述。",
+          "reads": [
+            "tpipe_",
+            "wqe_desc_array_t",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "tokenSendWqeDescBuf"
+          ]
+        },
+        {
+          "line": 3663,
+          "kind": "call",
+          "explanation": "从 tokenSendWqeDescBuf 取得 uint32_t 载体视图 tokenSendWqeDescU32。",
+          "reads": [
+            "tokenSendWqeDescBuf"
+          ],
+          "writes": [
+            "tokenSendWqeDescU32"
+          ]
+        },
+        {
+          "line": 3664,
+          "kind": "call",
+          "explanation": "用 GetPhyAddr 把载体 UB 转成 wqe_desc_array_t 指针 tokenSendWqeDesc，供两个 SIMT 阶段共享。",
+          "reads": [
+            "tokenSendWqeDescU32",
+            "wqe_desc_array_t"
+          ],
+          "writes": [
+            "tokenSendWqeDesc"
+          ]
+        },
+        {
+          "line": 3665,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3665 分隔 `__ubuf__ wqe_desc_array_t* tokenSendWqeDesc = reinterpret_cast<__ubuf__…` 与 `// AscendC::printf(\"====== kfm2 ======\\n\");` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3666,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"====== kfm2 ======\\n\");`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3667,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3667 分隔 `// AscendC::printf(\"====== kfm2 ======\\n\");` 与 `// AscendC::printf(\"====== kfm2.5 ======\\n\");` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3668,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"====== kfm2.5 ======\\n\");`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3669,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `get_sqs_and_cqs_xb(sqsGM, cqsGM);`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3670,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `cacheWriteThrough(sqsGM, sizeof(HcclAiRMAWQ) * totalJettyNum);`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3671,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `cacheWriteThrough(cqsGM, sizeof(HcclAiRMACQ) * totalJettyNum);`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3672,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3672 分隔 `// cacheWriteThrough(cqsGM, sizeof(HcclAiRMACQ) * totalJettyNum);` 与 `GM_ADDR headRecordGM = GetHeadRecordAddr();` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3673,
+          "kind": "call",
+          "explanation": "调用 GetHeadRecordAddr 取得跨 AIV/SQ 发布完成 head bitmap 的 GM 根 headRecordGM。",
+          "reads": [
+            "GetHeadRecordAddr"
+          ],
+          "writes": [
+            "headRecordGM"
+          ]
+        },
+        {
+          "line": 3674,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3674 分隔 `GM_ADDR headRecordGM = GetHeadRecordAddr();` 与 `// // get_sqs_and_cqs_xb_ub_v3(reinterpret_cast<uint64_t>(sqsLT.GetPhyA…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3675,
+          "kind": "comment",
+          "explanation": "注释记录 `// get_sqs_and_cqs_xb_ub_v3(reinterpret_cast<uint64_t>(sqsLT.GetPhyAddr()),`，说明 `URMASendToken` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3676,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `// reinterpret_cast<uint64_t>(cqsLT.GetPhyAddr()));`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3677,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"get_sqs_and_cqs_xb ok\\n\");`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3678,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `for (int i = 0; i < epWorldSize_; i++) {`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3679,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `for (int j = 0; j < PORT_NUM; j++) {`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3680,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `for (int k = 0; k < JETTY_NUM; k++) {`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3681,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `auto sq = reinterpret_cast<__gm__ AiURMAWQ *>(sqsGM) + OFFSET_OF(epWorldSize_, PORT_NUM, JETTY_NUM, i, j, k);`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3682,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `auto cq = reinterpret_cast<__gm__ AiURMACQ *>(cqsGM) + OFFSET_OF(epWorldSize_, PORT_NUM, JETTY_NUM, i, j, k);`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3683,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"rank %d, port %d, jetty %d, sqVa %p, sqDB %p, sqDepth %d, headAddr %p, \\`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3684,
+          "kind": "comment",
+          "explanation": "注释记录 `wqeSize %d, tpid %d, rmtEidL %p, rmtEidH %p, rmtObjId %d, rmtTokenValue %d\\n\",`，说明 `URMASendToken` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3685,
+          "kind": "comment",
+          "explanation": "注释记录 `i, j, k, sq->sqVA, sq->dbAddr, sq->sqDepth, sq->headAddr, sq->wqeSize, sq->tp_id,`，说明 `URMASendToken` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3686,
+          "kind": "comment",
+          "explanation": "注释记录 `(__gm__ uint64_t *)(sq->rmtEid), (__gm__ uint64_t *)(sq->rmtEid + 8),`，说明 `URMASendToken` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3687,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `sq->rmtObjId, sq->rmtTokenValue);`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3688,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `// AscendC::printf(\"rank %d, port %d, jetty %d, sqVa %p, localTokenId %d\\n\", i, j, k, sq->sqVA, sq->localTokenId);`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3689,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3690,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3691,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3692,
+          "kind": "sync",
+          "explanation": "PipeBarrier<PIPE_ALL> 结束禁用的 SQ/CQ 诊断区，确保进入映射初始化时流水线无悬挂操作。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3693,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3693 分隔 `PipeBarrier<PIPE_ALL>();` 与 `// AscendC::printf(\"====== kfm3 ======\\n\");` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3694,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"====== kfm3 ======\\n\");`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3695,
+          "kind": "statement",
+          "explanation": "把 totalSendNumLT(0) 清零，供 simt_prepare_mapping 原子累计远端 token 数。",
+          "reads": [
+            "totalSendNumLT"
+          ],
+          "writes": [
+            "totalSendNumLT"
+          ]
+        },
+        {
+          "line": 3696,
+          "kind": "call",
+          "explanation": "Duplicate 将 sendExpNum 个 expertCntListLT 计数清零。",
+          "reads": [
+            "sendExpNum"
+          ],
+          "writes": [
+            "expertCntListLT"
+          ]
+        },
+        {
+          "line": 3697,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3697 分隔 `Duplicate(expertCntListLT, 0U, sendExpNum);` 与 `DataCopyExtParams expertIdsCntParams = {1U, static_cast<uint32_t>(exper…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3698,
+          "kind": "declaration",
+          "explanation": "构造单块 GM→UB 参数，精确搬入 expertIdsCnt_ 个 uint32_t expert ID。",
+          "reads": [
+            "expertIdsCnt_"
+          ],
+          "writes": [
+            "expertIdsCntParams"
+          ]
+        },
+        {
+          "line": 3699,
+          "kind": "declaration",
+          "explanation": "构造不启用 padding 的 int32_t DataCopyPad 参数。",
+          "reads": [],
+          "writes": [
+            "expertIdsCntCopyPadParams"
+          ]
+        },
+        {
+          "line": 3700,
+          "kind": "call",
+          "explanation": "DataCopyPad 把 expertIdsGMTensor_ 搬入 validExpertIdsTensor_，形成映射阶段的稳定输入快照。",
+          "reads": [
+            "expertIdsGMTensor_",
+            "expertIdsCntParams",
+            "expertIdsCntCopyPadParams"
+          ],
+          "writes": [
+            "validExpertIdsTensor_"
+          ]
+        },
+        {
+          "line": 3701,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3701 分隔 `DataCopyPad(validExpertIdsTensor_, expertIdsGMTensor_, expertIdsCntPara…` 与 `PipeBarrier<PIPE_ALL>();` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3702,
+          "kind": "sync",
+          "explanation": "PipeBarrier<PIPE_ALL> 等待 expertIds GM→UB 搬入及计数清零完成。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3703,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3703 分隔 `PipeBarrier<PIPE_ALL>();` 与 `// timepoint[1] = AscendC::GetSystemCycle();` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3704,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `timepoint[1] = AscendC::GetSystemCycle();`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3705,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3705 分隔 `// timepoint[1] = AscendC::GetSystemCycle();` 与 `// for(uint32_t i = 0; i < expertIdsCnt_; i++){` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3706,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `for(uint32_t i = 0; i < expertIdsCnt_; i++){`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3707,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `int32_t dstExpId = validExpertIdsTensor_(i); //专家列表值`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3708,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `if(dstExpId >= beginExpId && dstExpId < endExpId){`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3709,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `int32_t logicExpId = dstExpId - beginExpId;`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3710,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `uint32_t preInfoNum = expertCntListLT(logicExpId);`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3711,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `expertCntListLT(logicExpId) = preInfoNum + 1;`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3712,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `expertOffsetListLT(logicExpId * axisBS_ + preInfoNum) = i;`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3713,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3714,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3715,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"====== kfm4 ======\\n\");`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3716,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3716 分隔 `// AscendC::printf(\"====== kfm4 ======\\n\");` 与 `// for(uint32_t i = 0; i < expertIdsCnt_; i++){` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3717,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `for(uint32_t i = 0; i < expertIdsCnt_; i++){`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3718,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"expertIdsCnt_[%d]: %d\\n\", i, validExpertIdsTensor_(i));`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3719,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3720,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3720 分隔 `// }` 与 `PipeBarrier<PIPE_ALL>();` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3721,
+          "kind": "sync",
+          "explanation": "再次执行 PIPE_ALL barrier，保证禁用的标量映射替代代码不会影响正式 SIMT 映射入口。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3722,
+          "kind": "call",
+          "explanation": "启动 simt_prepare_mapping：先按 expert 原子收集路由槽，再按原始 offset 排序，输出稳定 expert→token 映射。",
+          "reads": [
+            "simt_prepare_mapping"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3723,
+          "kind": "call",
+          "explanation": "使用 PREPARE_THREADS_NUM 个 SIMT 线程完成 BS×K 扫描和 expert×BS 排序。",
+          "reads": [
+            "PREPARE_THREADS_NUM"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3724,
+          "kind": "statement",
+          "explanation": "传入 validExpertIdsTensor_ 的 UB 物理地址作为 expertIds 输入。",
+          "reads": [
+            "validExpertIdsTensor_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3725,
+          "kind": "statement",
+          "explanation": "传入 expertCntListLT，按当前 AIV 的 local expert 下标累计 token 数。",
+          "reads": [
+            "expertCntListLT"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3726,
+          "kind": "statement",
+          "explanation": "传入 expertOffsetListLT，记录每个 expert 收集到的原始 BS×K 槽位。",
+          "reads": [
+            "expertOffsetListLT"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3727,
+          "kind": "statement",
+          "explanation": "传入 expertOrderedOffsetListLT，按原始槽位升序形成确定性 token 次序。",
+          "reads": [
+            "expertOrderedOffsetListLT"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3728,
+          "kind": "statement",
+          "explanation": "传入 totalSendNumLT，仅累计目标 rank 不等于 epRankId_ 的 token 数。",
+          "reads": [
+            "totalSendNumLT"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3729,
+          "kind": "statement",
+          "explanation": "传入 axisBS_ 作为每个 expert 行的最大槽位容量。",
+          "reads": [
+            "axisBS_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3730,
+          "kind": "statement",
+          "explanation": "传入 axisK_，后续用 originalOffset / axisK_ 恢复源 tokenId。",
+          "reads": [
+            "axisK_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3731,
+          "kind": "statement",
+          "explanation": "传入 startExpId，定义本 AIV local expert 0 对应的全局 expert。",
+          "reads": [
+            "startExpId"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3732,
+          "kind": "statement",
+          "explanation": "传入 sendExpNum，限制本 AIV 映射的 expert 行数。",
+          "reads": [
+            "sendExpNum"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3733,
+          "kind": "statement",
+          "explanation": "传入 moeExpertNumPerRank_，用于全局 expert 到 rank 的换算。",
+          "reads": [
+            "moeExpertNumPerRank_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3734,
+          "kind": "statement",
+          "explanation": "传入 epRankId_，使映射总数排除本 rank token。",
+          "reads": [
+            "epRankId_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3735,
+          "kind": "sync",
+          "explanation": "SyncFunc<V_S> 等待 simt_prepare_mapping 的计数、原始 offset、有序 offset 和 totalSendNum 写回。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3736,
+          "kind": "sync",
+          "explanation": "PipeBarrier<PIPE_ALL> 在标量读取 totalSendNumLT 与远端地址构造前完成同步。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3737,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3737 分隔 `PipeBarrier<PIPE_ALL>();` 与 `// for(uint32_t i = 0; i < sendRankNum * moeExpertNumPerRank_ * axisBS_…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3738,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `for(uint32_t i = 0; i < sendRankNum * moeExpertNumPerRank_ * axisBS_; i++){`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3739,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm] aivId_[%d] expertOrderedOffsetListLT[%d]: %d\\n\", aivId_, i, expertOrderedOffsetListLT(i));`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3740,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3741,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3741 分隔 `// }` 与 `// AscendC::printf(\"[kfm] aivId_[%d] totalSendNumLT: %d\\n\", aivId_, tot…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3742,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm] aivId_[%d] totalSendNumLT: %d\\n\", aivId_, totalSendNumLT(0));`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3743,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3743 分隔 `// AscendC::printf(\"[kfm] aivId_[%d] totalSendNumLT: %d\\n\", aivId_, tot…` 与 `// timepoint[2] = AscendC::GetSystemCycle();` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3744,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `timepoint[2] = AscendC::GetSystemCycle();`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3745,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"====== kfm5 ======\\n\");`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3746,
+          "kind": "call",
+          "explanation": "DebugClock(3) 记录映射阶段结束的调试时间点。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3747,
+          "kind": "loop",
+          "explanation": "遍历 sendRankNum 个连续 rank，为 buildRemoteWqeDesc 建立按 rank 差值索引的 remoteAddrListLT。",
+          "reads": [
+            "sendRankNum"
+          ],
+          "writes": [
+            "i"
+          ]
+        },
+        {
+          "line": 3748,
+          "kind": "call",
+          "explanation": "远端基址 = GetWindAddrByRankId(startRankId+i) + expertPerSizeOnWin_ × 本 rank expert 段起点；写入 remoteAddrListLT(i)。",
+          "reads": [
+            "startRankId",
+            "i",
+            "expertPerSizeOnWin_",
+            "epRankId_",
+            "moeExpertNumPerRank_"
+          ],
+          "writes": [
+            "remoteAddrListLT"
+          ]
+        },
+        {
+          "line": 3749,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[sendBase] rank %d aiv %d dstRank %d base %p remoteBase %p\\n\",`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3750,
+          "kind": "comment",
+          "explanation": "注释记录 `epRankId_, aivId_, startRankId + i,`，说明 `URMASendToken` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3751,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `GetWindAddrByRankId(startRankId + i), remoteAddrListLT(i));`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3752,
+          "kind": "brace",
+          "explanation": "在 `URMASendToken` 的 L3752 结束 for 循环 `for(uint32_t i = 0; i < sendRankNum; i++){` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3753,
+          "kind": "sync",
+          "explanation": "PipeBarrier<PIPE_ALL> 保证完整远端地址表在 WQE 描述线程读取前可见。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3754,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3754 分隔 `PipeBarrier<PIPE_ALL>();` 与 `uint64_t srcBaseAddr = uint64_t(GetSendBufferAddrByTokenId(0));` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3755,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3755 分隔 `PipeBarrier<PIPE_ALL>();` 与 `uint64_t srcBaseAddr = uint64_t(GetSendBufferAddrByTokenId(0));` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3756,
+          "kind": "call",
+          "explanation": "调用 GetSendBufferAddrByTokenId(0) 取得本地 staging token 0 的地址 srcBaseAddr；后续按 tokenId × hCommuSize_ 求源地址。",
+          "reads": [
+            "GetSendBufferAddrByTokenId"
+          ],
+          "writes": [
+            "srcBaseAddr"
+          ]
+        },
+        {
+          "line": 3757,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `uint32_t targetRemoteSendNum = 0;`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3758,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `for (uint32_t targetLocalExp = 0; targetLocalExp < sendExpNum; ++targetLocalExp) {`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3759,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `uint32_t targetExpId = startExpId + targetLocalExp;`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3760,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `if (targetExpId / moeExpertNumPerRank_ != epRankId_) {`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3761,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `targetRemoteSendNum += expertCntListLT(targetLocalExp);`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3762,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3763,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3764,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3764 分隔 `// }` 与 `// AscendC::printf(\"====== kfm6 ======\\n\");` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3765,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3765 分隔 `// }` 与 `// AscendC::printf(\"====== kfm6 ======\\n\");` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3766,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"====== kfm6 ======\\n\");`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3767,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3767 分隔 `// AscendC::printf(\"====== kfm6 ======\\n\");` 与 `GM_ADDR headReadyGM = GetHeadReadyAddr();` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3768,
+          "kind": "call",
+          "explanation": "调用 GetHeadReadyAddr 取得每个远端 WQE AIV 的 head-ready GM 槽数组根。",
+          "reads": [
+            "GetHeadReadyAddr"
+          ],
+          "writes": [
+            "headReadyGM"
+          ]
+        },
+        {
+          "line": 3769,
+          "kind": "declaration",
+          "explanation": "声明 headReadyGT，作为当前 AIV head-ready GM 槽的 GlobalTensor 视图。",
+          "reads": [],
+          "writes": [
+            "headReadyGT"
+          ]
+        },
+        {
+          "line": 3770,
+          "kind": "declaration",
+          "explanation": "保存 localAivId = aivId_，选择本 AIV 独占的 HEAD_READY_STRIDE 槽。",
+          "reads": [
+            "aivId_"
+          ],
+          "writes": [
+            "localAivId"
+          ]
+        },
+        {
+          "line": 3771,
+          "kind": "declaration",
+          "explanation": "currHeadReadyGM = headReadyGM + localAivId × HEAD_READY_STRIDE。",
+          "reads": [
+            "headReadyGM",
+            "localAivId",
+            "HEAD_READY_STRIDE"
+          ],
+          "writes": [
+            "currHeadReadyGM"
+          ]
+        },
+        {
+          "line": 3772,
+          "kind": "call",
+          "explanation": "把 currHeadReadyGM 绑定到 headReadyGT。",
+          "reads": [
+            "currHeadReadyGM"
+          ],
+          "writes": [
+            "headReadyGT"
+          ]
+        },
+        {
+          "line": 3773,
+          "kind": "loop",
+          "explanation": "进入 headReady 自旋；只有观察到 headReadyFlag 才允许预留并写新的 SQ head。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3774,
+          "kind": "call",
+          "explanation": "每轮从 headReadyGT 搬一个对齐块到 headReadyLT，刷新 GM 中发布的 ready 值。",
+          "reads": [
+            "headReadyGT",
+            "UB_ALIGN_DATA_COUNT"
+          ],
+          "writes": [
+            "headReadyLT"
+          ]
+        },
+        {
+          "line": 3775,
+          "kind": "sync",
+          "explanation": "SyncFunc<MTE2_S> 等待 GM→UB，避免标量读取上一轮 headReadyLT 缓存。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3776,
+          "kind": "branch",
+          "explanation": "headReadyLT(0) 等于 headReadyFlag 时退出自旋。",
+          "reads": [
+            "headReadyLT",
+            "headReadyFlag"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3777,
+          "kind": "brace",
+          "explanation": "在 `URMASendToken` 的 L3777 结束 while 循环 `while (true) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3778,
+          "kind": "call",
+          "explanation": "消费 ready 后把 headReadyLT(0) 清零，准备回写并防止下一轮重复消费同一 flag。",
+          "reads": [
+            "headReadyLT"
+          ],
+          "writes": [
+            "headReadyLT"
+          ]
+        },
+        {
+          "line": 3779,
+          "kind": "sync",
+          "explanation": "SyncFunc<S_MTE3> 让标量清零先于 UB→GM 搬运。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3780,
+          "kind": "call",
+          "explanation": "把清零后的 headReadyLT 回写 headReadyGT，完成 ready flag 的应答。",
+          "reads": [
+            "headReadyLT",
+            "UB_ALIGN_DATA_COUNT"
+          ],
+          "writes": [
+            "headReadyGT"
+          ]
+        },
+        {
+          "line": 3781,
+          "kind": "sync",
+          "explanation": "SyncFunc<MTE3_S> 等待 headReady 清零在 GM 中可见后再开始写 SQ。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3782,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3782 分隔 `SyncFunc<AscendC::HardEvent::MTE3_S>();` 与 `DebugClock(4);` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3783,
+          "kind": "call",
+          "explanation": "DebugClock(4) 记录 headReady 握手结束时间点。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3784,
+          "kind": "declaration",
+          "explanation": "loopIndex 从 0 开始，索引 buildRemoteWqeDesc 的 warp×expert 批次。",
+          "reads": [],
+          "writes": [
+            "loopIndex"
+          ]
+        },
+        {
+          "line": 3785,
+          "kind": "declaration",
+          "explanation": "finishedTokenNum 从 0 开始累计已实际生成并提交的远端 WQE 数。",
+          "reads": [],
+          "writes": [
+            "finishedTokenNum"
+          ]
+        },
+        {
+          "line": 3786,
+          "kind": "declaration",
+          "explanation": "读取 totalSendNumLT(0) 固化本 AIV 需要发送到远端 rank 的 token 总数。",
+          "reads": [
+            "totalSendNumLT"
+          ],
+          "writes": [
+            "totalRemoteSendNum"
+          ]
+        },
+        {
+          "line": 3787,
+          "kind": "statement",
+          "explanation": "把 finishedWqeDescNumLT(0) 清零，作为首批描述的原子输出计数器。",
+          "reads": [
+            "finishedWqeDescNumLT"
+          ],
+          "writes": [
+            "finishedWqeDescNumLT"
+          ]
+        },
+        {
+          "line": 3788,
+          "kind": "declaration",
+          "explanation": "WARP_NUM = BUILD_THREADS_NUM / WARP_SIZE，表示每次 build 调用并行处理的 expert block 数。",
+          "reads": [
+            "BUILD_THREADS_NUM",
+            "WARP_SIZE"
+          ],
+          "writes": [
+            "WARP_NUM"
+          ]
+        },
+        {
+          "line": 3789,
+          "kind": "call",
+          "explanation": "chunkNumPerExpert = ceil(axisBS_ / WARP_SIZE)，每个 expert 按 32 token 槽切成的 warp 批次数。",
+          "reads": [
+            "axisBS_",
+            "WARP_SIZE"
+          ],
+          "writes": [
+            "chunkNumPerExpert"
+          ]
+        },
+        {
+          "line": 3790,
+          "kind": "declaration",
+          "explanation": "totalBlockNum = sendExpNum × chunkNumPerExpert，覆盖全部 expert 行及其 token chunk。",
+          "reads": [
+            "sendExpNum",
+            "chunkNumPerExpert"
+          ],
+          "writes": [
+            "totalBlockNum"
+          ]
+        },
+        {
+          "line": 3791,
+          "kind": "call",
+          "explanation": "totalLoopNum = ceil(totalBlockNum / WARP_NUM)，得到最多需要的 buildRemoteWqeDesc 调用次数。",
+          "reads": [
+            "totalBlockNum",
+            "WARP_NUM"
+          ],
+          "writes": [
+            "totalLoopNum"
+          ]
+        },
+        {
+          "line": 3792,
+          "kind": "sync",
+          "explanation": "SyncFunc<S_V> 让标量初始化的计数和 loop 参数对 SIMT/向量侧可见。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3793,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm] totalRemoteSendNum %d\\n\", totalRemoteSendNum);`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3794,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3794 分隔 `// AscendC::printf(\"[kfm] totalRemoteSendNum %d\\n\", totalRemoteSendNum);` 与 `while (finishedTokenNum < totalRemoteSendNum && loopIndex < totalLoopNu…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3795,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3795 分隔 `// AscendC::printf(\"[kfm] totalRemoteSendNum %d\\n\", totalRemoteSendNum);` 与 `while (finishedTokenNum < totalRemoteSendNum && loopIndex < totalLoopNu…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3796,
+          "kind": "loop",
+          "explanation": "只要尚未提交 totalRemoteSendNum 且 loopIndex 未越过 totalLoopNum，就继续生成下一批 WQE 描述。",
+          "reads": [
+            "finishedTokenNum",
+            "totalRemoteSendNum",
+            "loopIndex",
+            "totalLoopNum"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3797,
+          "kind": "call",
+          "explanation": "启动 buildRemoteWqeDesc；每个 warp 处理一个 expert chunk，并过滤 targetRankId == epRankId_ 的本地 expert。",
+          "reads": [
+            "buildRemoteWqeDesc"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3798,
+          "kind": "statement",
+          "explanation": "以 BUILD_THREADS_NUM 个线程启动本批描述构造。",
+          "reads": [
+            "BUILD_THREADS_NUM"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3799,
+          "kind": "statement",
+          "explanation": "传入 expertCntListLT，界定每个 expert 的有效 ordered offset 数。",
+          "reads": [
+            "expertCntListLT"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3800,
+          "kind": "statement",
+          "explanation": "传入 expertOrderedOffsetListLT，稳定地把 expert 内第 mySlot 项映射回原始路由槽。",
+          "reads": [
+            "expertOrderedOffsetListLT"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3801,
+          "kind": "statement",
+          "explanation": "传入 sendExpNum 作为 expertNum。",
+          "reads": [
+            "sendExpNum"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3802,
+          "kind": "statement",
+          "explanation": "传入 startExpId 作为 beginExpertId。",
+          "reads": [
+            "startExpId"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3803,
+          "kind": "statement",
+          "explanation": "传入 axisBS_ 作为每个 expert 行的 stride。",
+          "reads": [
+            "axisBS_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3804,
+          "kind": "statement",
+          "explanation": "传入 axisK_，由 ordered offset / axisK_ 得到源 tokenId。",
+          "reads": [
+            "axisK_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3805,
+          "kind": "statement",
+          "explanation": "传入 srcBaseAddr，局部源地址最终为 srcBaseAddr + tokenId × hCommuSize_。",
+          "reads": [
+            "srcBaseAddr"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3806,
+          "kind": "statement",
+          "explanation": "传入 hCommuSize_ 作为每个 token 的通信字节数。",
+          "reads": [
+            "hCommuSize_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3807,
+          "kind": "statement",
+          "explanation": "传入 moeExpertNumPerRank_，把 targetExpId 换算为目标 rank 与 rank 内 expert。",
+          "reads": [
+            "moeExpertNumPerRank_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3808,
+          "kind": "statement",
+          "explanation": "传入 epRankId_，过滤本 rank expert，不为其构造远端 WQE。",
+          "reads": [
+            "epRankId_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3809,
+          "kind": "statement",
+          "explanation": "传入 remoteAddrListLT；目标地址为 rank 基址 + (rank 内 expert×axisBS_+mySlot)×hCommuSize_。",
+          "reads": [
+            "remoteAddrListLT"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3810,
+          "kind": "statement",
+          "explanation": "把 URMAOPCODE::OP_WRITE 作为所有描述的 opcode。",
+          "reads": [
+            "URMAOPCODE",
+            "OP_WRITE"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3811,
+          "kind": "statement",
+          "explanation": "把生成的本地 token 地址写入 tokenSendWqeDesc->localAddr。",
+          "reads": [
+            "tokenSendWqeDesc",
+            "localAddr"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3812,
+          "kind": "statement",
+          "explanation": "把生成的远端 expert 槽地址写入 tokenSendWqeDesc->remoteAddr。",
+          "reads": [
+            "tokenSendWqeDesc",
+            "remoteAddr"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3813,
+          "kind": "statement",
+          "explanation": "把目标 rank 写入 tokenSendWqeDesc->dstRank。",
+          "reads": [
+            "tokenSendWqeDesc",
+            "dstRank"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3814,
+          "kind": "statement",
+          "explanation": "把 hCommuSize_ 写入 tokenSendWqeDesc->messageLen。",
+          "reads": [
+            "tokenSendWqeDesc",
+            "messageLen"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3815,
+          "kind": "statement",
+          "explanation": "把 WRITE opcode 写入 tokenSendWqeDesc->opcode 的 uint32_t 视图。",
+          "reads": [
+            "tokenSendWqeDesc",
+            "opcode"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3816,
+          "kind": "statement",
+          "explanation": "传入 loopIndex，选择当前 WARP_NUM 个 expert chunk。",
+          "reads": [
+            "loopIndex"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3817,
+          "kind": "statement",
+          "explanation": "传入 finishedWqeDescNumLT 物理地址，由有效线程 atomicAdd 分配描述槽。",
+          "reads": [
+            "finishedWqeDescNumLT"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3818,
+          "kind": "statement",
+          "explanation": "结束本批 buildRemoteWqeDesc 参数列表。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3819,
+          "kind": "sync",
+          "explanation": "SyncFunc<V_S> 等待本批 tokenSendWqeDesc 数组及 finishedWqeDescNumLT 写完。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3820,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"====== kfm7 ======\\n\");`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3821,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3821 分隔 `// AscendC::printf(\"====== kfm7 ======\\n\");` 与 `// PipeBarrier<PIPE_ALL>();` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3822,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `PipeBarrier<PIPE_ALL>();`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3823,
+          "kind": "declaration",
+          "explanation": "读取 finishedWqeDescNumLT(0) 得到本批实际有效的远端 WQE 数 finishedWqeDesc。",
+          "reads": [
+            "finishedWqeDescNumLT"
+          ],
+          "writes": [
+            "finishedWqeDesc"
+          ]
+        },
+        {
+          "line": 3824,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm] loopIndex %d finishedWqeDesc %d\\n\", loopIndex, finishedWqeDesc);`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3825,
+          "kind": "branch",
+          "explanation": "仅当 finishedWqeDesc > 0 时提交本批，空 chunk 不触碰 SQ。",
+          "reads": [
+            "finishedWqeDesc"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3826,
+          "kind": "statement",
+          "explanation": "把 tokenSendWqeDesc->size 设为 finishedWqeDesc，固定描述数组有效长度。",
+          "reads": [
+            "finishedWqeDesc",
+            "tokenSendWqeDesc"
+          ],
+          "writes": [
+            "size"
+          ]
+        },
+        {
+          "line": 3827,
+          "kind": "sync",
+          "explanation": "PipeBarrier<PIPE_ALL> 保证描述字段和 size 在 simt_nw_mj 读取前全部可见。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3828,
+          "kind": "call",
+          "explanation": "调用 simt_nw_mj：按目标 rank 轮转选择 jetty、每 SQ 批量预留 head、写 URMA SQE，并发布 headRecord bitmap。",
+          "reads": [
+            "epWorldSize_",
+            "tokenSendWqeDesc",
+            "finishedWqeDesc",
+            "simt_nw_mj"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3829,
+          "kind": "statement",
+          "explanation": "传入 sqsGM 的 HcclAiRMAWQ GM 数组，SIMT 线程直接写各硬件 SQ。",
+          "reads": [
+            "sqsGM",
+            "HcclAiRMAWQ"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3830,
+          "kind": "statement",
+          "explanation": "传入 wqeSqIdxLT，记录每条描述选择的全局 SQ 索引。",
+          "reads": [
+            "wqeSqIdxLT"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3831,
+          "kind": "statement",
+          "explanation": "传入 dstRankWqeCountLT，为同一 rank 的 WQE 分配轮转 jetty ordinal。",
+          "reads": [
+            "dstRankWqeCountLT"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3832,
+          "kind": "statement",
+          "explanation": "传入 sqWqeCountLT，统计各 SQ 本批需一次性预留的 head 数。",
+          "reads": [
+            "sqWqeCountLT"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3833,
+          "kind": "statement",
+          "explanation": "传入 sqBaseHeadLT，保存对每个活跃 SQ 执行一次 GM atomicAdd 得到的基准 head。",
+          "reads": [
+            "sqBaseHeadLT"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3834,
+          "kind": "statement",
+          "explanation": "传入 sqCursorLT，为批内各 WQE 分配预留区间内的局部偏移。",
+          "reads": [
+            "sqCursorLT"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3835,
+          "kind": "statement",
+          "explanation": "传入 headRecordLT，按 jetty 和 head slot 在 UB 中原子 OR 完成 bit。",
+          "reads": [
+            "headRecordLT"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3836,
+          "kind": "statement",
+          "explanation": "传入 headRecordGM，SIMT 完成后把非零 UB word 原子 OR 发布到 GM。",
+          "reads": [
+            "headRecordGM"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3837,
+          "kind": "statement",
+          "explanation": "传入 maxJettyNumOnUB，界定本 AIV headRecordLT 的 jetty 维度。",
+          "reads": [
+            "maxJettyNumOnUB"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3838,
+          "kind": "statement",
+          "explanation": "传入 maxHeadRecordSlot，head 以该槽数取模并定位 bitmap bit。",
+          "reads": [
+            "maxHeadRecordSlot"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3839,
+          "kind": "statement",
+          "explanation": "传入 startRankId，把全局 SQ 索引转换为本 AIV UB jetty 索引。",
+          "reads": [
+            "startRankId"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3840,
+          "kind": "statement",
+          "explanation": "传入 aivId_ 作为 writerId，使同 rank WQE 从不同 jetty 起点轮转。",
+          "reads": [
+            "aivId_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 3841,
+          "kind": "statement",
+          "explanation": "结束 simt_nw_mj 调用；其内部 V→S flag 等待 SIMT 写 SQ 和 bitmap 完成。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3842,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `for (uint32_t i = 0; i < totalJettyNum; i++) {`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3843,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `uint32_t rankIdx = i / (PORT_NUM * JETTY_NUM);`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3844,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `if (rankIdx < startRankId || rankIdx >= startRankId + sendRankNum) {`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3845,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `continue;`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3846,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3847,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `// AscendC::printf(\"dbAddr %p, head %d\\n\", DbArr(i), HeadArr(i));`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3848,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `uint32_t prevHead = PrevHeadArr(i);`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3849,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `uint32_t currHead = HeadArr(i);`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3850,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `if (currHead != prevHead) {`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3851,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `st_dev(currHead, (__gm__ uint32_t *)(DbArr(i)), 0);`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3852,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `PrevHeadArr(i) = currHead;`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3853,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3854,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3855,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `OutJettyIdx(0) = 0;`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3856,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `PipeBarrier<PIPE_ALL>();`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3857,
+          "kind": "brace",
+          "explanation": "结束 finishedWqeDesc > 0 的提交分支；后续无论本批是否为空都推进 loopIndex。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3858,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `DebugClock(5 + loopIndex);`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3859,
+          "kind": "sync",
+          "explanation": "SyncFunc<V_S> 等待 simt_nw_mj 或空批路径完成，再由标量更新累计计数。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3860,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3860 分隔 `SyncFunc<AscendC::HardEvent::V_S>();` 与 `finishedTokenNum += finishedWqeDesc;` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3861,
+          "kind": "statement",
+          "explanation": "finishedTokenNum 加上本批 finishedWqeDesc，跟踪已生成并提交的远端 token WQE 数。",
+          "reads": [
+            "finishedWqeDesc"
+          ],
+          "writes": [
+            "finishedTokenNum"
+          ]
+        },
+        {
+          "line": 3862,
+          "kind": "statement",
+          "explanation": "把 finishedWqeDescNumLT(0) 清零，为下一批原子分配描述槽。",
+          "reads": [
+            "finishedWqeDescNumLT"
+          ],
+          "writes": [
+            "finishedWqeDescNumLT"
+          ]
+        },
+        {
+          "line": 3863,
+          "kind": "statement",
+          "explanation": "loopIndex 自增，移动到下一组 WARP_NUM 个 expert chunk。",
+          "reads": [
+            "loopIndex"
+          ],
+          "writes": [
+            "loopIndex"
+          ]
+        },
+        {
+          "line": 3864,
+          "kind": "sync",
+          "explanation": "SyncFunc<S_V> 将清零计数器和新 loopIndex 发布给下一次 buildRemoteWqeDesc。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3865,
+          "kind": "brace",
+          "explanation": "结束批量 WQE 生成循环；正常出口满足已提交总数或已遍历所有 expert chunk。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3866,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm] finish WQE write\\n\");`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3867,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3867 分隔 `// AscendC::printf(\"[kfm] finish WQE write\\n\");` 与 `DebugClock(5);` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3868,
+          "kind": "call",
+          "explanation": "DebugClock(5) 记录全部远端 WQE 写入及 headRecord 发布完成的时间点。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3869,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3870,
+          "kind": "comment",
+          "explanation": "注释记录 `\"[wqe-gen] rank %u aiv %u exp=[%u,%u) \"`，说明 `URMASendToken` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3871,
+          "kind": "comment",
+          "explanation": "注释记录 `\"target=%u generated=%u loop=%u/%u\\n\",`，说明 `URMASendToken` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3872,
+          "kind": "comment",
+          "explanation": "注释记录 `epRankId_, aivId_, startExpId, endExpId,`，说明 `URMASendToken` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3873,
+          "kind": "comment",
+          "explanation": "注释记录 `totalRemoteSendNum, finishedTokenNum,`，说明 `URMASendToken` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3874,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `loopIndex, totalLoopNum);`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3875,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"====== kfm8 ======\\n\");`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3876,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3876 分隔 `// AscendC::printf(\"====== kfm8 ======\\n\");` 与 `// for(int rid = startRankId; rid < startRankId + sendRankNum; rid ++) {` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3877,
+          "kind": "comment",
+          "explanation": "保留按目标 rank 调用 aclshmemx_udma_quiet 的循环起点；整段当前被注释。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3878,
+          "kind": "comment",
+          "explanation": "禁用路径会跳过 epRankId_，只 quiet 远端 rank。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3879,
+          "kind": "comment",
+          "explanation": "aclshmemx_udma_quiet 当前不执行，因此 URMASendToken 不在此轮询 CQ 或等待远端完成。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3880,
+          "kind": "comment",
+          "explanation": "结束被注释的 quiet 循环。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3881,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3881 分隔 `// }` 与 `// AscendC::printf(\"====== kfm9 ======\\n\");` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3882,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"====== kfm9 ======\\n\");`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3883,
+          "kind": "blank",
+          "explanation": "空行在 `URMASendToken` 的 L3883 分隔 `// AscendC::printf(\"====== kfm9 ======\\n\");` 与 `// printf(\"URMASendToken time is %d, %d, %d, %d\\n\",` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3884,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `printf(\"URMASendToken time is %d, %d, %d, %d\\n\",`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3885,
+          "kind": "comment",
+          "explanation": "注释记录 `timepoint[1] - timepoint[0],`，说明 `URMASendToken` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3886,
+          "kind": "comment",
+          "explanation": "注释记录 `timepoint[2] - timepoint[1],`，说明 `URMASendToken` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3887,
+          "kind": "comment",
+          "explanation": "注释记录 `timepoint[3] - timepoint[2],`，说明 `URMASendToken` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3888,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `timepoint[4] - timepoint[3]);`；该内容当前不参与 `URMASendToken` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 3889,
+          "kind": "brace",
+          "explanation": "结束 URMASendToken；当前完成语义是 SQE 与 headRecord 已发布，不包含 CQ quiet。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments": [
+        {
+          "id": "urma-derive-self-expert-sides",
+          "start": 3518,
+          "end": 3530,
+          "title": "建立本 rank expert 空洞及两侧远端规模",
+          "detail": "由 epRankId_ 和 moeExpertNumPerRank_ 得到 [selfExpertBegin,selfExpertEnd)，并计算空洞前后的 expert 数。",
+          "kind": "input",
+          "input_state": [
+            "epRankId_、moeExpertNumPerRank_、moeExpertNum_：全局 expert 拓扑",
+            "aivId_：当前远端 WQE writer"
+          ],
+          "mechanism": "先声明全部映射/握手 UB，再用乘加与总数相减得到 expertNumBeforeSelf/expertNumAfterSelf。",
+          "output_state": [
+            "selfExpertBegin/selfExpertEnd：本 rank expert 半开区间",
+            "expertNumBeforeSelf/expertNumAfterSelf：两个远端连续区间长度"
+          ],
+          "why": "远端 expert 在本 rank 区间处形成空洞；后续必须按两个连续区间分核，避免普通区间切分把本地 expert 当远端发送。",
+          "calls": []
+        },
+        {
+          "id": "urma-single-writer-disjoint-fallback",
+          "start": 3531,
+          "end": 3537,
+          "title": "单 writer 无法表示双区间时回退全范围",
+          "detail": "仅一核且 self 两侧都有 expert 时把 [startExpId,endExpId) 设为全局范围。",
+          "kind": "guard",
+          "input_state": [
+            "aivUsedRemoteWqe_ == 1",
+            "expertNumBeforeSelf/expertNumAfterSelf 均非零"
+          ],
+          "mechanism": "固定 startExpId=0、sendExpNum=endExpId=moeExpertNum_；后续 buildRemoteWqeDesc 用 targetRankId != epRankId_ 过滤 self。",
+          "output_state": [
+            "单 writer 获得 [0,moeExpertNum_)"
+          ],
+          "why": "一个连续半开区间无法同时表示 self 前后两段；全范围加下游过滤保证不漏远端 expert。",
+          "calls": []
+        },
+        {
+          "id": "urma-proportion-writers-between-sides",
+          "start": 3538,
+          "end": 3546,
+          "title": "按两侧 expert 比例计算 writer 初值",
+          "detail": "处理两侧为空的退化情形；两侧均非空时以 64 位乘法计算前区间 AIV 数的向下取整比例。",
+          "kind": "compute",
+          "input_state": [
+            "aivUsedRemoteWqe_：writer 总数",
+            "expertNumBeforeSelf/expertNumAfterSelf：两侧工作量"
+          ],
+          "mechanism": "beforeSelfAivNum=floor(aivUsedRemoteWqe_×expertNumBeforeSelf/(expertNumBeforeSelf+expertNumAfterSelf))。",
+          "output_state": [
+            "beforeSelfAivNum：尚未钳制的比例分配结果"
+          ],
+          "why": "64 位中间值避免 AIV 数与 expert 数相乘溢出；退化分支避免分母或空区间参与比例计算。",
+          "calls": []
+        },
+        {
+          "id": "urma-clamp-writer-split",
+          "start": 3547,
+          "end": 3563,
+          "title": "把 writer 比例结果钳制到可行区间",
+          "detail": "计算前区间 writer 数的上下界，并把比例初值限制在两侧都可覆盖且每核至少有一个 expert 的范围内。",
+          "kind": "guard",
+          "input_state": [
+            "beforeSelfAivNum：比例初值",
+            "aivUsedRemoteWqe_ 与两侧 expert 数：可行性约束"
+          ],
+          "mechanism": "钳制区间为 [max(1,aivUsedRemoteWqe_-expertNumAfterSelf), min(expertNumBeforeSelf,aivUsedRemoteWqe_-1)]。",
+          "output_state": [
+            "beforeSelfAivNum：分给 self 前区间的可行 AIV 数"
+          ],
+          "why": "未钳制的向下取整可能把一侧分成 0 核，或让核数超过该侧 expert 数，导致后续 rangeExpertNum/rangeAivNum 失效。",
+          "calls": []
+        },
+        {
+          "id": "urma-balance-experts-within-side",
+          "start": 3564,
+          "end": 3583,
+          "title": "选择所属侧并进行无空洞均衡切分",
+          "detail": "后区间 AIV 重新编号，然后按商和余数把该侧连续 expert 平衡分给 worker。",
+          "kind": "compute",
+          "input_state": [
+            "aivId_、beforeSelfAivNum：所属区间判定",
+            "rangeExpertNum/rangeAivNum：该侧规模"
+          ],
+          "mechanism": "sendExpNum=base+(worker<remainder)，expertOffset=worker×base+min(worker,remainder)。",
+          "output_state": [
+            "[startExpId,endExpId)：当前 AIV 唯一连续 expert 范围"
+          ],
+          "why": "商余数前缀公式既覆盖每个 expert 恰好一次，又让任意两核负载最多相差 1。",
+          "calls": []
+        },
+        {
+          "id": "urma-guard-empty-and-rank-span",
+          "start": 3584,
+          "end": 3593,
+          "title": "空分片退出并计算覆盖 rank 区间",
+          "detail": "sendExpNum 为 0 时返回；否则从 expert 半开区间推导 startRankId 与 sendRankNum。",
+          "kind": "guard",
+          "input_state": [
+            "startExpId/endExpId/sendExpNum：AIV expert 分片"
+          ],
+          "mechanism": "endExpId 整除每 rank expert 数时排除 endRankId，否则包含终点所在 rank。",
+          "output_state": [
+            "startRankId、sendRankNum：远端地址表覆盖范围"
+          ],
+          "why": "半开边界若恰落在 rank 起点不能多申请一个地址项；空分片也不能继续分配零长 UB。",
+          "calls": []
+        },
+        {
+          "id": "urma-allocate-mapping-workspaces",
+          "start": 3594,
+          "end": 3610,
+          "title": "计算 bitmap 几何并申请映射与握手 UB",
+          "detail": "建立 headRecord 的 slot/jetty 上界，并申请 expertIds、两级 offset、计数、地址表、headReady 和 headRecord 缓冲。",
+          "kind": "compute",
+          "input_state": [
+            "axisBS_×axisK_：最大路由槽",
+            "sendExpNum/sendRankNum：本 AIV 范围"
+          ],
+          "mechanism": "bitmap 每 32 slot 一个 uint32_t；变长表按 sendExpNum×axisBS_ 或 sendRankNum 申请。",
+          "output_state": [
+            "第一组 9 个 UB 缓冲已按各自布局分配"
+          ],
+          "why": "映射需要同时保存原子收集顺序和稳定排序结果；headReady/headRecord 则承担 GM 握手与写入完成发布。",
+          "calls": [
+            {
+              "name": "Ceil",
+              "line": 3595,
+              "type": "external"
+            },
+            {
+              "name": "InitBuffer",
+              "line": 3599,
+              "type": "external"
+            },
+            {
+              "name": "InitBuffer",
+              "line": 3607,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "urma-bind-mapping-tensors",
+          "start": 3611,
+          "end": 3621,
+          "title": "绑定 expert 映射、远端地址和状态张量",
+          "detail": "把 9 个 TBuf 转成带类型的 LocalTensor，形状由前一段的 sendExpNum、axisBS_、sendRankNum 决定。",
+          "kind": "input",
+          "input_state": [
+            "expertIdsBuf_ 等已分配 TBuf"
+          ],
+          "mechanism": "逐一 Get<int32_t/uint32_t/uint64_t>，并复用成员 validExpertIdsTensor_。",
+          "output_state": [
+            "expertCntListLT/expertOffsetListLT/expertOrderedOffsetListLT",
+            "totalSendNumLT/finishedWqeDescNumLT/remoteAddrListLT/headReadyLT/headRecordLT"
+          ],
+          "why": "后续 SIMT 接口接收裸 UB 地址，LocalTensor 同时提供初始化、标量访问和 GetPhyAddr。",
+          "calls": [
+            {
+              "name": "Get",
+              "line": 3611,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "urma-allocate-sq-batch-workspaces",
+          "start": 3622,
+          "end": 3634,
+          "title": "申请 WQE 到 SQ 的批处理工作区",
+          "detail": "为每条 WQE 的 SQ 选择、每 rank/SQ 计数、SQ 基准 head 和批内 cursor 分别申请 UB。",
+          "kind": "compute",
+          "input_state": [
+            "MAX_WQE_CNT：单批上限",
+            "epWorldSize_/totalJettyNum：rank 和 SQ 数"
+          ],
+          "mechanism": "所有 uint32_t 数组按 UB_ALIGN 上取整；wqeSqIdx 按批上限，其余按 rank 或 totalJettyNum。",
+          "output_state": [
+            "wqeSqIdxBuf、dstRankWqeCountBuf、sqWqeCountBuf、sqBaseHeadBuf、sqCursorBuf"
+          ],
+          "why": "simt_nw_mj 先路由、再按 SQ 一次预留 head、最后并行写 WQE，需要保留三个阶段的中间状态。",
+          "calls": [
+            {
+              "name": "InitBuffer",
+              "line": 3624,
+              "type": "external"
+            },
+            {
+              "name": "Ceil",
+              "line": 3625,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "urma-bind-sq-workspaces-and-control-gm",
+          "start": 3635,
+          "end": 3643,
+          "title": "绑定 SQ 工作张量并定位 SQ/CQ 控制数组",
+          "detail": "取得五个 uint32_t LocalTensor，并从 GetSqsAddr 定位 HcclAiRMAWQ 数组；CQ 紧随 SQ 数组。",
+          "kind": "input",
+          "input_state": [
+            "五个已分配 SQ TBuf",
+            "totalJettyNum：控制项数"
+          ],
+          "mechanism": "Get<uint32_t> 建立视图；cqsGM=sqsGM+sizeof(HcclAiRMAWQ)×totalJettyNum。",
+          "output_state": [
+            "五个 SQ 批处理 LocalTensor",
+            "sqsGM/cqsGM：控制区地址"
+          ],
+          "why": "simt_nw_mj 直接通过 sqsGM 访问各 SQ 的 VA/head/db；CQ 地址仅为禁用的 quiet/诊断路径保留。",
+          "calls": [
+            {
+              "name": "GetSqsAddr",
+              "line": 3641,
+              "type": "internal",
+              "target": "m-moedistributedispatchv2fullmesh-getsqsaddr-114b933bf9"
+            }
+          ]
+        },
+        {
+          "id": "urma-retired-prev-head-and-ordering",
+          "start": 3644,
+          "end": 3661,
+          "title": "保留旧 head 追踪方案并建立全流水线顺序",
+          "detail": "逐 SQ 读取旧 head、PrevHeadArr 与 PIPE_ALL 的旧方案全部注释；当前只保留 V_S 和 PIPE_ALL。",
+          "kind": "sync",
+          "input_state": [
+            "sqsGM/cqsGM：已定位控制区"
+          ],
+          "mechanism": "禁用逐 SQ currentHead 快照；SyncFunc<V_S> 后执行 PipeBarrier<PIPE_ALL>。",
+          "output_state": [
+            "进入描述缓冲初始化时无未完成向量写"
+          ],
+          "why": "当前 simt_nw_mj 用 GM atomicAdd 批量预留 head，不再需要标量 PrevHeadArr。",
+          "calls": [
+            {
+              "name": "SyncFunc",
+              "line": 3659,
+              "type": "external"
+            },
+            {
+              "name": "PipeBarrier",
+              "line": 3660,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "urma-allocate-wqe-desc-and-headrecord-root",
+          "start": 3662,
+          "end": 3674,
+          "title": "建立批量 WQE 描述数组并定位 headRecord GM",
+          "detail": "申请一个 wqe_desc_array_t UB，转换为结构指针；随后取得用于跨阶段发布 SQ head bit 的 headRecordGM。",
+          "kind": "compute",
+          "input_state": [
+            "MAX_WQE_CNT 隐含于 wqe_desc_array_t",
+            "控制窗口布局成员"
+          ],
+          "mechanism": "TBuf→LocalTensor<uint32_t>→GetPhyAddr→wqe_desc_array_t*；GetHeadRecordAddr 返回 GM 根。",
+          "output_state": [
+            "tokenSendWqeDesc：批量描述数组",
+            "headRecordGM：全局 head bitmap 根"
+          ],
+          "why": "buildRemoteWqeDesc 只生成结构化描述，simt_nw_mj 再据此写 SQ；headRecord 把已写槽位发布给后续 doorbell/消费方。",
+          "calls": [
+            {
+              "name": "InitBuffer",
+              "line": 3662,
+              "type": "external"
+            },
+            {
+              "name": "GetHeadRecordAddr",
+              "line": 3673,
+              "type": "internal",
+              "target": "m-moedistributedispatchv2fullmesh-getheadrecordaddr-89abc8e6ef"
+            }
+          ]
+        },
+        {
+          "id": "urma-disabled-context-diagnostics",
+          "start": 3675,
+          "end": 3693,
+          "title": "跳过 UB 版上下文装载和逐 jetty 诊断",
+          "detail": "get_sqs_and_cqs_xb_ub_v3、SQ/CQ 字段 printf 与缓存写穿均被注释，末尾只执行 PIPE_ALL。",
+          "kind": "debug",
+          "input_state": [
+            "sqsGM/cqsGM：现有控制上下文"
+          ],
+          "mechanism": "不重新装载上下文、不打印；PipeBarrier<PIPE_ALL> 收束该诊断区。",
+          "output_state": [
+            "SQ/CQ 控制数组保持调用前已发布状态"
+          ],
+          "why": "正式发送路径依赖预先构造的控制区，避免每次 URMASendToken 重复遍历并搬运所有 jetty context。",
+          "calls": [
+            {
+              "name": "PipeBarrier",
+              "line": 3692,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "urma-init-and-copy-expert-ids",
+          "start": 3694,
+          "end": 3703,
+          "title": "清零映射输出并搬入 expertIds 快照",
+          "detail": "清零 totalSendNumLT 和每 expert 计数，再把 expertIdsGMTensor_ 精确搬到 validExpertIdsTensor_。",
+          "kind": "compute",
+          "input_state": [
+            "expertIdsGMTensor_：BS×K expert ID GM",
+            "sendExpNum/expertIdsCnt_：有效长度"
+          ],
+          "mechanism": "Duplicate 清计数；DataCopyPad 单块 GM→UB；PIPE_ALL 等待。",
+          "output_state": [
+            "expertCntListLT 全零",
+            "totalSendNumLT(0)=0",
+            "validExpertIdsTensor_：稳定 GM 快照"
+          ],
+          "why": "simt_prepare_mapping 使用 atomicAdd；计数器必须为零，expert ID 也必须在并行扫描前完整可见。",
+          "calls": [
+            {
+              "name": "Duplicate",
+              "line": 3696,
+              "type": "external"
+            },
+            {
+              "name": "DataCopyPad",
+              "line": 3700,
+              "type": "external"
+            },
+            {
+              "name": "PipeBarrier",
+              "line": 3702,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "urma-retired-scalar-mapping",
+          "start": 3704,
+          "end": 3721,
+          "title": "保留旧标量 expert 收集方案并切换正式 SIMT",
+          "detail": "逐路由 append expertOffsetList 的旧循环与打印均注释，PIPE_ALL 后进入 simt_prepare_mapping。",
+          "kind": "debug",
+          "input_state": [
+            "validExpertIdsTensor_：已搬入",
+            "expertCntListLT/expertOffsetListLT：待填"
+          ],
+          "mechanism": "禁用串行 BS×K 扫描；仅用 barrier 保证正式 SIMT 入口的一致初态。",
+          "output_state": [
+            "映射工作区仍只含初始化值"
+          ],
+          "why": "正式 SIMT 版本并行收集并额外生成稳定有序 offset，替代只保留原子到达顺序的标量草案。",
+          "calls": [
+            {
+              "name": "PipeBarrier",
+              "line": 3721,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "urma-build-stable-expert-token-mapping",
+          "start": 3722,
+          "end": 3736,
+          "title": "并行建立稳定 expert→源 token 映射",
+          "detail": "simt_prepare_mapping 先按 expert 原子收集原始 BS×K offset，再按 offset 大小计算稳定升序位置，并只累计远端 rank token。",
+          "kind": "compute",
+          "input_state": [
+            "validExpertIdsTensor_：BS×K 路由",
+            "startExpId/sendExpNum：本 AIV expert 范围",
+            "axisBS_/axisK_：行宽与 token 恢复规则"
+          ],
+          "mechanism": "1024 线程写 expertCntListLT、expertOffsetListLT、expertOrderedOffsetListLT 和 totalSendNumLT；V_S/PIPE_ALL 等待。",
+          "output_state": [
+            "expertCntListLT：每 expert token 数",
+            "expertOrderedOffsetListLT：按源路由 offset 升序",
+            "totalSendNumLT：排除本 rank 的远端 WQE 总数"
+          ],
+          "why": "atomicAdd 的收集顺序不稳定；二次按 originalOffset 排序使同 expert 的远端槽和 WQE 次序可重复。",
+          "calls": [
+            {
+              "name": "simt_prepare_mapping",
+              "line": 3722,
+              "type": "internal",
+              "target": "f-moedistributedispatchv2fullmeshimpl-simt-prepare-mapping-afc96d238b"
+            },
+            {
+              "name": "SyncFunc",
+              "line": 3735,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "urma-build-remote-window-address-table",
+          "start": 3737,
+          "end": 3753,
+          "title": "按连续 rank 区间建立远端 expert 段地址表",
+          "detail": "遍历 sendRankNum，取每个目标 rank 窗口，再偏移到“源 epRankId_ 对应的 expert 段”。",
+          "kind": "loop",
+          "input_state": [
+            "startRankId/sendRankNum：地址表索引区间",
+            "expertPerSizeOnWin_：每 rank expert 段字节跨度"
+          ],
+          "mechanism": "remoteAddrListLT[i]=GetWindAddrByRankId(startRankId+i)+expertPerSizeOnWin_×epRankId_×moeExpertNumPerRank_。",
+          "output_state": [
+            "remoteAddrListLT：按 targetRankId-startRankId 索引的远端基址表"
+          ],
+          "why": "buildRemoteWqeDesc 在 SIMT 中不能重复做窗口布局查询；预计算表将目标地址化为两次乘加。",
+          "calls": [
+            {
+              "name": "GetWindAddrByRankId",
+              "line": 3748,
+              "type": "internal",
+              "target": "m-moedistributedispatchv2fullmesh-getwindaddrbyrankid-994ab853c1"
+            },
+            {
+              "name": "PipeBarrier",
+              "line": 3753,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "urma-locate-local-source-base",
+          "start": 3754,
+          "end": 3767,
+          "title": "定位本地 token staging 基址并停用重复计数",
+          "detail": "srcBaseAddr 指向 staging token 0；按 expert 再统计远端 token 的旧循环被注释。",
+          "kind": "input",
+          "input_state": [
+            "staging window：本地待发送 token",
+            "expertCntListLT：已有计数"
+          ],
+          "mechanism": "GetSendBufferAddrByTokenId(0) 返回基址；实际总数沿用 totalSendNumLT。",
+          "output_state": [
+            "srcBaseAddr：后续 localAddr 计算基准"
+          ],
+          "why": "ordered offset / axisK_ 已能恢复 tokenId，使用统一 token 0 基址可用定长 hCommuSize_ 直接寻址。",
+          "calls": [
+            {
+              "name": "GetSendBufferAddrByTokenId",
+              "line": 3756,
+              "type": "internal",
+              "target": "m-moedistributedispatchv2fullmesh-getsendbufferaddrbytokenid-aee7115d35"
+            }
+          ]
+        },
+        {
+          "id": "urma-headready-consume-ack",
+          "start": 3768,
+          "end": 3782,
+          "title": "自旋等待并消费本 AIV headReady",
+          "detail": "绑定 aivId_ 对应 512B stride 槽，循环 GM→UB 读取直到 headReadyFlag，再清零回写确认消费。",
+          "kind": "sync",
+          "input_state": [
+            "headReadyGM：ready 槽数组",
+            "headReadyFlag：本轮发布值",
+            "aivId_：槽索引"
+          ],
+          "mechanism": "DataCopy+MTE2_S 自旋读取；SetValue(0) 后 S_MTE3→DataCopy→MTE3_S 回写。",
+          "output_state": [
+            "观察到本轮 headReady",
+            "当前 AIV GM 槽已清零"
+          ],
+          "why": "SQ head/control 必须由前置阶段准备好；清零应答避免旧 flag 被下一轮发送误认。",
+          "calls": [
+            {
+              "name": "GetHeadReadyAddr",
+              "line": 3768,
+              "type": "internal",
+              "target": "m-moedistributedispatchv2fullmesh-getheadreadyaddr-70fab86c3d"
+            },
+            {
+              "name": "DataCopy",
+              "line": 3774,
+              "type": "external"
+            },
+            {
+              "name": "SyncFunc",
+              "line": 3775,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "urma-derive-wqe-batch-counts",
+          "start": 3783,
+          "end": 3795,
+          "title": "计算 expert chunk 到 WQE 批次的上界",
+          "detail": "每 expert 以 WARP_SIZE 个 token 槽切 chunk，每次 BUILD_THREADS_NUM 可并行 WARP_NUM 个 chunk。",
+          "kind": "compute",
+          "input_state": [
+            "axisBS_：每 expert 最大 token 槽",
+            "sendExpNum：expert 行数",
+            "totalSendNumLT：实际远端 token 数"
+          ],
+          "mechanism": "chunkNumPerExpert=ceil(axisBS_/32)，totalLoopNum=ceil(sendExpNum×chunkNumPerExpert/WARP_NUM)。",
+          "output_state": [
+            "totalRemoteSendNum：实际终止目标",
+            "totalLoopNum：结构覆盖上界",
+            "finishedTokenNum/loopIndex：循环状态"
+          ],
+          "why": "实际 token 数控制提前结束，几何上界保证稀疏 expert 或空 chunk 时仍不会漏扫描。",
+          "calls": [
+            {
+              "name": "Ceil",
+              "line": 3789,
+              "type": "external"
+            },
+            {
+              "name": "SyncFunc",
+              "line": 3792,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "urma-generate-wqe-addresses",
+          "start": 3796,
+          "end": 3810,
+          "title": "按 warp×expert chunk 计算 WQE 两端地址",
+          "detail": "buildRemoteWqeDesc 读取稳定映射，过滤 self 和越界槽，并由 originalOffset/axisK_ 恢复 tokenId。",
+          "kind": "loop",
+          "input_state": [
+            "expertCntListLT/expertOrderedOffsetListLT：稳定映射",
+            "remoteAddrListLT/srcBaseAddr：两端基址",
+            "loopIndex：chunk 批次"
+          ],
+          "mechanism": "local=srcBaseAddr+tokenId×hCommuSize_；remote=rankBase+(rank内expert×axisBS_+mySlot)×hCommuSize_。",
+          "output_state": [
+            "有效线程已得到 localAddr、remoteAddr、dstRank 和 OP_WRITE"
+          ],
+          "why": "按 expert chunk 扫描稀疏路由，同时保持同 expert 内源 token 的稳定升序。",
+          "calls": [
+            {
+              "name": "buildRemoteWqeDesc",
+              "line": 3797,
+              "type": "internal",
+              "target": "f-moedistributedispatchv2fullmeshimpl-buildremotewqedesc-a49b5a47dd"
+            }
+          ]
+        },
+        {
+          "id": "urma-bind-wqe-desc-columns",
+          "start": 3811,
+          "end": 3818,
+          "title": "把有效任务压紧写入批量描述列",
+          "detail": "将 localAddr、remoteAddr、dstRank、messageLen 和 opcode 的 UB 列地址交给 buildRemoteWqeDesc，并用 finishedWqeDescNumLT 原子分配紧凑下标。",
+          "kind": "output",
+          "input_state": [
+            "tokenSendWqeDesc：五列描述数组",
+            "finishedWqeDescNumLT：本批原子计数器"
+          ],
+          "mechanism": "有效线程 atomicAdd(finishedWqeDescNumLT,1) 后，以返回值为 taskOffset 写五列；loopIndex 选择本轮 expert chunk。",
+          "output_state": [
+            "tokenSendWqeDesc：至多 MAX_WQE_CNT 条紧凑描述",
+            "finishedWqeDescNumLT：本批实际有效描述数"
+          ],
+          "why": "紧凑列式描述让 simt_nw_mj 只遍历有效 WQE，不再处理本地 expert 或空槽。",
+          "calls": []
+        },
+        {
+          "id": "urma-freeze-batch-and-guard-empty",
+          "start": 3819,
+          "end": 3827,
+          "title": "冻结本批描述数量并跳过空批",
+          "detail": "V_S 后读取 finishedWqeDescNumLT；非零时写 tokenSendWqeDesc->size 并执行 PIPE_ALL。",
+          "kind": "guard",
+          "input_state": [
+            "finishedWqeDescNumLT：SIMT 原子输出",
+            "tokenSendWqeDesc：描述字段"
+          ],
+          "mechanism": "finishedWqeDesc>0 才进入 SQ 提交；barrier 保证结构字段完成。",
+          "output_state": [
+            "finishedWqeDesc：本批紧凑长度",
+            "非空批次已可被 simt_nw_mj 消费"
+          ],
+          "why": "expert chunk 可能只有本地 expert 或空槽；空批不应预留 SQ head。",
+          "calls": [
+            {
+              "name": "SyncFunc",
+              "line": 3819,
+              "type": "external"
+            },
+            {
+              "name": "PipeBarrier",
+              "line": 3827,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "urma-write-sq-and-publish-head-bitmap",
+          "start": 3828,
+          "end": 3841,
+          "title": "批量预留 SQ head、写 SQE 并发布完成 bitmap",
+          "detail": "simt_nw_mj 先按 rank 轮转 jetty，再对每活跃 SQ 一次 atomicAdd 预留连续 head，最后并行写 WQE。",
+          "kind": "output",
+          "input_state": [
+            "tokenSendWqeDesc/finishedWqeDesc：紧凑描述",
+            "sqsGM：SQ 控制数组",
+            "五个 SQ UB 工作表"
+          ],
+          "mechanism": "写 SQE 后 asc_threadfence；以 head%maxHeadRecordSlot 定 bit，先 atomicOr headRecordLT，再把非零 word atomicOr 到 headRecordGM。",
+          "output_state": [
+            "目标 SQ GM：WRITE SQE 已写入预留槽",
+            "SQ head GM：已推进",
+            "headRecordGM：已发布对应完成 bit"
+          ],
+          "why": "按 SQ 批量预留把 GM atomicAdd 从每 WQE 一次降为每活跃 SQ 一次；bitmap 在 SQE fence 后发布，供门铃阶段识别连续完成槽。",
+          "calls": [
+            {
+              "name": "simt_nw_mj",
+              "line": 3828,
+              "type": "internal",
+              "target": "f-moedistributedispatchv2fullmeshimpl-simt-nw-mj-689a46e20d"
+            }
+          ]
+        },
+        {
+          "id": "urma-retired-scalar-doorbell",
+          "start": 3842,
+          "end": 3857,
+          "title": "保留但禁用逐 jetty 标量 doorbell 方案",
+          "detail": "比较 PrevHeadArr/HeadArr 并 st_dev 门铃的循环全部注释，当前由 headRecordGM 把已写 head 槽交给后续阶段。",
+          "kind": "debug",
+          "input_state": [
+            "sqsGM 和旧 PrevHeadArr/HeadArr 设计"
+          ],
+          "mechanism": "不执行 st_dev，不更新 PrevHeadArr；仅结束非空批分支。",
+          "output_state": [
+            "本函数未直接 ring doorbell"
+          ],
+          "why": "SIMT 写 WQE 与门铃发布已解耦；当前协议以 headRecord bitmap 作为可靠交接。",
+          "calls": []
+        },
+        {
+          "id": "urma-advance-batch-state",
+          "start": 3858,
+          "end": 3865,
+          "title": "累计已提交数并重置下一批计数器",
+          "detail": "等待提交路径完成，把 finishedWqeDesc 加到 finishedTokenNum，清零原子计数并推进 loopIndex。",
+          "kind": "sync",
+          "input_state": [
+            "finishedWqeDesc：本批数",
+            "finishedTokenNum/loopIndex：循环状态"
+          ],
+          "mechanism": "V_S→标量更新→S_V，确保下一次 buildRemoteWqeDesc 看到清零计数器。",
+          "output_state": [
+            "finishedTokenNum 增长",
+            "finishedWqeDescNumLT(0)=0",
+            "loopIndex 指向下一批"
+          ],
+          "why": "计数器由每批有效线程共享 atomicAdd，若不在下一次 VF_CALL 前清零会覆盖描述数组边界。",
+          "calls": [
+            {
+              "name": "SyncFunc",
+              "line": 3859,
+              "type": "external"
+            },
+            {
+              "name": "SyncFunc",
+              "line": 3864,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "urma-finish-without-cq-quiet",
+          "start": 3866,
+          "end": 3881,
+          "title": "结束 SQ 写入但不执行 CQ quiet",
+          "detail": "记录 DebugClock(5)；逐远端 rank 调用 aclshmemx_udma_quiet 的代码被完整注释。",
+          "kind": "debug",
+          "input_state": [
+            "finishedTokenNum/totalRemoteSendNum：最终统计",
+            "cqsGM：未消费的 CQ 控制地址"
+          ],
+          "mechanism": "不调用 quiet、不轮询 CQ，仅保留诊断输出草案。",
+          "output_state": [
+            "URMASendToken 的完成边界停在 SQE/headRecord 发布"
+          ],
+          "why": "必须区分“WQE 已写且 head bit 已发布”和“远端传输/CQ 已完成”；当前源码只保证前者。",
+          "calls": [
+            {
+              "name": "DebugClock",
+              "line": 3868,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "urma-retired-timing-and-return",
+          "start": 3882,
+          "end": 3889,
+          "title": "保留禁用的阶段耗时打印并返回",
+          "detail": "timepoint 差值 printf 全部注释，函数直接结束。",
+          "kind": "output",
+          "input_state": [
+            "timepoint：未启用的 10 槽采样数组"
+          ],
+          "mechanism": "不读 timepoint、不产生调试打印。",
+          "output_state": [
+            "void 返回调用者；SQ/headRecord 副作用保留"
+          ],
+          "why": "未启用的采样槽不能作为有效性能数据；走读需把它与 DebugClock 区分。",
+          "calls": []
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,300 @@
+{
+  "title": "DeepEP MoE Dispatch · 三轨代码走读",
+  "summary": "把本地 token 按 expert/rank 重排，经 URMA 远端发送或本卡快路径汇合，再格式化为 expandX、expandIdx 与计数输出。",
+  "language": "C++ / AscendC",
+  "modules": [
+    {
+      "id": "contract",
+      "name": "类型与接口契约",
+      "summary": "模板参数、全局张量和设备侧辅助结构。",
+      "ranges": [[1, 722]],
+      "position": {"x": 17, "y": 20},
+      "color": "#64748b",
+      "tips": ["模板参数同时决定量化模式、通信模式和输出类型，阅读分支时必须先确认实例化配置。"],
+      "inactive": false,
+      "edges": [{"to": "init", "kind": "control", "label": "实例化约束"}]
+    },
+    {
+      "id": "init",
+      "name": "Init / 生命周期",
+      "summary": "绑定 GM、清理阶段 flag 并建立本次 launch 状态。",
+      "ranges": [[723, 1013]],
+      "position": {"x": 50, "y": 21},
+      "color": "#2457d6",
+      "tips": ["stage flag 必须在任何生产核发布完成前清零，否则会消费上一轮残留状态。"],
+      "inactive": false,
+      "edges": [{"to": "mask", "kind": "control", "label": "缓冲已就绪"}]
+    },
+    {
+      "id": "mask",
+      "name": "Mask / 预处理",
+      "summary": "筛选有效 token 与 expert，建立当前 AIV 的工作切片。",
+      "ranges": [[2255, 2479]],
+      "position": {"x": 50, "y": 35},
+      "color": "#9a6700",
+      "tips": ["active mask、expert mask 与 zero-compute expert 会共同改变有效 token 集。"],
+      "inactive": false,
+      "edges": [{"to": "pack", "kind": "data", "label": "有效 token"}]
+    },
+    {
+      "id": "pack",
+      "name": "AllToAllDispatch",
+      "summary": "把 token 重排到本地 staging send buffer。",
+      "ranges": [[1014, 1512]],
+      "position": {"x": 50, "y": 49},
+      "color": "#0f8a70",
+      "tips": ["MoE token 先写本地 send buffer，URMA 核随后按 expert/rank 顺序二次转发。"],
+      "inactive": false,
+      "edges": [
+        {"to": "remote", "kind": "data", "label": "远端 token"},
+        {"to": "selfcopy", "kind": "data", "label": "本 rank token"},
+        {"to": "doorbell", "kind": "handshake", "label": "stage done"}
+      ]
+    },
+    {
+      "id": "accounting",
+      "name": "CalCumSum",
+      "summary": "交换各 expert token 计数并计算接收侧前缀和。",
+      "ranges": [[1513, 1894]],
+      "position": {"x": 82, "y": 49},
+      "color": "#b54708",
+      "tips": ["前缀和同时决定输出偏移和接收轮询的有效来源集合。"],
+      "inactive": false,
+      "edges": [{"to": "format", "kind": "data", "label": "接收偏移"}]
+    },
+    {
+      "id": "remote",
+      "name": "URMASendToken",
+      "summary": "构造 WQE、写 SQ，并用 ready bitmap 与 doorbell 核握手。",
+      "ranges": [[2480, 3891]],
+      "position": {"x": 18, "y": 68},
+      "color": "#1687a7",
+      "tips": ["SQ head 的预留与 WQE 内容写入分离；ready bitmap 只允许 doorbell 消费连续完成区间。"],
+      "inactive": false,
+      "edges": [
+        {"to": "format", "kind": "data", "label": "远端窗口"},
+        {"to": "doorbell", "kind": "handshake", "label": "head bitmap"}
+      ]
+    },
+    {
+      "id": "selfcopy",
+      "name": "SelfCopyToken",
+      "summary": "本 rank token 不走远端链路，直接写本地接收窗口。",
+      "ranges": [[3892, 4000]],
+      "position": {"x": 50, "y": 68},
+      "color": "#397a55",
+      "tips": ["本卡快路径仍需等待 stage 完成，以保证 staging payload 可见。"],
+      "inactive": false,
+      "edges": [{"to": "format", "kind": "data", "label": "本地窗口"}]
+    },
+    {
+      "id": "doorbell",
+      "name": "RingDoorbell",
+      "summary": "扫描连续 ready WQE，推进 SQ head 并敲设备 doorbell。",
+      "ranges": [[4001, 4278]],
+      "position": {"x": 82, "y": 68},
+      "color": "#7546a8",
+      "tips": ["不能越过 bitmap 中的第一个空洞，否则硬件会读取尚未完成的 WQE。"],
+      "inactive": false,
+      "edges": [{"to": "format", "kind": "sync", "label": "发送完成"}]
+    },
+    {
+      "id": "format",
+      "name": "LocalWindowCopy",
+      "summary": "轮询来源窗口并连续化输出 expandX、scale 与 expandIdx。",
+      "ranges": [[1895, 2254]],
+      "position": {"x": 50, "y": 88},
+      "color": "#075da8",
+      "tips": ["到达 flag 位于 payload 尾部；只有完整 batch 可消费时才写输出并清 flag。"],
+      "inactive": false,
+      "edges": []
+    },
+    {
+      "id": "orchestrate",
+      "name": "Process",
+      "summary": "按 AIV 角色并行派发 staging、URMA、doorbell 与 cumsum，最后统一格式化。",
+      "ranges": [[4279, 4357]],
+      "position": {"x": 50, "y": 7},
+      "color": "#172033",
+      "tips": ["这是角色并行 DAG，不是依次执行的线性流水：不同 AIV 分支通过 flag 和局部 barrier 汇合。"],
+      "inactive": false,
+      "edges": [
+        {"to": "init", "kind": "control", "label": "launch"},
+        {"to": "accounting", "kind": "control", "label": "cumsum AIV"}
+      ]
+    }
+  ],
+  "functions": [
+    {
+      "id": "all-to-all-dispatch",
+      "module_id": "pack",
+      "name": "AllToAllDispatch",
+      "start": 1366,
+      "end": 1422,
+      "summary": "初始化输入与量化缓冲，筛选有效 expert，并把共享专家或 MoE expert 数据写入 staging。",
+      "inactive": false,
+      "inputs": ["xGMTensor_", "expertIdsGMTensor_", "activeMaskBsCnt_"],
+      "outputs": ["outTensor_", "tokenNumToExpertTensor_"],
+      "segments": [
+        {"id": "dispatch-buffer", "start": 1366, "end": 1377, "title": "建立输入与输出缓冲", "detail": "计算 expertIds 对齐空间并绑定输入队列、输出暂存区和 expertIds UB。", "kind": "input", "calls": [{"name": "InitBuffer", "line": 1373, "type": "external"}]},
+        {"id": "dispatch-quant", "start": 1378, "end": 1396, "title": "按 mask 与量化模式分配工作区", "detail": "只在需要 mask 或类型转换时申请对应临时区，多个缓冲允许显式复用。", "kind": "guard", "calls": []},
+        {"id": "dispatch-filter", "start": 1397, "end": 1407, "title": "筛选 expert 并处理空任务", "detail": "执行 expertIds/mask 预处理；有效 batch 为零时直接返回。", "kind": "guard", "calls": [{"name": "ExpIdsCopyAndMaskCal", "line": 1401, "type": "external"}]},
+        {"id": "dispatch-shared", "start": 1408, "end": 1411, "title": "共享 expert 分支", "detail": "共享专家使用独立的 AIV 区间和写入规则。", "kind": "compute", "calls": [{"name": "SendToSharedExpert", "line": 1409, "type": "external"}]},
+        {"id": "dispatch-moe", "start": 1412, "end": 1422, "title": "MoE expert 重排", "detail": "初始化 expert mask 和 token 计数，把普通 MoE token 写入本地 send buffer。", "kind": "output", "calls": [{"name": "SendToMoeExpertNew", "line": 1420, "type": "external"}]}
+      ]
+    },
+    {
+      "id": "cal-cumsum",
+      "module_id": "accounting",
+      "name": "CalCumSum",
+      "start": 1827,
+      "end": 1857,
+      "summary": "统计本 rank 发往各 expert 的 token，等待远端计数并生成输出前缀和。",
+      "inactive": false,
+      "inputs": ["expertIdsGMTensor_", "rscvStatusNum_"],
+      "outputs": ["sendCountsGlobal", "expertTokenNumsOutGMTensor_"],
+      "segments": [
+        {"id": "cumsum-count", "start": 1827, "end": 1840, "title": "统计并发送本 rank 计数", "detail": "准备 expertIds 与状态缓冲，筛选有效 expert 后发送本地 token 计数。", "kind": "input", "calls": [{"name": "CalAndSendCnt", "line": 1839, "type": "external"}]},
+        {"id": "cumsum-wait", "start": 1841, "end": 1848, "title": "划分并等待远端状态", "detail": "把状态项分给 cumsum AIV，重置缓冲后等待负责区间全部到齐。", "kind": "sync", "calls": [{"name": "WaitDispatch", "line": 1846, "type": "external"}]},
+        {"id": "cumsum-output", "start": 1849, "end": 1857, "title": "输出前缀和与 expert 总数", "detail": "生成接收偏移；首个 cumsum AIV 额外汇总 expertTokenNums。", "kind": "output", "calls": [{"name": "SetExpertTokenNums", "line": 1854, "type": "external"}]}
+      ]
+    },
+    {
+      "id": "copy-in-out",
+      "module_id": "format",
+      "name": "CopyInAndOut",
+      "start": 2052,
+      "end": 2098,
+      "summary": "从到达窗口搬入一个 batch，修正 top-k 槽位，并写回 expandX 与 expandIdx。",
+      "inactive": false,
+      "inputs": ["xOutInt32Tensor", "dataFlagGlobal", "dstPosition", "arriveCount"],
+      "outputs": ["expandXOutGlobal", "expandIdxGMTensor_"],
+      "segments": [
+        {"id": "copy-bind", "start": 2052, "end": 2068, "title": "绑定来源窗口与目标输出", "detail": "把 wAddr 映射为只读来源，把 expandXGM_ 加目标偏移映射为输出，并建立拷贝参数。", "kind": "input", "calls": []},
+        {"id": "copy-payload", "start": 2069, "end": 2075, "title": "搬运 payload、scale 与 expandX", "detail": "先从带 flag 的窗口搬入，再在同步边界后写 scale 和 expandX。", "kind": "output", "calls": [{"name": "DataCopyPad", "line": 2069, "type": "external"}, {"name": "CopyScalesToOut", "line": 2072, "type": "external"}]},
+        {"id": "copy-topk", "start": 2076, "end": 2093, "title": "双层循环修正 top-k 槽位", "detail": "逐 token、逐 top-k expert 查找目标 expert，把实际槽位写回三元组。", "kind": "loop", "calls": []},
+        {"id": "copy-index", "start": 2094, "end": 2098, "title": "写回 expandIdx 并提交", "detail": "等待标量修改可见后批量写 expandIdx，最后建立 MTE3 顺序。", "kind": "output", "calls": [{"name": "DataCopyPad", "line": 2095, "type": "external"}]}
+      ]
+    },
+    {
+      "id": "wait-format-output",
+      "module_id": "format",
+      "name": "WaitAndFormatOutput",
+      "start": 2101,
+      "end": 2182,
+      "summary": "在多个有效来源间轮询完整到达 batch，并调用 CopyInAndOut 连续化输出。",
+      "inactive": false,
+      "inputs": ["validNum", "expertMapTensor_", "expertLeftTensor_"],
+      "outputs": ["expandXOutGlobal", "expandIdxGMTensor_"],
+      "segments": [
+        {"id": "wait-layout", "start": 2101, "end": 2124, "title": "切分轮询与搬运工作区", "detail": "把统一 TBuf 切为输入、输出、scale 与索引视图，准备来源轮询状态。", "kind": "input", "calls": []},
+        {"id": "wait-source", "start": 2125, "end": 2134, "title": "轮转选择有效来源", "detail": "跳过已完成来源，维持 index 在有效来源集合中的环形推进。", "kind": "loop", "calls": []},
+        {"id": "wait-arrival", "start": 2135, "end": 2149, "title": "定位窗口并检查完整到达", "detail": "根据 source expert/rank 计算窗口块，读取尾部 flag 得到可消费 token 数。", "kind": "sync", "calls": [{"name": "CheckDataArriveWithFlag", "line": 2146, "type": "external"}]},
+        {"id": "wait-copy", "start": 2150, "end": 2171, "title": "消费 batch 并推进输出位置", "detail": "完整 batch 到达后写 expandX/scale/expandIdx，更新来源剩余数量和目标偏移。", "kind": "output", "calls": [{"name": "CopyInAndOut", "line": 2156, "type": "internal", "target": "copy-in-out"}]},
+        {"id": "wait-exit", "start": 2172, "end": 2182, "title": "推进轮询并在全部完成时退出", "detail": "当前来源未到齐则切换下一个；所有有效来源完成后结束状态机。", "kind": "guard", "calls": []}
+      ]
+    },
+    {
+      "id": "local-window-copy",
+      "module_id": "format",
+      "name": "LocalWindowCopy",
+      "start": 2196,
+      "end": 2252,
+      "summary": "等待 cumsum，建立非零来源集合并进入窗口轮询格式化。",
+      "inactive": false,
+      "inputs": ["workspaceGlobal", "rscvStatusNum_"],
+      "outputs": ["expandXOutGlobal", "expandIdxGMTensor_"],
+      "segments": [
+        {"id": "local-setup", "start": 2196, "end": 2210, "title": "重建接收阶段缓冲", "detail": "重置 pipe，申请状态与 cumsum 缓冲，并为每个 AIV 划分状态区间。", "kind": "input", "calls": []},
+        {"id": "local-wait", "start": 2211, "end": 2215, "title": "等待 cumsum 完成", "detail": "阻塞到计数前缀和可用；没有状态项的 AIV 可以直接返回。", "kind": "sync", "calls": [{"name": "WaitCumSumFlag", "line": 2211, "type": "external"}]},
+        {"id": "local-workset", "start": 2216, "end": 2235, "title": "建立有效来源工作集", "detail": "申请来源映射、完成数和剩余数缓冲，从前缀和筛出非零来源。", "kind": "compute", "calls": [{"name": "SetValidExpertInfo", "line": 2231, "type": "external"}]},
+        {"id": "local-format", "start": 2236, "end": 2252, "title": "轮询并格式化最终输出", "detail": "初始化到达检测状态，交给 WaitAndFormatOutput 逐 batch 写最终输出。", "kind": "output", "calls": [{"name": "WaitAndFormatOutput", "line": 2250, "type": "internal", "target": "wait-format-output"}]}
+      ]
+    },
+    {
+      "id": "urma-send-token",
+      "module_id": "remote",
+      "name": "URMASendToken",
+      "start": 3519,
+      "end": 3889,
+      "summary": "把 expert/token 稳定映射为远端 WQE，预留 SQ head、发布 ready bitmap，并与 doorbell 核解耦。",
+      "inactive": false,
+      "inputs": ["expertIdsGMTensor_", "sendBufGlobal", "aivId_"],
+      "outputs": ["HeadRecordGM", "tokenSendWqeDesc"],
+      "segments": [
+        {"id": "urma-split", "start": 3519, "end": 3587, "title": "划分远端 expert worker", "detail": "排除本 rank expert，根据两侧 expert 比例把远端工作分给 WQE AIV 并处理余数。", "kind": "guard", "calls": []},
+        {"id": "urma-buffer", "start": 3588, "end": 3672, "title": "分配映射、SQ 与 WQE 工作区", "detail": "空任务提前返回；其余核建立 expert offset、远端地址、head 和描述符缓冲。", "kind": "input", "calls": []},
+        {"id": "urma-map", "start": 3673, "end": 3745, "title": "建立 expert → token 稳定映射", "detail": "搬入 expertIds，并行计数 expert slot，再按来源 offset 建立稳定 token 顺序。", "kind": "compute", "calls": [{"name": "DataCopyPad", "line": 3700, "type": "external"}]},
+        {"id": "urma-address", "start": 3746, "end": 3782, "title": "构造远端地址并等待 head-ready", "detail": "建立 rank window 基址，自旋等待 doorbell 核发布可预留的 SQ head。", "kind": "sync", "calls": []},
+        {"id": "urma-desc", "start": 3783, "end": 3818, "title": "批量生成 WQE 描述符", "detail": "把 expert slot 转换为 staging 源地址和远端 expert window 目的地址。", "kind": "loop", "calls": []},
+        {"id": "urma-publish", "start": 3819, "end": 3867, "title": "写 SQ 并发布 ready bitmap", "detail": "原子预留连续 head，写硬件 WQE 后把完成位发布给 doorbell 核。", "kind": "output", "calls": []},
+        {"id": "urma-finish", "start": 3868, "end": 3889, "title": "结束 WQE 生产阶段", "detail": "记录阶段结束时间；被注释的 CQ quiet 逻辑不属于当前主路径。", "kind": "debug", "calls": []}
+      ]
+    },
+    {
+      "id": "ring-doorbell",
+      "module_id": "doorbell",
+      "name": "RingDoorbell",
+      "start": 4002,
+      "end": 4276,
+      "summary": "初始化 SQ/CQ 控制面，等待 staging 后扫描连续 ready WQE，并推进硬件 doorbell。",
+      "inactive": false,
+      "inputs": ["HeadRecordGM", "expertIdsGMTensor_", "sqsGM"],
+      "outputs": ["finishedTokenLT", "prevHeadLT"],
+      "segments": [
+        {"id": "doorbell-setup", "start": 4002, "end": 4047, "title": "准备 SQ/CQ 与计数缓冲", "detail": "按 jetty/rank 数量申请 head、完成 token 和 ready 状态，并读取设备队列。", "kind": "input", "calls": [{"name": "get_sqs_and_cqs_xb", "line": 4045, "type": "external"}]},
+        {"id": "doorbell-ready", "start": 4048, "end": 4107, "title": "清 bitmap 并发布 head-ready", "detail": "清除上一轮 head record，读取当前 SQ head，再允许 WQE 核开始预留。", "kind": "sync", "calls": []},
+        {"id": "doorbell-count", "start": 4108, "end": 4156, "title": "统计各远端 rank 的目标 token", "detail": "按 expertIds 计算非本 rank token 数，形成每个 rank 的退出条件。", "kind": "compute", "calls": []},
+        {"id": "doorbell-stage", "start": 4157, "end": 4162, "title": "等待 staging payload 完成", "detail": "所有 active stage 的本地数据可见后才允许设备读取 WQE 指向的源地址。", "kind": "sync", "calls": [{"name": "WaitAllStageDone", "line": 4158, "type": "external"}]},
+        {"id": "doorbell-scan", "start": 4163, "end": 4243, "title": "扫描连续 ready bitmap", "detail": "从旧 head 起只消费连续置位 WQE，正确处理 32-bit word 内偏移和环回。", "kind": "loop", "calls": []},
+        {"id": "doorbell-ring", "start": 4244, "end": 4276, "title": "敲 doorbell 并判断全局完成", "detail": "推进 SQ head 并写设备 doorbell；所有目标 rank token 完成后退出。", "kind": "output", "calls": [{"name": "st_dev", "line": 4263, "type": "external"}]}
+      ]
+    },
+    {
+      "id": "process",
+      "module_id": "orchestrate",
+      "name": "Process",
+      "start": 4279,
+      "end": 4354,
+      "summary": "按 AIV 角色并发运行 staging、远端发送、doorbell 和 cumsum，最后汇合到本地窗口格式化。",
+      "inactive": false,
+      "inputs": ["aivId_", "aivUsedStage_", "aivUsedRemoteWqe_", "aivCumSumStart_"],
+      "outputs": ["expandXOutGlobal", "expandIdxGMTensor_", "sendTpCountOutGM_"],
+      "segments": [
+        {"id": "process-entry", "start": 4279, "end": 4294, "title": "进入 AIV 调度域", "detail": "记录起点时钟，确认设备侧 AIV 路径，并说明 stage flag 的 launch 生命周期。", "kind": "input", "calls": []},
+        {"id": "process-stage", "start": 4295, "end": 4305, "title": "Stage：本地重排并发布完成", "detail": "前一组 AIV 写本地 send buffer，发布 stage 完成标志后重置 pipe。", "kind": "compute", "calls": [{"name": "AllToAllDispatch", "line": 4297, "type": "internal", "target": "all-to-all-dispatch"}]},
+        {"id": "process-send", "start": 4306, "end": 4311, "title": "远端发送与本卡快路径分流", "detail": "负责 WQE 的 AIV 进入 URMA 发送，其余 stage AIV 处理本 rank token。", "kind": "guard", "calls": [{"name": "URMASendToken", "line": 4307, "type": "internal", "target": "urma-send-token"}]},
+        {"id": "process-control", "start": 4312, "end": 4324, "title": "Doorbell / CumSum 并发角色", "detail": "非 stage AIV 分为 doorbell 控制面与接收计数前缀和两条并行路径。", "kind": "guard", "calls": [{"name": "RingDoorbell", "line": 4314, "type": "internal", "target": "ring-doorbell"}, {"name": "CalCumSum", "line": 4319, "type": "internal", "target": "cal-cumsum"}]},
+        {"id": "process-merge", "start": 4325, "end": 4336, "title": "汇合并连续化目标窗口", "detail": "角色任务结束后经过本核 barrier，进入 LocalWindowCopy 输出最终张量。", "kind": "output", "calls": [{"name": "LocalWindowCopy", "line": 4331, "type": "internal", "target": "local-window-copy"}]},
+        {"id": "process-debug", "start": 4337, "end": 4352, "title": "调试时钟回写", "detail": "仅 DEBUG_CLOCK_ON 下计算阶段 cycle 差并写 sendTpCountOutGM_，不属于业务数据路径。", "kind": "debug", "calls": []},
+        {"id": "process-exit", "start": 4353, "end": 4354, "title": "结束设备入口", "detail": "关闭 AIV 条件块并结束 Process 函数。", "kind": "guard", "calls": []}
+      ]
+    }
+  ],
+  "symbols": [
+    {"name": "aivId_", "type": "input", "description": "当前 AIV 的角色索引，决定进入 staging、doorbell 或 cumsum 分支。"},
+    {"name": "expertIdsGMTensor_", "type": "input", "description": "token/top-k 槽位对应的 expert ID 全局输入。"},
+    {"name": "dataFlagGlobal", "type": "input", "description": "来源窗口的 payload 与到达 flag 视图。"},
+    {"name": "xOutInt32Tensor", "type": "input", "description": "搬入 UB 后用于修正 top-k 三元组的整数视图。"},
+    {"name": "expandXOutGlobal", "type": "output", "description": "最终连续化 token 数据的全局输出视图。"},
+    {"name": "expandIdxGMTensor_", "type": "output", "description": "最终 token、expert 与 top-k 槽位索引输出。"},
+    {"name": "sendCountsGlobal", "type": "output", "description": "各来源/目标 expert 的 token 计数或前缀和输出。"},
+    {"name": "DataCopyPad", "type": "api", "description": "AscendC 带 padding 的 GM/UB 数据搬运接口。"},
+    {"name": "atomicAdd", "type": "api", "description": "为并行 worker 原子分配计数或 SQ head 区间。"},
+    {"name": "atomicOr", "type": "api", "description": "原子发布 WQE ready bitmap 位。"},
+    {"name": "st_dev", "type": "api", "description": "向设备 doorbell 地址写入新的 SQ head。"},
+    {"name": "AllToAllDispatch", "type": "call", "description": "把 token 重排到本地发送暂存区。"},
+    {"name": "URMASendToken", "type": "call", "description": "构造并发布远端 URMA WQE。"},
+    {"name": "RingDoorbell", "type": "call", "description": "消费连续 ready WQE 并推进硬件队列。"},
+    {"name": "CalCumSum", "type": "call", "description": "交换计数并生成接收偏移。"},
+    {"name": "LocalWindowCopy", "type": "call", "description": "轮询接收窗口并连续化最终输出。"},
+    {"name": "PipeBarrier", "type": "sync", "description": "建立当前 AIV 内不同流水线阶段的顺序。"},
+    {"name": "SyncAll", "type": "sync", "description": "在需要时建立全核同步边界。"}
+  ],
+  "glossary": [
+    {"term": "WQE", "description": "Work Queue Element，描述一次设备侧远端搬运的源、目的和长度。"},
+    {"term": "SQ head", "description": "发送队列生产位置；多个 WQE worker 通过原子加法预留不重叠区间。"},
+    {"term": "head bitmap", "description": "WQE 写入完成位图；doorbell 核只推进从旧 head 开始的连续完成前缀。"},
+    {"term": "stage done", "description": "本地 staging payload 已完成、可以被 URMA 或本卡复制路径读取的发布标志。"}
+  ]
+}

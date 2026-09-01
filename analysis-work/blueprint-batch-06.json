@@ -1,0 +1,4129 @@
+{
+  "source": {
+    "sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc"
+  },
+  "functions": [
+    {
+      "id": "m-moedistributedispatchv2fullmesh-sendtosharedexpert-ba8dee0206",
+      "module_id": "stage-pack",
+      "name": "SendToSharedExpert",
+      "start": 1139,
+      "end": 1174,
+      "inactive": false,
+      "summary": "把 activeMaskBsCnt_ 个有效 token 扩展为 sharedExpertNum_ 份共享专家发送任务，分给 sharedUsedAivNum_ 个 stage 核；每项直接写入目标共享专家 Rank 的窗口，并按编译期 QuantMode 选择量化/类型转换或非量化打包。",
+      "inputs": [
+        "inQueue",
+        "outBuf",
+        "activeMaskBsCnt_",
+        "sharedExpertNum_",
+        "sharedUsedAivNum_",
+        "epRankId_",
+        "rankNumPerSharedExpert_",
+        "isScalingDownFlag_",
+        "elasticInfoTensor_",
+        "epWorldSizeOriginal_",
+        "isExpertMaskFlag_",
+        "validBsIndexTensor_",
+        "QuantMode",
+        "ExpandXOutType",
+        "XType"
+      ],
+      "outputs": [
+        "dstWinGMTensor"
+      ],
+      "side_effects": [
+        "Duplicate 将 outBuf 对应 FP32 视图初始化为 1，作为后续带 flag 通信块的预填充值",
+        "TokenToExpertInQuant 或 TokenToExpert 直接向 dstWinGMTensor 绑定的远端窗口写 token、triple 与 flag 布局",
+        "PipeBarrier<PIPE_V> 保证 Duplicate 完成后再消费 outBuf"
+      ],
+      "review": {
+        "status": "PASS",
+        "reviewer": "e2e-architecture-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "line_range": [
+          1139,
+          1174
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 1139,
+        "reviewed_end": 1174,
+        "expected_line_count": 36,
+        "covered_line_count": 36,
+        "covered_ranges": [
+          [
+            1139,
+            1144
+          ],
+          [
+            1145,
+            1149
+          ],
+          [
+            1150,
+            1161
+          ],
+          [
+            1162,
+            1174
+          ]
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {
+          "line": 1139,
+          "kind": "signature",
+          "explanation": "构成函数 `SendToSharedExpert` 的签名片段 `template <TemplateMC2TypeFullmeshClass>`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1140,
+          "kind": "signature",
+          "explanation": "构成函数 `SendToSharedExpert` 的签名片段 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::SendToSharedExpert(TQue<QuePosition::VECIN, 1> inQueue, TBuf<> outBuf)`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1141,
+          "kind": "brace",
+          "explanation": "开始共享专家发送函数体。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1142,
+          "kind": "call",
+          "explanation": "调用 LocalTensor；读取 outBuf、Get，更新 outTensorFp32。",
+          "reads": [
+            "outBuf",
+            "Get"
+          ],
+          "writes": [
+            "outTensorFp32"
+          ]
+        },
+        {
+          "line": 1143,
+          "kind": "call",
+          "explanation": "把 outTensorFp32 覆盖为 FP32 数值 1，范围是 hCommuSize_ * BUFFER_NUM 字节，为通信块 flag/padding 建立默认值。",
+          "reads": [
+            "hCommuSize_",
+            "BUFFER_NUM"
+          ],
+          "writes": [
+            "outTensorFp32"
+          ]
+        },
+        {
+          "line": 1144,
+          "kind": "sync",
+          "explanation": "执行 PipeBarrier，按本行的 PIPE_V 建立流水线先后关系。",
+          "reads": [
+            "PIPE_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1145,
+          "kind": "comment",
+          "explanation": "注释记录 `分核`，说明 `SendToSharedExpert` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1146,
+          "kind": "declaration",
+          "explanation": "声明/初始化 startTokenId、endTokenId、sendTokenNum；源码表达式 `uint32_t startTokenId, endTokenId, sendTokenNum;`。",
+          "reads": [],
+          "writes": [
+            "startTokenId",
+            "endTokenId",
+            "sendTokenNum"
+          ]
+        },
+        {
+          "line": 1147,
+          "kind": "declaration",
+          "explanation": "声明/初始化 curSendCnt；源码表达式 `uint32_t curSendCnt = activeMaskBsCnt_ * sharedExpertNum_;` 读取 activeMaskBsCnt_、sharedExpertNum_。",
+          "reads": [
+            "activeMaskBsCnt_",
+            "sharedExpertNum_"
+          ],
+          "writes": [
+            "curSendCnt"
+          ]
+        },
+        {
+          "line": 1148,
+          "kind": "call",
+          "explanation": "调用 SplitToCore，把 curSendCnt 个共享专家虚拟任务分给 sharedUsedAivNum_ 个共享 stage 核，写回当前核的起止 token 与数量。",
+          "reads": [
+            "curSendCnt",
+            "sharedUsedAivNum_"
+          ],
+          "writes": [
+            "startTokenId",
+            "endTokenId",
+            "sendTokenNum"
+          ]
+        },
+        {
+          "line": 1149,
+          "kind": "branch",
+          "explanation": "若 startTokenId 已越过 curSendCnt，当前共享 stage 核没有任务并立即返回。",
+          "reads": [
+            "startTokenId",
+            "curSendCnt"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1150,
+          "kind": "comment",
+          "explanation": "注释记录 `发送`，说明 `SendToSharedExpert` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1151,
+          "kind": "declaration",
+          "explanation": "声明/初始化 dstWinGMTensor；源码表达式 `GlobalTensor<XOutType> dstWinGMTensor;`。",
+          "reads": [],
+          "writes": [
+            "dstWinGMTensor"
+          ]
+        },
+        {
+          "line": 1152,
+          "kind": "declaration",
+          "explanation": "用 epRankId_ % rankNumPerSharedExpert_ 取得源 Rank 在共享专家 Rank 组内的相对位置。",
+          "reads": [
+            "epRankId_",
+            "rankNumPerSharedExpert_"
+          ],
+          "writes": [
+            "idInSharedGroup"
+          ]
+        },
+        {
+          "line": 1153,
+          "kind": "loop",
+          "explanation": "遍历当前核负责的半开区间 [startTokenId, endTokenId)，每次处理一个“有效 token × 共享专家”虚拟任务。",
+          "reads": [
+            "startTokenId",
+            "endTokenId"
+          ],
+          "writes": [
+            "virtualTokenIndex"
+          ]
+        },
+        {
+          "line": 1154,
+          "kind": "declaration",
+          "explanation": "以 virtualTokenIndex % activeMaskBsCnt_ 还原该虚拟任务的有效 token 序号。",
+          "reads": [
+            "virtualTokenIndex",
+            "activeMaskBsCnt_"
+          ],
+          "writes": [
+            "sendTokenIndex"
+          ]
+        },
+        {
+          "line": 1155,
+          "kind": "declaration",
+          "explanation": "以 virtualTokenIndex / activeMaskBsCnt_ 还原该虚拟任务的共享专家序号。",
+          "reads": [
+            "virtualTokenIndex",
+            "activeMaskBsCnt_"
+          ],
+          "writes": [
+            "toSharedExpertIndex"
+          ]
+        },
+        {
+          "line": 1156,
+          "kind": "declaration",
+          "explanation": "保持 idInSharedGroup 不变并跨 toSharedExpertIndex 个 Rank 组，得到目标共享专家 Rank。",
+          "reads": [
+            "idInSharedGroup",
+            "toSharedExpertIndex",
+            "rankNumPerSharedExpert_"
+          ],
+          "writes": [
+            "toRankId"
+          ]
+        },
+        {
+          "line": 1157,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (isScalingDownFlag_) {` 选择 `SendToSharedExpert` 的后续路径；判定涉及 `isScalingDownFlag_`。",
+          "reads": [
+            "isScalingDownFlag_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1158,
+          "kind": "call",
+          "explanation": "缩容启用时从 elasticInfoTensor_ 的 Rank 映射区读取真实 toRankId。",
+          "reads": [
+            "elasticInfoTensor_",
+            "ELASTIC_INFO_OFFSET",
+            "epWorldSizeOriginal_"
+          ],
+          "writes": [
+            "toRankId"
+          ]
+        },
+        {
+          "line": 1159,
+          "kind": "brace",
+          "explanation": "结束弹性缩容 Rank 重映射分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1160,
+          "kind": "call",
+          "explanation": "绑定目标 Rank window：先调用 GetWindAddrByRankId(toRankId)，再进入该源 epRankId_ 的专家分区；地址表达式在下一行完成。",
+          "reads": [
+            "toRankId",
+            "expertPerSizeOnWin_"
+          ],
+          "writes": [
+            "dstWinGMTensor"
+          ]
+        },
+        {
+          "line": 1161,
+          "kind": "declaration",
+          "explanation": "在源 Rank 专家分区内叠加 sendTokenIndex * hCommuSize_，完成 dstWinGMTensor 的 token 槽地址。",
+          "reads": [
+            "epRankId_",
+            "sendTokenIndex",
+            "hCommuSize_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1162,
+          "kind": "declaration",
+          "explanation": "声明/初始化 srcTokenIndex；源码表达式 `uint32_t srcTokenIndex = sendTokenIndex;` 读取 sendTokenIndex。",
+          "reads": [
+            "sendTokenIndex"
+          ],
+          "writes": [
+            "srcTokenIndex"
+          ]
+        },
+        {
+          "line": 1163,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (isExpertMaskFlag_) {` 选择 `SendToSharedExpert` 的后续路径；判定涉及 `isExpertMaskFlag_`。",
+          "reads": [
+            "isExpertMaskFlag_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1164,
+          "kind": "call",
+          "explanation": "expert mask 启用时，用 validBsIndexTensor_[sendTokenIndex] 把压缩有效序号恢复为原始 srcTokenIndex。",
+          "reads": [
+            "validBsIndexTensor_",
+            "sendTokenIndex"
+          ],
+          "writes": [
+            "srcTokenIndex"
+          ]
+        },
+        {
+          "line": 1165,
+          "kind": "brace",
+          "explanation": "结束 expert mask 的原始 token 索引恢复分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1166,
+          "kind": "branch",
+          "explanation": "编译期选择量化/输出类型转换路径；纯 UNQUANT 且输入输出类型相同时走 else。",
+          "reads": [
+            "constexpr",
+            "QuantMode",
+            "UNQUANT",
+            "ExpandXOutType",
+            "XType"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1167,
+          "kind": "declaration",
+          "explanation": "声明/初始化 fillExpertIdx；源码表达式 `uint32_t fillExpertIdx = axisK_ + toSharedExpertIndex;` 读取 axisK_、toSharedExpertIndex。",
+          "reads": [
+            "axisK_",
+            "toSharedExpertIndex"
+          ],
+          "writes": [
+            "fillExpertIdx"
+          ]
+        },
+        {
+          "line": 1168,
+          "kind": "declaration",
+          "explanation": "声明/初始化 quantExpertIdx；源码表达式 `uint32_t quantExpertIdx = toSharedExpertIndex;` 读取 toSharedExpertIndex。",
+          "reads": [
+            "toSharedExpertIndex"
+          ],
+          "writes": [
+            "quantExpertIdx"
+          ]
+        },
+        {
+          "line": 1169,
+          "kind": "call",
+          "explanation": "调用 TokenToExpertInQuant，把 srcTokenIndex 打包到共享专家远端槽；fillExpertIdx 标记扩展 top-k 槽，quantExpertIdx 选择共享专家 scale。",
+          "reads": [
+            "inQueue",
+            "srcTokenIndex",
+            "fillExpertIdx",
+            "quantExpertIdx"
+          ],
+          "writes": [
+            "dstWinGMTensor"
+          ]
+        },
+        {
+          "line": 1170,
+          "kind": "branch",
+          "explanation": "按分支表达式 `} else {` 选择 `SendToSharedExpert` 的后续路径；判定涉及 `编译期/字面量条件`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1171,
+          "kind": "call",
+          "explanation": "非量化路径调用 TokenToExpert，使用 axisK_ + toSharedExpertIndex 标记共享专家扩展槽。",
+          "reads": [
+            "inQueue",
+            "srcTokenIndex",
+            "axisK_",
+            "toSharedExpertIndex"
+          ],
+          "writes": [
+            "dstWinGMTensor"
+          ]
+        },
+        {
+          "line": 1172,
+          "kind": "brace",
+          "explanation": "结束非量化打包分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1173,
+          "kind": "brace",
+          "explanation": "结束 virtualTokenIndex 共享发送循环。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1174,
+          "kind": "brace",
+          "explanation": "结束 SendToSharedExpert。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments": [
+        {
+          "id": "shared-prefill-communication-buffer",
+          "start": 1139,
+          "end": 1144,
+          "title": "把共享专家通信临时区预填为 FP32 数值 1",
+          "detail": "从 outBuf 取得 outTensorFp32，以 hCommuSize_ * BUFFER_NUM 覆盖整个双缓冲通信区，并在 PIPE_V 上等待 Duplicate 可见。",
+          "kind": "input",
+          "input_state": [
+            "outBuf：AllToAllDispatch 初始化的 hCommuSize_ * BUFFER_NUM 字节 UB",
+            "hCommuSize_：单 token 含 flag 的通信块大小"
+          ],
+          "mechanism": "outBuf.Get<float>() 建立 FP32 视图，Duplicate<float> 写入 1，元素数为 hCommuSize_ * BUFFER_NUM / sizeof(float)，随后 PipeBarrier<PIPE_V>。",
+          "output_state": [
+            "outTensorFp32/outBuf：全部通信槽预填 1，可供 TokenToExpert* 覆盖 payload 与 triple"
+          ],
+          "why": "TokenToExpert* 只搬运分块 payload/triple，通信块中的 flag/padding 需要先有约定值。",
+          "calls": [
+            {
+              "name": "Get",
+              "line": 1142,
+              "type": "external"
+            },
+            {
+              "name": "Duplicate",
+              "line": 1143,
+              "type": "external"
+            },
+            {
+              "name": "PipeBarrier",
+              "line": 1144,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "shared-split-virtual-token-work",
+          "start": 1145,
+          "end": 1149,
+          "title": "把有效 token × 共享专家的笛卡尔积切给共享 stage 核",
+          "detail": "curSendCnt 等于 activeMaskBsCnt_ * sharedExpertNum_；SplitToCore 以 sharedUsedAivNum_ 和 isFront=false 映射共享核 ID，并给出半开区间 [startTokenId,endTokenId)。空区间立即返回。",
+          "kind": "guard",
+          "input_state": [
+            "activeMaskBsCnt_：有效 token 数",
+            "sharedExpertNum_：共享专家数",
+            "sharedUsedAivNum_：共享路径核数"
+          ],
+          "mechanism": "将 virtualTokenIndex 展平空间大小设为 activeMaskBsCnt_ * sharedExpertNum_，再通过 SplitToCore 均匀切分余数。",
+          "output_state": [
+            "startTokenId/endTokenId/sendTokenNum：当前 AIV 的共享发送任务范围",
+            "无任务的 AIV 提前结束"
+          ],
+          "why": "每个有效 token 必须发送到每个共享专家，而共享核之间必须无重叠地覆盖整个任务笛卡尔积。",
+          "calls": [
+            {
+              "name": "SplitToCore",
+              "line": 1148,
+              "type": "internal",
+              "target": "m-moedistributedispatchv2fullmesh-splittocore-e75b18e982"
+            }
+          ]
+        },
+        {
+          "id": "shared-map-task-to-rank-window",
+          "start": 1150,
+          "end": 1161,
+          "title": "把虚拟任务映射为共享专家 Rank 与远端窗口槽",
+          "detail": "virtualTokenIndex 的模得到有效 token 序号，整除得到共享专家序号；源 Rank 在共享专家组内的位置 idInSharedGroup 与专家组跨度共同决定 toRankId，缩容时再查 elasticInfoTensor_，最后按源 Rank 分区和 token 槽绑定 dstWinGMTensor。",
+          "kind": "loop",
+          "input_state": [
+            "[startTokenId,endTokenId)：当前核任务",
+            "epRankId_/rankNumPerSharedExpert_：共享专家组内拓扑",
+            "expertPerSizeOnWin_/hCommuSize_：远端窗口布局"
+          ],
+          "mechanism": "sendTokenIndex=virtualTokenIndex%activeMaskBsCnt_；toSharedExpertIndex=virtualTokenIndex/activeMaskBsCnt_；toRankId=idInSharedGroup+toSharedExpertIndex*rankNumPerSharedExpert_，必要时弹性重映射。",
+          "output_state": [
+            "dstWinGMTensor：绑定目标共享专家 Rank 中源 epRankId_ 的 sendTokenIndex 槽",
+            "toSharedExpertIndex/sendTokenIndex：后续打包元数据"
+          ],
+          "why": "共享专家按 Rank 组部署；保持相同组内相对 Rank，并按源 Rank 隔离窗口分区，可避免不同发送方覆盖。",
+          "calls": [
+            {
+              "name": "GetValue",
+              "line": 1158,
+              "type": "external"
+            },
+            {
+              "name": "SetGlobalBuffer",
+              "line": 1160,
+              "type": "external"
+            },
+            {
+              "name": "GetWindAddrByRankId",
+              "line": 1160,
+              "type": "internal",
+              "target": "m-moedistributedispatchv2fullmesh-getwindaddrbyrankid-994ab853c1"
+            }
+          ]
+        },
+        {
+          "id": "shared-remap-source-and-pack-token",
+          "start": 1162,
+          "end": 1174,
+          "title": "恢复原始 token 索引并按量化模式写共享专家通信块",
+          "detail": "默认 srcTokenIndex 等于压缩后的 sendTokenIndex；expert mask 启用时通过 validBsIndexTensor_ 恢复原始 BS。量化或输出类型转换路径分别传入 fillExpertIdx=axisK_+共享专家序号与 quantExpertIdx=共享专家序号；纯非量化路径只用扩展 top-k 槽写 triple。",
+          "kind": "output",
+          "input_state": [
+            "sendTokenIndex/toSharedExpertIndex：当前共享任务",
+            "isExpertMaskFlag_/validBsIndexTensor_：原始 token 映射",
+            "QuantMode 与类型关系：编译期路径"
+          ],
+          "mechanism": "专家 mask 分支修正 srcTokenIndex；if constexpr 选择 TokenToExpertInQuant 或 TokenToExpert，并把 axisK_ + toSharedExpertIndex 作为共享专家 triple 槽。",
+          "output_state": [
+            "dstWinGMTensor：写入源 token 数据、共享专家 triple 和通信 flag",
+            "每个 virtualTokenIndex 恰好完成一次共享专家发送"
+          ],
+          "why": "共享专家不属于普通 axisK_ 路由槽，但接收端仍需从 triple 区分其扩展位置；量化 scale 索引则按共享专家编号独立选择。",
+          "calls": [
+            {
+              "name": "GetValue",
+              "line": 1164,
+              "type": "external"
+            },
+            {
+              "name": "TokenToExpertInQuant",
+              "line": 1169,
+              "type": "internal",
+              "target": "m-moedistributedispatchv2fullmesh-tokentoexpertinquant-ada035d1fb"
+            },
+            {
+              "name": "TokenToExpert",
+              "line": 1171,
+              "type": "internal",
+              "target": "m-moedistributedispatchv2fullmesh-tokentoexpert-4209b8d38b"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m-moedistributedispatchv2fullmesh-calexpertsendnum-0ff9e62b02",
+      "module_id": "stage-pack",
+      "name": "CalExpertSendNum",
+      "start": 1176,
+      "end": 1200,
+      "inactive": true,
+      "summary": "旧版普通 MoE 直写路径的辅助函数：为当前 AIV 分配的每个专家生成匹配 bit mask、统计匹配 token 数到 tokenNumToExpertTensor_，再把 outBuf 预填为 1；当前只被入口不可达的 SendToMoeExpert 调用。",
+      "inputs": [
+        "outBuf",
+        "expertMaskBuf",
+        "validExpertIdsTensor_",
+        "sendNum_",
+        "startId_",
+        "remainderExpertNum_",
+        "delLastExpertId_",
+        "isTokenMaskFlag_",
+        "activeMaskBsCnt_",
+        "axisK_",
+        "expertIdsCnt_"
+      ],
+      "outputs": [
+        "expertMaskTensorU8",
+        "gatherTempTensor",
+        "tokenNumToExpertTensor_",
+        "outTensorFp32"
+      ],
+      "side_effects": [
+        "CompareScalar/GatherMask 写 expertMaskBuf 与 gatherTempTensor",
+        "tokenNumToExpertTensor_.SetValue 写入标量统计",
+        "V_S 同步使 GatherMask 的 maskCnt 可被标量 SetValue 消费",
+        "inactive：AllToAllDispatch 当前调用 SendToMoeExpertNew，不会从 Process 到达本函数"
+      ],
+      "review": {
+        "status": "PASS",
+        "reviewer": "e2e-architecture-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "line_range": [
+          1176,
+          1200
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 1176,
+        "reviewed_end": 1200,
+        "expected_line_count": 25,
+        "covered_line_count": 25,
+        "covered_ranges": [
+          [
+            1176,
+            1184
+          ],
+          [
+            1185,
+            1196
+          ],
+          [
+            1197,
+            1200
+          ]
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {
+          "line": 1176,
+          "kind": "signature",
+          "explanation": "构成函数 `CalExpertSendNum` 的签名片段 `template <TemplateMC2TypeFullmeshClass>`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1177,
+          "kind": "signature",
+          "explanation": "构成函数 `CalExpertSendNum` 的签名片段 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::CalExpertSendNum(TBuf<> outBuf, TBuf<> expertMaskBuf)`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1178,
+          "kind": "brace",
+          "explanation": "开始旧版每专家 mask/计数计算函数体。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1179,
+          "kind": "declaration",
+          "explanation": "声明/初始化 maskCnt；源码表达式 `uint64_t maskCnt = 0;`。",
+          "reads": [],
+          "writes": [
+            "maskCnt"
+          ]
+        },
+        {
+          "line": 1180,
+          "kind": "declaration",
+          "explanation": "token mask 模式只统计 activeMaskBsCnt_ * axisK_ 项，否则统计完整 expertIdsCnt_ 项。",
+          "reads": [
+            "isTokenMaskFlag_",
+            "activeMaskBsCnt_",
+            "axisK_",
+            "expertIdsCnt_"
+          ],
+          "writes": [
+            "mask"
+          ]
+        },
+        {
+          "line": 1181,
+          "kind": "call",
+          "explanation": "把 mask 个 int32_t 的比较长度上取整到 SIZE_ALIGN_256 字节，再换回 int32_t 个数 compareCount。",
+          "reads": [
+            "mask",
+            "SIZE_ALIGN_256"
+          ],
+          "writes": [
+            "compareCount"
+          ]
+        },
+        {
+          "line": 1182,
+          "kind": "call",
+          "explanation": "调用 LocalTensor；读取 expertMaskBuf、Get，更新 expertMaskTensorU8。",
+          "reads": [
+            "expertMaskBuf",
+            "Get"
+          ],
+          "writes": [
+            "expertMaskTensorU8"
+          ]
+        },
+        {
+          "line": 1183,
+          "kind": "call",
+          "explanation": "调用 LocalTensor；读取 expertMaskBuf、Get，更新 expertMaskTensorU32。",
+          "reads": [
+            "expertMaskBuf",
+            "Get"
+          ],
+          "writes": [
+            "expertMaskTensorU32"
+          ]
+        },
+        {
+          "line": 1184,
+          "kind": "call",
+          "explanation": "调用 LocalTensor；读取 outBuf、Get，更新 gatherTempTensor。",
+          "reads": [
+            "outBuf",
+            "Get"
+          ],
+          "writes": [
+            "gatherTempTensor"
+          ]
+        },
+        {
+          "line": 1185,
+          "kind": "loop",
+          "explanation": "遍历当前核由 SplitExpertNumToCore 分配的 sendNum_ 个专家槽。",
+          "reads": [
+            "expertIndex",
+            "sendNum_"
+          ],
+          "writes": [
+            "expertIndex"
+          ]
+        },
+        {
+          "line": 1186,
+          "kind": "declaration",
+          "explanation": "声明/初始化 dstExpertId；源码表达式 `int32_t dstExpertId = expertIndex + startId_;` 读取 expertIndex、startId_。",
+          "reads": [
+            "expertIndex",
+            "startId_"
+          ],
+          "writes": [
+            "dstExpertId"
+          ]
+        },
+        {
+          "line": 1187,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if ((expertIndex == sendNum_ - 1) && (remainderExpertNum_ != 0)) {` 选择 `CalExpertSendNum` 的后续路径；判定涉及 `expertIndex、sendNum_、remainderExpertNum_`。",
+          "reads": [
+            "expertIndex",
+            "sendNum_",
+            "remainderExpertNum_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1188,
+          "kind": "declaration",
+          "explanation": "声明/初始化 dstExpertId；源码表达式 `dstExpertId = delLastExpertId_;` 读取 delLastExpertId_。",
+          "reads": [
+            "delLastExpertId_"
+          ],
+          "writes": [
+            "dstExpertId"
+          ]
+        },
+        {
+          "line": 1189,
+          "kind": "brace",
+          "explanation": "结束余数专家 ID 替换分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1190,
+          "kind": "call",
+          "explanation": "CompareScalar 将 validExpertIdsTensor_ 中等于 dstExpertId 的位置写入当前专家的 byte mask 切片。",
+          "reads": [
+            "maskSizePerExpert_",
+            "expertIndex",
+            "validExpertIdsTensor_",
+            "dstExpertId",
+            "CMPMODE",
+            "EQ",
+            "compareCount"
+          ],
+          "writes": [
+            "expertMaskTensorU8"
+          ]
+        },
+        {
+          "line": 1191,
+          "kind": "sync",
+          "explanation": "执行 PipeBarrier，按本行的 PIPE_V 建立流水线先后关系。",
+          "reads": [
+            "PIPE_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1192,
+          "kind": "call",
+          "explanation": "GatherMask 根据当前专家 word mask 收集命中 ID 到 gatherTempTensor；跨行调用在下一行传入 maskCnt。",
+          "reads": [
+            "validExpertIdsTensor_",
+            "expertMaskTensorU32",
+            "maskSizePerExpert_",
+            "expertIndex"
+          ],
+          "writes": [
+            "gatherTempTensor"
+          ]
+        },
+        {
+          "line": 1193,
+          "kind": "declaration",
+          "explanation": "完成 GatherMask 的实参：使用真实 mask 长度与连续搬运参数，并通过 maskCnt 接收当前专家命中数。",
+          "reads": [
+            "mask"
+          ],
+          "writes": [
+            "maskCnt"
+          ]
+        },
+        {
+          "line": 1194,
+          "kind": "sync",
+          "explanation": "SyncFunc<V_S> 等待向量 GatherMask 结束，使标量侧能够读取 maskCnt。",
+          "reads": [
+            "V_S"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1195,
+          "kind": "call",
+          "explanation": "把当前 expertIndex 的 maskCnt 写入 tokenNumToExpertTensor_，供旧发送循环跳过零命中专家。",
+          "reads": [
+            "expertIndex",
+            "maskCnt"
+          ],
+          "writes": [
+            "tokenNumToExpertTensor_"
+          ]
+        },
+        {
+          "line": 1196,
+          "kind": "brace",
+          "explanation": "结束 expertIndex 统计循环。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1197,
+          "kind": "call",
+          "explanation": "调用 LocalTensor；读取 outBuf、Get，更新 outTensorFp32。",
+          "reads": [
+            "outBuf",
+            "Get"
+          ],
+          "writes": [
+            "outTensorFp32"
+          ]
+        },
+        {
+          "line": 1198,
+          "kind": "call",
+          "explanation": "调用 Duplicate；读取 hCommuSize_、BUFFER_NUM，更新 outTensorFp32。",
+          "reads": [
+            "hCommuSize_",
+            "BUFFER_NUM"
+          ],
+          "writes": [
+            "outTensorFp32"
+          ]
+        },
+        {
+          "line": 1199,
+          "kind": "sync",
+          "explanation": "执行 PipeBarrier，按本行的 PIPE_V 建立流水线先后关系。",
+          "reads": [
+            "PIPE_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1200,
+          "kind": "brace",
+          "explanation": "结束入口不可达的 CalExpertSendNum。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments": [
+        {
+          "id": "legacy-expert-mask-shapes",
+          "start": 1176,
+          "end": 1184,
+          "title": "确定旧版专家比较长度并建立 mask 多类型视图",
+          "detail": "mask 在 token mask 模式下只覆盖 activeMaskBsCnt_*axisK_，否则覆盖 expertIdsCnt_；compareCount 按 256B 对齐。expertMaskBuf 同时以 uint8_t/uint32_t 解释，outBuf 作为 GatherMask 临时输出。",
+          "kind": "input",
+          "input_state": [
+            "validExpertIdsTensor_：待比较的路由 ID",
+            "isTokenMaskFlag_：选择压缩或完整路由长度",
+            "expertMaskBuf/outBuf：调用方 UB"
+          ],
+          "mechanism": "mask=isTokenMaskFlag_ ? activeMaskBsCnt_*axisK_ : expertIdsCnt_；compareCount=Ceil(mask*sizeof(int32_t),256)*256/sizeof(int32_t)。",
+          "output_state": [
+            "mask/compareCount：逻辑与对齐比较长度",
+            "expertMaskTensorU8/U32、gatherTempTensor：后续比较和 gather 视图"
+          ],
+          "why": "CompareScalar 按对齐后的 int32 数处理，而 GatherMask 需要 byte/word mask 视图与真实 mask 长度。",
+          "calls": [
+            {
+              "name": "Ceil",
+              "line": 1181,
+              "type": "external"
+            },
+            {
+              "name": "Get",
+              "line": 1182,
+              "type": "external"
+            },
+            {
+              "name": "Get",
+              "line": 1183,
+              "type": "external"
+            },
+            {
+              "name": "Get",
+              "line": 1184,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "legacy-count-tokens-per-assigned-expert",
+          "start": 1185,
+          "end": 1196,
+          "title": "逐个分配专家生成位图并记录命中 token 数",
+          "detail": "循环当前 AIV 的 sendNum_ 个专家，最后一个槽在存在余数时改用 delLastExpertId_。CompareScalar 把等于 dstExpertId 的位置写入专家独占 mask，GatherMask 收集有效 ID 并更新 maskCnt，V_S 后写 tokenNumToExpertTensor_。",
+          "kind": "loop",
+          "input_state": [
+            "sendNum_/startId_：当前核常规专家范围",
+            "delLastExpertId_：余数专家",
+            "validExpertIdsTensor_：路由 ID"
+          ],
+          "mechanism": "dstExpertId 默认 expertIndex+startId_，余数槽替换；mask slice 偏移为 maskSizePerExpert_*expertIndex，GatherMask 使用真实 mask 长度并把计数传给标量。",
+          "output_state": [
+            "expertMaskBuf：每个分配专家的命中位图",
+            "tokenNumToExpertTensor_(expertIndex)：该专家的命中数"
+          ],
+          "why": "旧 SendToMoeExpert 先跳过零命中专家，再扫描位图中的 set bit，必须预先有每专家 mask 与计数。",
+          "calls": [
+            {
+              "name": "CompareScalar",
+              "line": 1190,
+              "type": "external"
+            },
+            {
+              "name": "PipeBarrier",
+              "line": 1191,
+              "type": "external"
+            },
+            {
+              "name": "GatherMask",
+              "line": 1192,
+              "type": "external"
+            },
+            {
+              "name": "SyncFunc",
+              "line": 1194,
+              "type": "external"
+            },
+            {
+              "name": "SetValue",
+              "line": 1195,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "legacy-prefill-direct-send-buffer",
+          "start": 1197,
+          "end": 1200,
+          "title": "为旧版直写通信块预填 flag 值",
+          "detail": "把 outBuf 转成 FP32 视图，按 hCommuSize_*BUFFER_NUM 全部写 1，并以 PIPE_V barrier 结束。",
+          "kind": "output",
+          "input_state": [
+            "outBuf：旧版 TokenToExpert* 使用的双缓冲通信区"
+          ],
+          "mechanism": "Duplicate<float>(...,1,hCommuSize_*BUFFER_NUM/sizeof(float)) 后 PipeBarrier<PIPE_V>。",
+          "output_state": [
+            "outBuf：可供旧 SendToMoeExpert 打包的预填通信区"
+          ],
+          "why": "与共享专家路径相同，payload 搬运前需要先建立通信 flag/padding 的默认值。",
+          "calls": [
+            {
+              "name": "Get",
+              "line": 1197,
+              "type": "external"
+            },
+            {
+              "name": "Duplicate",
+              "line": 1198,
+              "type": "external"
+            },
+            {
+              "name": "PipeBarrier",
+              "line": 1199,
+              "type": "external"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m-moedistributedispatchv2fullmesh-splitexpertnumtocore-7e9378cdd9",
+      "module_id": "stage-pack",
+      "name": "SplitExpertNumToCore",
+      "start": 1202,
+      "end": 1219,
+      "inactive": true,
+      "summary": "旧版按专家分核辅助函数：每个 MoE AIV 先领取 floor(moeExpertNum_/moeUsedAivNum_) 个连续专家；余数专家按 aivId_%remainderExpertNum_ 在多个核间复制，并输出该余数专家的分片核数与当前核组序号。",
+      "inputs": [
+        "moeExpertNum_",
+        "moeUsedAivNum_",
+        "aivId_"
+      ],
+      "outputs": [
+        "sendNum_",
+        "remainderExpertNum_",
+        "startId_",
+        "delLastExpertId_",
+        "delCurExpertGroupNum",
+        "groupIdx"
+      ],
+      "side_effects": [
+        "更新 sendNum_、remainderExpertNum_、startId_、delLastExpertId_ 成员",
+        "inactive：只被入口不可达的 SendToMoeExpert 调用"
+      ],
+      "review": {
+        "status": "PASS",
+        "reviewer": "e2e-architecture-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "line_range": [
+          1202,
+          1219
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 1202,
+        "reviewed_end": 1219,
+        "expected_line_count": 18,
+        "covered_line_count": 18,
+        "covered_ranges": [
+          [
+            1202,
+            1207
+          ],
+          [
+            1208,
+            1219
+          ]
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {
+          "line": 1202,
+          "kind": "signature",
+          "explanation": "构成函数 `SplitExpertNumToCore` 的签名片段 `template <TemplateMC2TypeFullmeshClass>`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1203,
+          "kind": "signature",
+          "explanation": "构成函数 `SplitExpertNumToCore` 的签名片段 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::SplitExpertNumToCore(uint32_t &delCurExpertGroupNum, uint32_t &groupIdx)`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1204,
+          "kind": "brace",
+          "explanation": "开始旧版按专家分核函数体。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1205,
+          "kind": "declaration",
+          "explanation": "整除 moeExpertNum_ / moeUsedAivNum_，得到每个旧发送核的基础专家数 sendNum_。",
+          "reads": [
+            "moeExpertNum_",
+            "moeUsedAivNum_"
+          ],
+          "writes": [
+            "sendNum_"
+          ]
+        },
+        {
+          "line": 1206,
+          "kind": "declaration",
+          "explanation": "取模得到不能按核均分的 remainderExpertNum_ 个尾部专家。",
+          "reads": [
+            "moeExpertNum_",
+            "moeUsedAivNum_"
+          ],
+          "writes": [
+            "remainderExpertNum_"
+          ]
+        },
+        {
+          "line": 1207,
+          "kind": "declaration",
+          "explanation": "以基础 sendNum_ * aivId_ 计算当前核连续专家区间的 startId_。",
+          "reads": [
+            "sendNum_",
+            "aivId_"
+          ],
+          "writes": [
+            "startId_"
+          ]
+        },
+        {
+          "line": 1208,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (remainderExpertNum_ != 0) {` 选择 `SplitExpertNumToCore` 的后续路径；判定涉及 `remainderExpertNum_`。",
+          "reads": [
+            "remainderExpertNum_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1209,
+          "kind": "declaration",
+          "explanation": "声明/初始化 remainderGroupSize；源码表达式 `int32_t remainderGroupSize = remainderExpertNum_;` 读取 remainderExpertNum_。",
+          "reads": [
+            "remainderExpertNum_"
+          ],
+          "writes": [
+            "remainderGroupSize"
+          ]
+        },
+        {
+          "line": 1210,
+          "kind": "declaration",
+          "explanation": "用 aivId_ % remainderExpertNum_ 让多个核循环选择同一个尾部专家。",
+          "reads": [
+            "aivId_",
+            "remainderExpertNum_"
+          ],
+          "writes": [
+            "delLastExpertId_"
+          ]
+        },
+        {
+          "line": 1211,
+          "kind": "declaration",
+          "explanation": "先计算每个尾部专家至少拥有的协作核数 floor(moeUsedAivNum_/remainderGroupSize)。",
+          "reads": [
+            "moeUsedAivNum_",
+            "remainderGroupSize"
+          ],
+          "writes": [
+            "delCurExpertGroupNum"
+          ]
+        },
+        {
+          "line": 1212,
+          "kind": "branch",
+          "explanation": "若当前尾部专家编号落在 moeUsedAivNum_ % remainderGroupSize 的前部，再多分配一个协作核。",
+          "reads": [
+            "delLastExpertId_",
+            "moeUsedAivNum_",
+            "remainderGroupSize"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1213,
+          "kind": "declaration",
+          "explanation": "声明/初始化 delCurExpertGroupNum；源码表达式 `delCurExpertGroupNum++;` 读取 delCurExpertGroupNum。",
+          "reads": [
+            "delCurExpertGroupNum"
+          ],
+          "writes": [
+            "delCurExpertGroupNum"
+          ]
+        },
+        {
+          "line": 1214,
+          "kind": "brace",
+          "explanation": "结束对前部余数专家增加一个协作核的分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1215,
+          "kind": "declaration",
+          "explanation": "用 aivId_ / remainderGroupSize 计算当前核在尾部专家协作组中的 groupIdx。",
+          "reads": [
+            "aivId_",
+            "remainderGroupSize"
+          ],
+          "writes": [
+            "groupIdx"
+          ]
+        },
+        {
+          "line": 1216,
+          "kind": "declaration",
+          "explanation": "把 delLastExpertId_ 平移到所有基础专家之后，得到真实尾部专家 ID。",
+          "reads": [
+            "delLastExpertId_",
+            "moeUsedAivNum_",
+            "sendNum_"
+          ],
+          "writes": [
+            "delLastExpertId_"
+          ]
+        },
+        {
+          "line": 1217,
+          "kind": "declaration",
+          "explanation": "声明/初始化 sendNum_；源码表达式 `sendNum_ += 1;` 读取 sendNum_。",
+          "reads": [
+            "sendNum_"
+          ],
+          "writes": [
+            "sendNum_"
+          ]
+        },
+        {
+          "line": 1218,
+          "kind": "brace",
+          "explanation": "结束 remainderExpertNum_ 非零分组分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1219,
+          "kind": "brace",
+          "explanation": "结束入口不可达的 SplitExpertNumToCore。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments": [
+        {
+          "id": "legacy-split-base-experts-per-core",
+          "start": 1202,
+          "end": 1207,
+          "title": "按整除结果给每核分配连续常规专家",
+          "detail": "sendNum_ 是每核基础专家数，remainderExpertNum_ 保存不能整除的专家数，startId_ 以 aivId_ 乘基础数定位当前核连续范围。",
+          "kind": "compute",
+          "input_state": [
+            "moeExpertNum_：普通专家数",
+            "moeUsedAivNum_：参与旧直写的核数",
+            "aivId_：当前核"
+          ],
+          "mechanism": "sendNum_=moeExpertNum_/moeUsedAivNum_；remainderExpertNum_=moeExpertNum_%moeUsedAivNum_；startId_=sendNum_*aivId_。",
+          "output_state": [
+            "[startId_,startId_+sendNum_)：当前核基础专家范围",
+            "remainderExpertNum_：待分组处理的尾部专家数"
+          ],
+          "why": "先均分可确保所有核负载接近；余数专家需要另行跨核分片 token，不能简单只交给前几个核。",
+          "calls": []
+        },
+        {
+          "id": "legacy-group-cores-for-remainder-experts",
+          "start": 1208,
+          "end": 1219,
+          "title": "把全部 MoE 核分组共享余数专家的 token",
+          "detail": "存在余数时，aivId_%remainderExpertNum_ 选择当前核附加的余数专家；整除和小余数修正计算该专家拥有的核数，aivId_/remainderGroupSize 给出分片序号，最后将专家 ID 平移到基础专家区尾部并把 sendNum_ 加一。",
+          "kind": "guard",
+          "input_state": [
+            "remainderExpertNum_：尾部专家数",
+            "moeUsedAivNum_/aivId_：参与核与当前核"
+          ],
+          "mechanism": "delLastExpertId_=aivId_%remainder；delCurExpertGroupNum=floor(cores/remainder) 并对前 cores%remainder 个专家加一；groupIdx=floor(aivId_/remainder)；专家 ID 加 cores*baseSendNum。",
+          "output_state": [
+            "delLastExpertId_：当前核附加余数专家",
+            "delCurExpertGroupNum/groupIdx：旧发送循环的按 token 取模分片参数",
+            "sendNum_：包含附加专家槽"
+          ],
+          "why": "高频余数专家若仅由单核直写会失衡；复制专家槽并让多个核按 dstTokenPreCnt 取模，可并行处理同一专家的 token。",
+          "calls": []
+        }
+      ]
+    },
+    {
+      "id": "m-moedistributedispatchv2fullmesh-sendtomoeexpert-388b5146c1",
+      "module_id": "stage-pack",
+      "name": "SendToMoeExpert",
+      "start": 1221,
+      "end": 1275,
+      "inactive": true,
+      "summary": "旧版普通 MoE 发送实现：先按专家分核并生成每专家位图，再逐 set bit 恢复 token/top-k，直接计算目标专家 Rank window 地址并写通信块；余数专家由多核按 dstTokenPreCnt 取模分片。AllToAllDispatch 已改用本地 staging 的 SendToMoeExpertNew，因此本函数入口不可达。",
+      "inputs": [
+        "inQueue",
+        "expertMaskBuf",
+        "outBuf",
+        "tokenNumToExpertTensor_",
+        "sendNum_",
+        "startId_",
+        "remainderExpertNum_",
+        "delLastExpertId_",
+        "validExpertIdsTensor_",
+        "axisK_",
+        "expertIdsCnt_",
+        "sharedExpertRankNum_",
+        "moeExpertNumPerRank_",
+        "QuantMode",
+        "ExpandXOutType",
+        "XType"
+      ],
+      "outputs": [
+        "dstWinGMTensor"
+      ],
+      "side_effects": [
+        "调用 SplitExpertNumToCore 更新专家分核成员，CalExpertSendNum 写 mask/count/outBuf",
+        "扫描过程中更新 dstTokenPreCnt、dstExpInfoMask、curValidIdx",
+        "TokenToExpertInQuant/TokenToExpert 直接写远端窗口",
+        "inactive：无调用者，AllToAllDispatch 第 1420 行调用 SendToMoeExpertNew"
+      ],
+      "review": {
+        "status": "PASS",
+        "reviewer": "e2e-architecture-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "line_range": [
+          1221,
+          1275
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 1221,
+        "reviewed_end": 1275,
+        "expected_line_count": 55,
+        "covered_line_count": 55,
+        "covered_ranges": [
+          [
+            1221,
+            1232
+          ],
+          [
+            1233,
+            1241
+          ],
+          [
+            1242,
+            1259
+          ],
+          [
+            1260,
+            1267
+          ],
+          [
+            1268,
+            1275
+          ]
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {
+          "line": 1221,
+          "kind": "signature",
+          "explanation": "构成函数 `SendToMoeExpert` 的签名片段 `template <TemplateMC2TypeFullmeshClass>`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1222,
+          "kind": "signature",
+          "explanation": "构成函数 `SendToMoeExpert` 的签名片段 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::SendToMoeExpert(TQue<QuePosition::VECIN, 1> inQueue,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1223,
+          "kind": "signature",
+          "explanation": "构成函数 `SendToMoeExpert` 的签名片段 `TBuf<> expertMaskBuf, TBuf<> outBuf)`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1224,
+          "kind": "brace",
+          "explanation": "开始旧版普通 MoE 直接远端发送函数体。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1225,
+          "kind": "comment",
+          "explanation": "注释记录 `分核`，说明 `SendToMoeExpert` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1226,
+          "kind": "declaration",
+          "explanation": "声明/初始化 delCurExpertGroupNum、groupIdx、calExpertIdsIdx；源码表达式 `uint32_t delCurExpertGroupNum, groupIdx, calExpertIdsIdx;`。",
+          "reads": [],
+          "writes": [
+            "delCurExpertGroupNum",
+            "groupIdx",
+            "calExpertIdsIdx"
+          ]
+        },
+        {
+          "line": 1227,
+          "kind": "call",
+          "explanation": "调用 SplitExpertNumToCore，写回尾部专家协作核数和当前 groupIdx。",
+          "reads": [],
+          "writes": [
+            "delCurExpertGroupNum",
+            "groupIdx"
+          ]
+        },
+        {
+          "line": 1228,
+          "kind": "comment",
+          "explanation": "注释记录 `计算专家发送数据量 && 发送`，说明 `SendToMoeExpert` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1229,
+          "kind": "call",
+          "explanation": "调用 CalExpertSendNum，为当前核专家生成 mask/count 并预填 outBuf。",
+          "reads": [],
+          "writes": [
+            "expertMaskBuf",
+            "outBuf"
+          ]
+        },
+        {
+          "line": 1230,
+          "kind": "call",
+          "explanation": "按 64 个路由位置一组计算 maskN64Num，匹配 ScalarGetSFFValue 的 64-bit 扫描粒度。",
+          "reads": [
+            "expertIdsCnt_"
+          ],
+          "writes": [
+            "maskN64Num"
+          ]
+        },
+        {
+          "line": 1231,
+          "kind": "declaration",
+          "explanation": "声明/初始化 dstWinGMTensor；源码表达式 `GlobalTensor<XOutType> dstWinGMTensor;`。",
+          "reads": [],
+          "writes": [
+            "dstWinGMTensor"
+          ]
+        },
+        {
+          "line": 1232,
+          "kind": "call",
+          "explanation": "调用 LocalTensor；读取 expertMaskBuf、Get，更新 expertMaskTensorU64。",
+          "reads": [
+            "expertMaskBuf",
+            "Get"
+          ],
+          "writes": [
+            "expertMaskTensorU64"
+          ]
+        },
+        {
+          "line": 1233,
+          "kind": "loop",
+          "explanation": "遍历当前核 sendNum_ 个专家槽；每轮只处理一个 expertIndex 的完整位图。",
+          "reads": [
+            "index",
+            "sendNum_"
+          ],
+          "writes": [
+            "index"
+          ]
+        },
+        {
+          "line": 1234,
+          "kind": "declaration",
+          "explanation": "声明/初始化 dstTokenPreCnt；源码表达式 `int32_t dstTokenPreCnt = 0;`。",
+          "reads": [],
+          "writes": [
+            "dstTokenPreCnt"
+          ]
+        },
+        {
+          "line": 1235,
+          "kind": "declaration",
+          "explanation": "以 epRankId_ % sendNum_ 为旋转偏移改变专家处理顺序，分散不同源 Rank 的目标访问次序。",
+          "reads": [
+            "index",
+            "epRankId_",
+            "sendNum_"
+          ],
+          "writes": [
+            "expertIndex"
+          ]
+        },
+        {
+          "line": 1236,
+          "kind": "declaration",
+          "explanation": "声明/初始化 maskExpertU64Cnt；源码表达式 `int32_t maskExpertU64Cnt = maskSizePerExpert_ * expertIndex / sizeof(uint64_t);` 读取 maskSizePerExpert_、expertIndex。",
+          "reads": [
+            "maskSizePerExpert_",
+            "expertIndex"
+          ],
+          "writes": [
+            "maskExpertU64Cnt"
+          ]
+        },
+        {
+          "line": 1237,
+          "kind": "branch",
+          "explanation": "读取 tokenNumToExpertTensor_(expertIndex)；为零时进入 continue 快速路径。",
+          "reads": [
+            "expertIndex"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1238,
+          "kind": "declaration",
+          "explanation": "声明/初始化 本行局部对象；源码表达式 `continue;` 读取 continue。",
+          "reads": [
+            "continue"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1239,
+          "kind": "brace",
+          "explanation": "结束零 token 专家的快速跳过分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1240,
+          "kind": "declaration",
+          "explanation": "声明/初始化 dstExpertId；源码表达式 `int32_t dstExpertId = expertIndex + startId_;` 读取 expertIndex、startId_。",
+          "reads": [
+            "expertIndex",
+            "startId_"
+          ],
+          "writes": [
+            "dstExpertId"
+          ]
+        },
+        {
+          "line": 1241,
+          "kind": "declaration",
+          "explanation": "声明/初始化 dstExpertId；源码表达式 `dstExpertId = ((expertIndex == sendNum_ - 1) && (remainderExpertNum_ != 0)) ? delLastExpertId_ : dstExpertId;` 读取 expertIndex、sendNum_、remainderExpertNum_、delLastExpertId_。",
+          "reads": [
+            "expertIndex",
+            "sendNum_",
+            "remainderExpertNum_",
+            "delLastExpertId_"
+          ],
+          "writes": [
+            "dstExpertId"
+          ]
+        },
+        {
+          "line": 1242,
+          "kind": "loop",
+          "explanation": "把当前专家 mask 按 maskN64Num 个 uint64_t 分块扫描。",
+          "reads": [
+            "maskIndex",
+            "maskN64Num"
+          ],
+          "writes": [
+            "maskIndex"
+          ]
+        },
+        {
+          "line": 1243,
+          "kind": "call",
+          "explanation": "调用 expertMaskTensorU64；读取 maskIndex、maskExpertU64Cnt，更新 dstExpInfoMask。",
+          "reads": [
+            "maskIndex",
+            "maskExpertU64Cnt"
+          ],
+          "writes": [
+            "dstExpInfoMask"
+          ]
+        },
+        {
+          "line": 1244,
+          "kind": "call",
+          "explanation": "ScalarGetSFFValue<1> 返回 dstExpInfoMask 中一个 set bit 的局部位置；负值表示本块已空。",
+          "reads": [
+            "dstExpInfoMask"
+          ],
+          "writes": [
+            "curValidIdx"
+          ]
+        },
+        {
+          "line": 1245,
+          "kind": "loop",
+          "explanation": "只要 curValidIdx 非负，就继续消费当前 64-bit mask 的命中路由。",
+          "reads": [
+            "curValidIdx"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1246,
+          "kind": "declaration",
+          "explanation": "组合 curValidIdx 与 SFFVALUE_SIZE * maskIndex，恢复 expertIds 展平数组索引 calExpertIdsIdx。",
+          "reads": [
+            "curValidIdx",
+            "SFFVALUE_SIZE",
+            "maskIndex"
+          ],
+          "writes": [
+            "calExpertIdsIdx"
+          ]
+        },
+        {
+          "line": 1247,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (calExpertIdsIdx >= expertIdsCnt_) {` 选择 `SendToMoeExpert` 的后续路径；判定涉及 `calExpertIdsIdx、expertIdsCnt_`。",
+          "reads": [
+            "calExpertIdsIdx",
+            "expertIdsCnt_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1248,
+          "kind": "declaration",
+          "explanation": "声明/初始化 本行局部对象；源码表达式 `break;` 读取 break。",
+          "reads": [
+            "break"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1249,
+          "kind": "brace",
+          "explanation": "结束 calExpertIdsIdx 越界保护分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1250,
+          "kind": "declaration",
+          "explanation": "用 calExpertIdsIdx % axisK_ 还原命中路由的 top-k 槽。",
+          "reads": [
+            "calExpertIdsIdx",
+            "axisK_"
+          ],
+          "writes": [
+            "topKIndex"
+          ]
+        },
+        {
+          "line": 1251,
+          "kind": "declaration",
+          "explanation": "用 calExpertIdsIdx / axisK_ 还原命中路由所属的源 token。",
+          "reads": [
+            "calExpertIdsIdx",
+            "axisK_"
+          ],
+          "writes": [
+            "srcTokenIndex"
+          ]
+        },
+        {
+          "line": 1252,
+          "kind": "declaration",
+          "explanation": "把 dstExpertId 映射为普通专家 Rank，并在前面跳过 sharedExpertRankNum_ 个共享专家 Rank。",
+          "reads": [
+            "dstExpertId",
+            "moeExpertNumPerRank_",
+            "sharedExpertRankNum_"
+          ],
+          "writes": [
+            "toRankId"
+          ]
+        },
+        {
+          "line": 1253,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (isScalingDownFlag_) {` 选择 `SendToMoeExpert` 的后续路径；判定涉及 `isScalingDownFlag_`。",
+          "reads": [
+            "isScalingDownFlag_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1254,
+          "kind": "call",
+          "explanation": "调用 GetValue；读取 elasticInfoTensor_、ELASTIC_INFO_OFFSET、epWorldSizeOriginal_，更新 toRankId。",
+          "reads": [
+            "elasticInfoTensor_",
+            "ELASTIC_INFO_OFFSET",
+            "epWorldSizeOriginal_"
+          ],
+          "writes": [
+            "toRankId"
+          ]
+        },
+        {
+          "line": 1255,
+          "kind": "brace",
+          "explanation": "结束弹性缩容目的 Rank 重映射分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1256,
+          "kind": "call",
+          "explanation": "调用 GetWindAddrByRankId(toRankId) 取得目标窗口，并开始组合源 Rank/本地专家分区地址。",
+          "reads": [
+            "GM_ADDR",
+            "toRankId"
+          ],
+          "writes": [
+            "rankGM"
+          ]
+        },
+        {
+          "line": 1257,
+          "kind": "statement",
+          "explanation": "窗口专家分区索引是 epRankId_ * moeExpertNumPerRank_ + dstExpertId % moeExpertNumPerRank_。",
+          "reads": [
+            "expertPerSizeOnWin_",
+            "epRankId_",
+            "moeExpertNumPerRank_",
+            "dstExpertId"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1258,
+          "kind": "declaration",
+          "explanation": "在专家分区内叠加 hCommuSize_ * dstTokenPreCnt，完成 rankGM token 槽地址。",
+          "reads": [
+            "hCommuSize_",
+            "dstTokenPreCnt"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1259,
+          "kind": "call",
+          "explanation": "调用 SetGlobalBuffer；读取 rankGM，更新 dstWinGMTensor。",
+          "reads": [
+            "rankGM"
+          ],
+          "writes": [
+            "dstWinGMTensor"
+          ]
+        },
+        {
+          "line": 1260,
+          "kind": "branch",
+          "explanation": "常规专家总是写；尾部余数专家仅由 dstTokenPreCnt % delCurExpertGroupNum 等于 groupIdx 的协作核写。",
+          "reads": [
+            "expertIndex",
+            "sendNum_",
+            "remainderExpertNum_",
+            "dstTokenPreCnt",
+            "delCurExpertGroupNum",
+            "groupIdx"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1261,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if constexpr ((QuantMode > UNQUANT) || (QuantMode == UNQUANT && !Std::IsSame<ExpandXOutType, XType>::value)) {` 选择 `SendToMoeExpert` 的后续路径；判定涉及 `QuantMode、UNQUANT、Std、IsSame、ExpandXOutType、XType、value`。",
+          "reads": [
+            "constexpr",
+            "QuantMode",
+            "UNQUANT",
+            "ExpandXOutType",
+            "XType"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1262,
+          "kind": "declaration",
+          "explanation": "声明/初始化 quantExpertIdx；源码表达式 `uint32_t quantExpertIdx = dstExpertId + sharedExpertNum_;` 读取 dstExpertId、sharedExpertNum_。",
+          "reads": [
+            "dstExpertId",
+            "sharedExpertNum_"
+          ],
+          "writes": [
+            "quantExpertIdx"
+          ]
+        },
+        {
+          "line": 1263,
+          "kind": "call",
+          "explanation": "量化路径将 dstExpertId + sharedExpertNum_ 作为普通专家 scale 索引并直写 dstWinGMTensor。",
+          "reads": [
+            "inQueue",
+            "srcTokenIndex",
+            "topKIndex",
+            "quantExpertIdx"
+          ],
+          "writes": [
+            "dstWinGMTensor"
+          ]
+        },
+        {
+          "line": 1264,
+          "kind": "branch",
+          "explanation": "从量化写入分支切换到非量化分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1265,
+          "kind": "call",
+          "explanation": "纯非量化路径调用 TokenToExpert 直写相同远端专家槽。",
+          "reads": [
+            "inQueue",
+            "srcTokenIndex",
+            "topKIndex"
+          ],
+          "writes": [
+            "dstWinGMTensor"
+          ]
+        },
+        {
+          "line": 1266,
+          "kind": "brace",
+          "explanation": "结束非量化 TokenToExpert 调用分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1267,
+          "kind": "brace",
+          "explanation": "结束余数专家 token 分片守卫。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1268,
+          "kind": "declaration",
+          "explanation": "无论当前协作核是否实际写入，都推进 dstTokenPreCnt，保持各核共享同一取模序号。",
+          "reads": [
+            "dstTokenPreCnt"
+          ],
+          "writes": [
+            "dstTokenPreCnt"
+          ]
+        },
+        {
+          "line": 1269,
+          "kind": "call",
+          "explanation": "构造仅清除 curValidIdx 位的 cleanMask。",
+          "reads": [
+            "curValidIdx"
+          ],
+          "writes": [
+            "cleanMask"
+          ]
+        },
+        {
+          "line": 1270,
+          "kind": "declaration",
+          "explanation": "用 cleanMask 从 dstExpInfoMask 删除已处理命中，保留其余 set bit。",
+          "reads": [
+            "cleanMask"
+          ],
+          "writes": [
+            "dstExpInfoMask"
+          ]
+        },
+        {
+          "line": 1271,
+          "kind": "call",
+          "explanation": "再次调用 ScalarGetSFFValue<1> 取得下一个命中位置或负值结束 while。",
+          "reads": [
+            "dstExpInfoMask"
+          ],
+          "writes": [
+            "curValidIdx"
+          ]
+        },
+        {
+          "line": 1272,
+          "kind": "brace",
+          "explanation": "结束当前 64-bit mask 的 set-bit while 循环。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1273,
+          "kind": "brace",
+          "explanation": "结束 maskIndex 的 64-bit 分块循环。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1274,
+          "kind": "brace",
+          "explanation": "结束当前核 expertIndex 循环。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1275,
+          "kind": "brace",
+          "explanation": "结束入口不可达的旧 SendToMoeExpert。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments": [
+        {
+          "id": "legacy-prepare-expert-partition-and-masks",
+          "start": 1221,
+          "end": 1232,
+          "title": "建立旧版专家分核、命中位图与 64-bit 扫描视图",
+          "detail": "SplitExpertNumToCore 产生基础/余数专家分配，CalExpertSendNum 生成 mask 与 token 计数。maskN64Num 把 expertIdsCnt_ 按 64 个位置分块，expertMaskBuf 再解释为 uint64_t 供位扫描。",
+          "kind": "input",
+          "input_state": [
+            "expertMaskBuf/outBuf：旧版临时区",
+            "moeExpertNum_/moeUsedAivNum_：专家分核拓扑",
+            "expertIdsCnt_：位图长度"
+          ],
+          "mechanism": "先分配专家并计算 mask/count，再令 maskN64Num=Ceil(expertIdsCnt_,64)，以 uint64_t 视图逐字扫描。",
+          "output_state": [
+            "sendNum_/startId_/余数分组：当前核专家任务",
+            "expertMaskTensorU64：每专家位图扫描入口"
+          ],
+          "why": "旧实现按专家而不是按 token 分核，必须先把路由 ID 转成每专家位图，才能定位属于该专家的源 token。",
+          "calls": [
+            {
+              "name": "SplitExpertNumToCore",
+              "line": 1227,
+              "type": "internal",
+              "target": "m-moedistributedispatchv2fullmesh-splitexpertnumtocore-7e9378cdd9"
+            },
+            {
+              "name": "CalExpertSendNum",
+              "line": 1229,
+              "type": "internal",
+              "target": "m-moedistributedispatchv2fullmesh-calexpertsendnum-0ff9e62b02"
+            },
+            {
+              "name": "Ceil",
+              "line": 1230,
+              "type": "external"
+            },
+            {
+              "name": "Get",
+              "line": 1232,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "legacy-rotate-and-skip-assigned-experts",
+          "start": 1233,
+          "end": 1241,
+          "title": "轮转当前核专家顺序并跳过零 token 专家",
+          "detail": "expertIndex 按 epRankId_%sendNum_ 做环形偏移，降低各源 Rank 同时命中相同目标的次序相关拥塞；maskExpertU64Cnt 定位该专家位图。计数为零直接 continue，最后槽在有余数时改为 delLastExpertId_。",
+          "kind": "loop",
+          "input_state": [
+            "sendNum_/epRankId_：循环次数与轮转偏移",
+            "tokenNumToExpertTensor_：每专家命中数",
+            "remainderExpertNum_/delLastExpertId_：尾部专家映射"
+          ],
+          "mechanism": "expertIndex=(index+epRankId_%sendNum_)%sendNum_；mask 偏移按 maskSizePerExpert_/sizeof(uint64_t)；零计数跳过；dstExpertId 对最后余数槽做三元替换。",
+          "output_state": [
+            "dstExpertId：本轮真实专家",
+            "maskExpertU64Cnt：该专家 bitmap 起点",
+            "dstTokenPreCnt：从零开始的目的槽序号"
+          ],
+          "why": "零命中专家无需扫描；不同 Rank 轮转专家访问顺序可分散并发直写热点。",
+          "calls": [
+            {
+              "name": "tokenNumToExpertTensor_",
+              "line": 1237,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "legacy-scan-mask-and-bind-remote-expert-slot",
+          "start": 1242,
+          "end": 1259,
+          "title": "扫描专家位图并计算每个命中 token 的远端专家槽",
+          "detail": "外层按 64-bit mask 块读取，ScalarGetSFFValue 找当前最低 set bit，组合 maskIndex 得到 calExpertIdsIdx，并拆成 topKIndex/srcTokenIndex。dstExpertId 映射到普通专家 Rank，缩容时弹性重映射，再按源 Rank×本地专家分区与 dstTokenPreCnt 绑定窗口。",
+          "kind": "loop",
+          "input_state": [
+            "expertMaskTensorU64：当前专家位图",
+            "dstExpertId：目标普通专家",
+            "dstTokenPreCnt：该专家已扫描的 token 槽"
+          ],
+          "mechanism": "calExpertIdsIdx=curValidIdx+64*maskIndex；topKIndex=%axisK_，srcTokenIndex=/axisK_；toRankId=dstExpertId/moeExpertNumPerRank_+sharedExpertRankNum_；窗口偏移含源 Rank、本地专家和 token 槽。",
+          "output_state": [
+            "srcTokenIndex/topKIndex：命中路由位置",
+            "dstWinGMTensor：绑定目标普通专家的 dstTokenPreCnt 槽"
+          ],
+          "why": "位图压缩了稀疏路由命中；恢复展平索引后才能同时找回源 token、top-k 槽和目标专家窗口。",
+          "calls": [
+            {
+              "name": "expertMaskTensorU64",
+              "line": 1243,
+              "type": "external"
+            },
+            {
+              "name": "ScalarGetSFFValue",
+              "line": 1244,
+              "type": "external"
+            },
+            {
+              "name": "GetValue",
+              "line": 1254,
+              "type": "external"
+            },
+            {
+              "name": "GetWindAddrByRankId",
+              "line": 1256,
+              "type": "internal",
+              "target": "m-moedistributedispatchv2fullmesh-getwindaddrbyrankid-994ab853c1"
+            },
+            {
+              "name": "SetGlobalBuffer",
+              "line": 1259,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "legacy-shard-remainder-and-write-remote-token",
+          "start": 1260,
+          "end": 1267,
+          "title": "按 token 序号分片余数专家并选择量化或非量化直写",
+          "detail": "常规专家全部写；只有最后余数专家需要检查 dstTokenPreCnt % delCurExpertGroupNum == groupIdx，让复制该专家的多个核各写不同 token 槽。量化路径把 dstExpertId+sharedExpertNum_ 作为 scale 专家索引。",
+          "kind": "output",
+          "input_state": [
+            "dstWinGMTensor/srcTokenIndex/topKIndex：当前命中",
+            "delCurExpertGroupNum/groupIdx：余数专家核分片",
+            "QuantMode：编译期写入路径"
+          ],
+          "mechanism": "排除最后余数专家中不属于当前 groupIdx 的槽；if constexpr 选择 TokenToExpertInQuant 或 TokenToExpert。",
+          "output_state": [
+            "目标远端专家槽：由唯一负责核写入通信块",
+            "未分配给本核的余数专家 token 保留给同组其他核"
+          ],
+          "why": "余数专家被多个核重复扫描，必须用稳定 dstTokenPreCnt 取模消除重复写；普通 MoE scale 索引需跳过共享专家。",
+          "calls": [
+            {
+              "name": "TokenToExpertInQuant",
+              "line": 1263,
+              "type": "internal",
+              "target": "m-moedistributedispatchv2fullmesh-tokentoexpertinquant-ada035d1fb"
+            },
+            {
+              "name": "TokenToExpert",
+              "line": 1265,
+              "type": "internal",
+              "target": "m-moedistributedispatchv2fullmesh-tokentoexpert-4209b8d38b"
+            }
+          ]
+        },
+        {
+          "id": "legacy-advance-slot-and-clear-mask-bit",
+          "start": 1268,
+          "end": 1275,
+          "title": "推进目的槽并清除已处理的 64-bit mask 位",
+          "detail": "无论当前余数分片是否实际写入，dstTokenPreCnt 都递增，以保持所有协作核相同的全局 token 序号；cleanMask 清除 curValidIdx 后再次调用 ScalarGetSFFValue，直至本块无 set bit。",
+          "kind": "loop",
+          "input_state": [
+            "dstTokenPreCnt：当前专家全局命中序号",
+            "dstExpInfoMask/curValidIdx：未处理 set bit"
+          ],
+          "mechanism": "++dstTokenPreCnt；cleanMask=~(1ULL<<curValidIdx)；dstExpInfoMask&=cleanMask；重新取下一个 set bit并闭合三层循环。",
+          "output_state": [
+            "当前 64-bit mask 块全部消费",
+            "同一余数专家的协作核保持一致 dstTokenPreCnt 序列"
+          ],
+          "why": "若仅实际写入的核递增计数，不同 groupIdx 会失去共同取模基准并发生重复/漏写。",
+          "calls": [
+            {
+              "name": "ScalarGetSFFValue",
+              "line": 1271,
+              "type": "external"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m-moedistributedispatchv2fullmesh-sendtomoeexpertnew-12b59c248e",
+      "module_id": "stage-pack",
+      "name": "SendToMoeExpertNew",
+      "start": 1278,
+      "end": 1363,
+      "inactive": false,
+      "summary": "当前普通 MoE stage 实现：按 token 而非专家分核，把每个本地 token 只打包一次写入本 Rank 的 send buffer；FillTriple 同时携带完整 top-k expert IDs，后续 URMASendToken 再按 expert/rank 二次转发。量化/类型转换路径使用 sharedExpertNum_ 作为首个普通 MoE 专家 scale 索引。",
+      "inputs": [
+        "inQueue",
+        "expertMaskBuf",
+        "outBuf",
+        "axisBS_",
+        "moeUsedAivNum_",
+        "aivId_",
+        "QuantMode",
+        "ExpandXOutType",
+        "XType",
+        "sharedExpertNum_"
+      ],
+      "outputs": [
+        "sendBufferTensor",
+        "sendNum_",
+        "startId_"
+      ],
+      "side_effects": [
+        "更新 sendNum_、startId_ 成员为当前 AIV 的 token 区间",
+        "Duplicate 预填 outBuf，TokenToExpert* 写 shmemBuffer_ token staging 区",
+        "MTE3_S 与 PIPE_ALL 屏障确保每个 token staging 写完成后再继续",
+        "第 1308、1319–1331、1337–1362 行均为注释掉的 barrier/调试/旧直写实验，不执行",
+        "dstWinGMTensor 与 expertMaskBuf 在当前有效实现中未使用"
+      ],
+      "review": {
+        "status": "PASS",
+        "reviewer": "e2e-architecture-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "line_range": [
+          1278,
+          1363
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 1278,
+        "reviewed_end": 1363,
+        "expected_line_count": 86,
+        "covered_line_count": 86,
+        "covered_ranges": [
+          [
+            1278,
+            1285
+          ],
+          [
+            1286,
+            1300
+          ],
+          [
+            1301,
+            1317
+          ],
+          [
+            1318,
+            1332
+          ],
+          [
+            1333,
+            1336
+          ],
+          [
+            1337,
+            1351
+          ],
+          [
+            1352,
+            1363
+          ]
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {
+          "line": 1278,
+          "kind": "signature",
+          "explanation": "构成函数 `SendToMoeExpertNew` 的签名片段 `template <TemplateMC2TypeFullmeshClass>`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1279,
+          "kind": "signature",
+          "explanation": "构成函数 `SendToMoeExpertNew` 的签名片段 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::SendToMoeExpertNew(TQue<QuePosition::VECIN, 1> inQueue,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1280,
+          "kind": "signature",
+          "explanation": "构成函数 `SendToMoeExpertNew` 的签名片段 `TBuf<> expertMaskBuf, TBuf<> outBuf)`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1281,
+          "kind": "brace",
+          "explanation": "开始当前普通 MoE 本地 staging 函数体。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1282,
+          "kind": "comment",
+          "explanation": "注释记录 `按Token分核`，说明 `SendToMoeExpertNew` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1283,
+          "kind": "call",
+          "explanation": "调用 LocalTensor；读取 outBuf、Get，更新 outTensorFp32。",
+          "reads": [
+            "outBuf",
+            "Get"
+          ],
+          "writes": [
+            "outTensorFp32"
+          ]
+        },
+        {
+          "line": 1284,
+          "kind": "call",
+          "explanation": "把 outTensorFp32 的 hCommuSize_ * BUFFER_NUM 字节全部预填为 1，建立本地 staging 通信块默认 flag。",
+          "reads": [
+            "hCommuSize_",
+            "BUFFER_NUM"
+          ],
+          "writes": [
+            "outTensorFp32"
+          ]
+        },
+        {
+          "line": 1285,
+          "kind": "sync",
+          "explanation": "执行 PipeBarrier，按本行的 PIPE_V 建立流水线先后关系。",
+          "reads": [
+            "PIPE_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1286,
+          "kind": "call",
+          "explanation": "GetActiveMoeStageNum 返回 min(axisBS_, moeUsedAivNum_)，限制实际参与 token staging 的普通 MoE 核数。",
+          "reads": [],
+          "writes": [
+            "activeMoeStageNum"
+          ]
+        },
+        {
+          "line": 1287,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (aivId_ >= activeMoeStageNum) {` 选择 `SendToMoeExpertNew` 的后续路径；判定涉及 `aivId_、activeMoeStageNum`。",
+          "reads": [
+            "aivId_",
+            "activeMoeStageNum"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1288,
+          "kind": "statement",
+          "explanation": "执行 `return;`；不读取运行时对象。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1289,
+          "kind": "brace",
+          "explanation": "结束非活跃普通 MoE stage 核提前返回分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1290,
+          "kind": "declaration",
+          "explanation": "整除 axisBS_ / activeMoeStageNum，得到当前核的基础 token 数 sendNum_。",
+          "reads": [
+            "axisBS_",
+            "activeMoeStageNum"
+          ],
+          "writes": [
+            "sendNum_"
+          ]
+        },
+        {
+          "line": 1291,
+          "kind": "declaration",
+          "explanation": "声明/初始化 startId_；源码表达式 `startId_ = sendNum_ * aivId_;` 读取 sendNum_、aivId_。",
+          "reads": [
+            "sendNum_",
+            "aivId_"
+          ],
+          "writes": [
+            "startId_"
+          ]
+        },
+        {
+          "line": 1292,
+          "kind": "declaration",
+          "explanation": "计算商分配后剩余的 reaminTokenNum 个 token。",
+          "reads": [
+            "axisBS_",
+            "sendNum_",
+            "activeMoeStageNum"
+          ],
+          "writes": [
+            "reaminTokenNum"
+          ]
+        },
+        {
+          "line": 1293,
+          "kind": "branch",
+          "explanation": "前 reaminTokenNum 个 AIV 各领取一个余数 token。",
+          "reads": [
+            "aivId_",
+            "reaminTokenNum"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1294,
+          "kind": "declaration",
+          "explanation": "声明/初始化 sendNum_；源码表达式 `sendNum_ += 1;` 读取 sendNum_。",
+          "reads": [
+            "sendNum_"
+          ],
+          "writes": [
+            "sendNum_"
+          ]
+        },
+        {
+          "line": 1295,
+          "kind": "declaration",
+          "explanation": "余数核在基础 startId_ 上增加 aivId_，跳过前面每核多领的 token。",
+          "reads": [
+            "startId_",
+            "aivId_"
+          ],
+          "writes": [
+            "startId_"
+          ]
+        },
+        {
+          "line": 1296,
+          "kind": "branch",
+          "explanation": "按分支表达式 `} else {` 选择 `SendToMoeExpertNew` 的后续路径；判定涉及 `编译期/字面量条件`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1297,
+          "kind": "declaration",
+          "explanation": "非余数核统一把 startId_ 增加 reaminTokenNum，跳过所有前置余数 token。",
+          "reads": [
+            "startId_",
+            "reaminTokenNum"
+          ],
+          "writes": [
+            "startId_"
+          ]
+        },
+        {
+          "line": 1298,
+          "kind": "brace",
+          "explanation": "结束商余 token 切分的余数分配分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1299,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if(sendNum_ == 0)` 选择 `SendToMoeExpertNew` 的后续路径；判定涉及 `sendNum_`。",
+          "reads": [
+            "sendNum_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1300,
+          "kind": "statement",
+          "explanation": "执行 `return;`；不读取运行时对象。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1301,
+          "kind": "blank",
+          "explanation": "空行在 `SendToMoeExpertNew` 的 L1301 分隔 `return;` 与 `GlobalTensor<XOutType> sendBufferTensor;` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1302,
+          "kind": "declaration",
+          "explanation": "声明/初始化 sendBufferTensor；源码表达式 `GlobalTensor<XOutType> sendBufferTensor;`。",
+          "reads": [],
+          "writes": [
+            "sendBufferTensor"
+          ]
+        },
+        {
+          "line": 1303,
+          "kind": "declaration",
+          "explanation": "声明/初始化 dstWinGMTensor；源码表达式 `GlobalTensor<XOutType> dstWinGMTensor;`。",
+          "reads": [],
+          "writes": [
+            "dstWinGMTensor"
+          ]
+        },
+        {
+          "line": 1304,
+          "kind": "blank",
+          "explanation": "空行在 `SendToMoeExpertNew` 的 L1304 分隔 `GlobalTensor<XOutType> dstWinGMTensor;` 与 `for (int32_t index = 0; index < sendNum_; index++) {` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1305,
+          "kind": "loop",
+          "explanation": "遍历当前核连续的 sendNum_ 个源 token，每个 token 只在 stage 阶段打包一次。",
+          "reads": [
+            "index",
+            "sendNum_"
+          ],
+          "writes": [
+            "index"
+          ]
+        },
+        {
+          "line": 1306,
+          "kind": "declaration",
+          "explanation": "声明/初始化 tokenId；源码表达式 `int32_t tokenId = startId_ + index;` 读取 startId_、index。",
+          "reads": [
+            "startId_",
+            "index"
+          ],
+          "writes": [
+            "tokenId"
+          ]
+        },
+        {
+          "line": 1307,
+          "kind": "call",
+          "explanation": "调用 GetSendBufferAddrByTokenId(tokenId) 并绑定 sendBufferTensor 到本地 token staging 槽。",
+          "reads": [
+            "tokenId"
+          ],
+          "writes": [
+            "sendBufferTensor"
+          ]
+        },
+        {
+          "line": 1308,
+          "kind": "comment",
+          "explanation": "注释掉的 PIPE_ALL 不执行；当前顺序由每次写后的 MTE3/PIPE_ALL 组合保证。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1309,
+          "kind": "branch",
+          "explanation": "编译期选择量化/类型转换 staging 或纯非量化 staging。",
+          "reads": [
+            "constexpr",
+            "QuantMode",
+            "UNQUANT",
+            "ExpandXOutType",
+            "XType"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1310,
+          "kind": "declaration",
+          "explanation": "将 quantExpertIdx 设为 sharedExpertNum_，即普通 MoE 专家 scale 区的首个索引。",
+          "reads": [
+            "sharedExpertNum_"
+          ],
+          "writes": [
+            "quantExpertIdx"
+          ]
+        },
+        {
+          "line": 1311,
+          "kind": "call",
+          "explanation": "量化/转换路径以 fillExpertIdx=0 打包 token，并把完整 top-k 由 FillTriple 附带到通信块。",
+          "reads": [
+            "inQueue",
+            "tokenId",
+            "quantExpertIdx"
+          ],
+          "writes": [
+            "sendBufferTensor"
+          ]
+        },
+        {
+          "line": 1312,
+          "kind": "branch",
+          "explanation": "从量化/类型转换打包切换到非量化打包。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1313,
+          "kind": "call",
+          "explanation": "非量化路径同样以 top-k 槽 0 打包一份本地 token 通信块。",
+          "reads": [
+            "inQueue",
+            "tokenId"
+          ],
+          "writes": [
+            "sendBufferTensor"
+          ]
+        },
+        {
+          "line": 1314,
+          "kind": "brace",
+          "explanation": "结束当前 token 的编译期打包分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1315,
+          "kind": "sync",
+          "explanation": "PipeBarrier<PIPE_MTE3> 等待当前 token 的 MTE3 数据搬运阶段。",
+          "reads": [
+            "PIPE_MTE3"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1316,
+          "kind": "sync",
+          "explanation": "SyncFunc<MTE3_S> 建立 MTE3 写入完成到标量侧继续执行的顺序。",
+          "reads": [
+            "MTE3_S"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1317,
+          "kind": "sync",
+          "explanation": "PipeBarrier<PIPE_ALL> 在进入下一 token 前收口当前流水线操作。",
+          "reads": [
+            "PIPE_ALL"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1318,
+          "kind": "blank",
+          "explanation": "空行在 `SendToMoeExpertNew` 的 L1318 分隔 `PipeBarrier<PIPE_ALL>();` 与 `// GlobalTensor<float> sendBufferTensorFloat = sendBufferTensor.templat…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1319,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `GlobalTensor<float> sendBufferTensorFloat = sendBufferTensor.template ReinterpretCast<float>();`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1320,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `for (uint32_t i = 0; i < blockCntPerToken_; ++i) {`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1321,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `float iFlag = sendBufferTensorFloat.GetValue((i * SPLIT_BLOCK_SIZE + SPLIT_BLOCK_DATA_SIZE) / sizeof(float));`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1322,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm] checkSendBufferTokenFlag aivId_ %d tokenId %d i %d flag %f\\n\", aivId_, tokenId, i, iFlag);`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1323,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1324,
+          "kind": "blank",
+          "explanation": "空行在 `SendToMoeExpertNew` 的 L1324 分隔 `// }` 与 `// GlobalTensor<int32_t> sendBufferTensorInt32 = sendBufferTensor.templ…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1325,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `GlobalTensor<int32_t> sendBufferTensorInt32 = sendBufferTensor.template ReinterpretCast<int32_t>();`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1326,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm] aivId_ %d tokenId %d SendBufferAddrByTokenId %p x(0) %d x(480 byte) %f triple %d %d %d\\n\",`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1327,
+          "kind": "comment",
+          "explanation": "注释记录 `aivId_, tokenId, GetSendBufferAddrByTokenId(tokenId), sendBufferTensorInt32.GetValue(0),`，说明 `SendToMoeExpertNew` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1328,
+          "kind": "comment",
+          "explanation": "注释记录 `sendBufferTensorFloat.GetValue(480 / sizeof(float)),`，说明 `SendToMoeExpertNew` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1329,
+          "kind": "comment",
+          "explanation": "注释记录 `sendBufferTensorInt32.GetValue(15264 / sizeof(int32_t)),`，说明 `SendToMoeExpertNew` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1330,
+          "kind": "comment",
+          "explanation": "注释记录 `sendBufferTensorInt32.GetValue(15268 / sizeof(int32_t)),`，说明 `SendToMoeExpertNew` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1331,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `sendBufferTensorInt32.GetValue(15272 / sizeof(int32_t)));`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1332,
+          "kind": "brace",
+          "explanation": "结束当前核 token staging 循环。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1333,
+          "kind": "sync",
+          "explanation": "循环后再次执行 PIPE_ALL，确保当前核全部 send buffer 写入完成。",
+          "reads": [
+            "PIPE_ALL"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1334,
+          "kind": "call",
+          "explanation": "DebugClock(3) 记录普通 MoE 本地 staging 完成时间点。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1335,
+          "kind": "blank",
+          "explanation": "空行在 `SendToMoeExpertNew` 的 L1335 分隔 `DebugClock(3);` 与 `// PipeBarrier<PIPE_ALL>();` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1336,
+          "kind": "blank",
+          "explanation": "空行在 `SendToMoeExpertNew` 的 L1336 分隔 `DebugClock(3);` 与 `// PipeBarrier<PIPE_ALL>();` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1337,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `PipeBarrier<PIPE_ALL>();`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1338,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `printf(\"sendInfo-debug: srcRank %d, aivid %d sendNum %d tokenbegin%d\\n\",epRankId_, aivId_, sendNum_, startId_);`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1339,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `for (int32_t i = 0; i < sendNum_; i++) {`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1340,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `int32_t tokenId = startId_ + i;`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1341,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `sendBufferTensor.SetGlobalBuffer((__gm__ XOutType*)GetSendBufferAddrByTokenId(tokenId));`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1342,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `// PipeBarrier<PIPE_ALL>();`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1343,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `DataCopy(outTensor_, sendBufferTensor, axisHCommu_);`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1344,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `PipeBarrier<PIPE_ALL>();`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1345,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `for (int32_t j = 0; j < axisK_ ; j++) {`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1346,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `int32_t expertIdx = tokenId * axisK_ + j;`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1347,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `int32_t expertId = validExpertIdsTensor_(expertIdx);`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1348,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `uint32_t dstTokenIdx = 0;`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1349,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `for(int32_t k = 0; k < expertIdx; k++){`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1350,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `if(validExpertIdsTensor_(k) == expertId)`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1351,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `dstTokenIdx++;`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1352,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1353,
+          "kind": "comment",
+          "explanation": "注释记录 `dstWinGMTensor.SetGlobalBuffer((__gm__ XOutType*)(GetWindAddrByRankId(expertId / moeExpertNumPerRank_)`，说明 `SendToMoeExpertNew` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1354,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `+ expertPerSizeOnWin_ * (epRankId_ * moeExpertNumPerRank_ + expertId % moeExpertNumPerRank_) + dstTokenIdx * hCommuSize_));`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1355,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `PipeBarrier<PIPE_ALL>();`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1356,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `// printf(\"sendInfo: srcRank %d, tokenId %d k %d dst rank %d dstExpertId %d dstidx %d dstaddr %p\\n\",epRankId_, tokenId, j, expert…`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1357,
+          "kind": "blank",
+          "explanation": "空行在 `SendToMoeExpertNew` 的 L1357 分隔 `// // printf(\"sendInfo: srcRank %d, tokenId %d k %d dst rank %d dstExpe…` 与 `// // printf(\"sendInfo: srcRank %d, aivid %d, tokenId %d dstaddr %p\\n\",…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1358,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `// printf(\"sendInfo: srcRank %d, aivid %d, tokenId %d dstaddr %p\\n\",epRankId_, aivId_, tokenId, dstWinGMTensor.GetPhyAddr());`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1359,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `DataCopy(dstWinGMTensor, outTensor_, axisHCommu_);`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1360,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `PipeBarrier<PIPE_ALL>();`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1361,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1362,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `SendToMoeExpertNew` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1363,
+          "kind": "brace",
+          "explanation": "结束 SendToMoeExpertNew；此前注释掉的直写实验不执行。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments": [
+        {
+          "id": "moe-stage-prefill-local-pack-buffer",
+          "start": 1278,
+          "end": 1285,
+          "title": "为普通 MoE 本地 staging 通信块预填 flag",
+          "detail": "outBuf 建立 FP32 视图后按 hCommuSize_*BUFFER_NUM 全部填 1，并在 PIPE_V 上建立 Duplicate 完成顺序。",
+          "kind": "input",
+          "input_state": [
+            "outBuf：AllToAllDispatch 分配的通信打包 UB",
+            "hCommuSize_/BUFFER_NUM：单块大小与双缓冲数"
+          ],
+          "mechanism": "Duplicate<float> 覆盖 outBuf 全容量，随后 PipeBarrier<PIPE_V>。",
+          "output_state": [
+            "outBuf/outTensor_：带默认 flag/padding 的本地 token 打包区"
+          ],
+          "why": "新路径虽不直接写专家窗口，写本地 send buffer 时仍使用相同带 flag 通信块格式。",
+          "calls": [
+            {
+              "name": "Get",
+              "line": 1283,
+              "type": "external"
+            },
+            {
+              "name": "Duplicate",
+              "line": 1284,
+              "type": "external"
+            },
+            {
+              "name": "PipeBarrier",
+              "line": 1285,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "moe-stage-split-tokens-across-active-cores",
+          "start": 1286,
+          "end": 1300,
+          "title": "把 axisBS_ 个本地 token 均分给活跃普通 MoE stage 核",
+          "detail": "activeMoeStageNum=min(axisBS_,moeUsedAivNum_)；越界核退出。每核先取 floor(axisBS_/active)，前 reaminTokenNum 个核多取一个并修正 startId_，最终空任务再次退出。",
+          "kind": "guard",
+          "input_state": [
+            "axisBS_：本地 token 总数",
+            "moeUsedAivNum_/aivId_：普通 MoE stage 核预算与当前核"
+          ],
+          "mechanism": "商余切分：sendNum_=axisBS_/active；startId_=sendNum_*aivId_；前余数核 sendNum_+1，起点加 aivId_，其余起点加余数。",
+          "output_state": [
+            "[startId_,startId_+sendNum_)：当前核连续 token 区间",
+            "空闲核不进入 staging 循环"
+          ],
+          "why": "新算法后续按完整 top-k 二次路由，因此 stage 侧只需让每个源 token 恰好打包一次，而非按专家重复打包。",
+          "calls": [
+            {
+              "name": "GetActiveMoeStageNum",
+              "line": 1286,
+              "type": "internal",
+              "target": "m-moedistributedispatchv2fullmesh-getactivemoestagenum-ddba56eb6b"
+            }
+          ]
+        },
+        {
+          "id": "moe-stage-pack-each-token-to-local-send-buffer",
+          "start": 1301,
+          "end": 1317,
+          "title": "逐 token 写本地 send buffer 并等待 MTE3 完成",
+          "detail": "循环当前核 token 区间，通过 GetSendBufferAddrByTokenId 绑定本地 staging 槽。量化/类型转换路径以 fillExpertIdx=0、quantExpertIdx=sharedExpertNum_ 打包；非量化路径同样以 top-k 槽 0 打包。每次写后依次执行 PIPE_MTE3、MTE3_S 和 PIPE_ALL。",
+          "kind": "loop",
+          "input_state": [
+            "[startId_,startId_+sendNum_)：当前核 token",
+            "inQueue/outBuf：打包资源",
+            "sharedExpertNum_：普通专家量化索引起点"
+          ],
+          "mechanism": "tokenId=startId_+index；sendBufferTensor 绑定本地 token 槽；if constexpr 选择 TokenToExpertInQuant(...,0,sharedExpertNum_) 或 TokenToExpert(...,0)；三道同步收口。",
+          "output_state": [
+            "本地 send buffer[tokenId]：一份可供 URMASendToken 二次转发的 token 通信块",
+            "本 token 的 MTE3 写入在下一迭代前完成"
+          ],
+          "why": "完整 top-k 已由 FillTriple 携带，先本地单写可把专家展开与远端发送从 stage 核移交给 URMA 核，避免旧版多专家直写。",
+          "calls": [
+            {
+              "name": "SetGlobalBuffer",
+              "line": 1307,
+              "type": "external"
+            },
+            {
+              "name": "GetSendBufferAddrByTokenId",
+              "line": 1307,
+              "type": "internal",
+              "target": "m-moedistributedispatchv2fullmesh-getsendbufferaddrbytokenid-aee7115d35"
+            },
+            {
+              "name": "TokenToExpertInQuant",
+              "line": 1311,
+              "type": "internal",
+              "target": "m-moedistributedispatchv2fullmesh-tokentoexpertinquant-ada035d1fb"
+            },
+            {
+              "name": "TokenToExpert",
+              "line": 1313,
+              "type": "internal",
+              "target": "m-moedistributedispatchv2fullmesh-tokentoexpert-4209b8d38b"
+            },
+            {
+              "name": "PipeBarrier",
+              "line": 1315,
+              "type": "external"
+            },
+            {
+              "name": "SyncFunc",
+              "line": 1316,
+              "type": "external"
+            },
+            {
+              "name": "PipeBarrier",
+              "line": 1317,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "moe-stage-disabled-token-buffer-debug",
+          "start": 1318,
+          "end": 1332,
+          "title": "保留但禁用本地 send buffer flag/triple 检查",
+          "detail": "两组全部以 // 注释的调试代码曾把 sendBufferTensor 重解释为 float/int32_t，遍历 block flag 并打印 token 起点、480B 位置和 triple；当前不编译、不读取内存。",
+          "kind": "debug",
+          "input_state": [
+            "sendBufferTensor/tokenId：上一段刚写入的本地通信块，仅出现在注释中"
+          ],
+          "mechanism": "注释中的 ReinterpretCast/GetValue/printf 不参与当前执行；第 1318 行空行分隔有效同步与历史检查。",
+          "output_state": [
+            "运行时状态不变；仅保留诊断意图"
+          ],
+          "why": "这些检查可验证分块 flag 与 triple 布局，但逐 token 打印开销大，因此当前禁用。",
+          "calls": []
+        },
+        {
+          "id": "moe-stage-finish-and-clock",
+          "start": 1333,
+          "end": 1336,
+          "title": "结束全部本地 staging 写并记录阶段时钟",
+          "detail": "循环结束后 PIPE_ALL 再次收口所有流水线，DebugClock(3) 记录 stage 打包完成；随后两个空白行分隔旧实验代码。",
+          "kind": "sync",
+          "input_state": [
+            "当前核 sendNum_ 个 token 的 staging 写已发起"
+          ],
+          "mechanism": "PipeBarrier<PIPE_ALL>() 后调用 DebugClock(3)。",
+          "output_state": [
+            "当前核本地 send buffer 写入阶段完成并有性能时间点 3"
+          ],
+          "why": "URMASendToken/SelfCopyToken 在 Process 中紧随 stage 完成标志，需先确保本核写入不再悬空。",
+          "calls": [
+            {
+              "name": "PipeBarrier",
+              "line": 1333,
+              "type": "external"
+            },
+            {
+              "name": "DebugClock",
+              "line": 1334,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "moe-stage-disabled-direct-send-setup",
+          "start": 1337,
+          "end": 1351,
+          "title": "禁用的旧式按 top-k 重新扫描与目的槽计数前半段",
+          "detail": "注释代码曾再次遍历 sendNum_ token，把本地槽搬到 outTensor_，再遍历 axisK_ 并通过扫描之前的 expertIdx 计算同专家 dstTokenIdx；所有行均不执行。",
+          "kind": "debug",
+          "input_state": [
+            "sendNum_/startId_/validExpertIdsTensor_：仅供注释中的旧实验使用"
+          ],
+          "mechanism": "被注释的三层循环以 O(token×topK×先前路由数) 统计目的 token 序号；DataCopy 和 barrier 同样被禁用。",
+          "output_state": [
+            "运行时无变化；说明新路径开发期间曾验证直接远端发送"
+          ],
+          "why": "该朴素计数只适合调试正确性，不适合作为当前高性能发送实现。",
+          "calls": []
+        },
+        {
+          "id": "moe-stage-disabled-direct-send-write",
+          "start": 1352,
+          "end": 1363,
+          "title": "禁用的远端窗口地址计算、DataCopy 与循环收尾",
+          "detail": "注释代码根据 expertId/moeExpertNumPerRank_ 绑定目标 Rank/专家窗口，打印目的地址并 DataCopy；三层注释循环闭合后，唯一有效的第 1363 行结束 SendToMoeExpertNew。",
+          "kind": "debug",
+          "input_state": [
+            "expertId/dstTokenIdx/outTensor_：只存在于注释的直接发送实验"
+          ],
+          "mechanism": "注释公式组合 GetWindAddrByRankId、expertPerSizeOnWin_ 和 hCommuSize_，但没有任何运行时求值。",
+          "output_state": [
+            "无远端窗口写入；当前有效函数只保留先前的本地 staging 结果"
+          ],
+          "why": "当前架构由 URMASendToken 统一二次转发，stage 函数不能再执行这段直接写窗口逻辑。",
+          "calls": []
+        }
+      ]
+    },
+    {
+      "id": "m-moedistributedispatchv2fullmesh-alltoalldispatch-5b12449592",
+      "module_id": "stage-pack",
+      "name": "AllToAllDispatch",
+      "start": 1365,
+      "end": 1422,
+      "inactive": false,
+      "summary": "stage 核入口：初始化源队列、通信打包区、expert ID/mask 与量化临时区，调用 ExpIdsCopyAndMaskCal 形成有效路由；无有效 token 时退出，然后按 aivId_ 是否落在 moeUsedAivNum_ 之后分流到共享专家直接远端写或普通 MoE 本地 staging。",
+      "inputs": [
+        "tpipe_",
+        "hSizeAlignBlock_",
+        "hCommuSize_",
+        "expertIdsCnt_",
+        "isTokenMaskFlag_",
+        "isExpertMaskFlag_",
+        "zeroComputeExpertNum_",
+        "QuantMode",
+        "ExpandXOutType",
+        "XType",
+        "activeMaskBsCnt_",
+        "aivId_",
+        "moeUsedAivNum_",
+        "sharedExpertRankNum_"
+      ],
+      "outputs": [
+        "outTensor_",
+        "tempTensor_",
+        "floatLocalTemp_",
+        "smoothScalesTensor_",
+        "tokenNumToExpertTensor_",
+        "expertMaskTensor"
+      ],
+      "side_effects": [
+        "通过 tpipe_->InitBuffer 分配并绑定多组 UB/队列对象，多个成员 tensor/buffer 建立别名",
+        "quantInst_.SetQuantInitParams 更新量化实例的临时 tensor、scale 与输出绑定",
+        "PIPE_ALL 屏障包围 ExpIdsCopyAndMaskCal，并记录 DebugClock(1/2)",
+        "普通 MoE 分支清零 expertMaskBuf，V_S 同步后调用 SendToMoeExpertNew；expertMaskBuf 当前仅保持接口兼容"
+      ],
+      "review": {
+        "status": "PASS",
+        "reviewer": "e2e-architecture-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "line_range": [
+          1365,
+          1422
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 1365,
+        "reviewed_end": 1422,
+        "expected_line_count": 58,
+        "covered_line_count": 58,
+        "covered_ranges": [
+          [
+            1365,
+            1377
+          ],
+          [
+            1378,
+            1380
+          ],
+          [
+            1381,
+            1397
+          ],
+          [
+            1398,
+            1406
+          ],
+          [
+            1407,
+            1410
+          ],
+          [
+            1411,
+            1420
+          ],
+          [
+            1421,
+            1422
+          ]
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {
+          "line": 1365,
+          "kind": "signature",
+          "explanation": "构成函数 `AllToAllDispatch` 的签名片段 `template <TemplateMC2TypeFullmeshClass>`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1366,
+          "kind": "signature",
+          "explanation": "构成函数 `AllToAllDispatch` 的签名片段 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::AllToAllDispatch()`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1367,
+          "kind": "brace",
+          "explanation": "开始 AllToAllDispatch stage 入口函数体。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1368,
+          "kind": "comment",
+          "explanation": "注释记录 `使用的全局参数`，说明 `AllToAllDispatch` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1369,
+          "kind": "declaration",
+          "explanation": "声明/初始化 inQueue；源码表达式 `TQue<QuePosition::VECIN, 1> inQueue;`。",
+          "reads": [],
+          "writes": [
+            "inQueue"
+          ]
+        },
+        {
+          "line": 1370,
+          "kind": "declaration",
+          "explanation": "声明/初始化 tempBuf、outBuf、expertIdsBuf、expertMaskBuf；源码表达式 `TBuf<> tempBuf, outBuf, expertIdsBuf, expertMaskBuf;`。",
+          "reads": [],
+          "writes": [
+            "tempBuf",
+            "outBuf",
+            "expertIdsBuf",
+            "expertMaskBuf"
+          ]
+        },
+        {
+          "line": 1371,
+          "kind": "declaration",
+          "explanation": "声明/初始化 smoothScalesBuf、tokenNumToExpertBuf、receiveDataCastFloatBuf；源码表达式 `TBuf<> smoothScalesBuf, tokenNumToExpertBuf, receiveDataCastFloatBuf;`。",
+          "reads": [],
+          "writes": [
+            "smoothScalesBuf",
+            "tokenNumToExpertBuf",
+            "receiveDataCastFloatBuf"
+          ]
+        },
+        {
+          "line": 1372,
+          "kind": "call",
+          "explanation": "将 expertIdsCnt_ 个 int32_t 的字节数上取整到 SIZE_ALIGN_256，写入 expertIdsBufSize_ 以支持 CompareScalar。",
+          "reads": [
+            "expertIdsCnt_",
+            "SIZE_ALIGN_256"
+          ],
+          "writes": [
+            "expertIdsBufSize_"
+          ]
+        },
+        {
+          "line": 1373,
+          "kind": "call",
+          "explanation": "调用 InitBuffer；读取 tpipe_、BUFFER_NUM、hSizeAlignBlock_，更新 inQueue。",
+          "reads": [
+            "tpipe_",
+            "BUFFER_NUM",
+            "hSizeAlignBlock_"
+          ],
+          "writes": [
+            "inQueue"
+          ]
+        },
+        {
+          "line": 1374,
+          "kind": "call",
+          "explanation": "调用 InitBuffer；读取 tpipe_、hCommuSize_、BUFFER_NUM，更新 outBuf。",
+          "reads": [
+            "tpipe_",
+            "hCommuSize_",
+            "BUFFER_NUM"
+          ],
+          "writes": [
+            "outBuf"
+          ]
+        },
+        {
+          "line": 1375,
+          "kind": "call",
+          "explanation": "调用 InitBuffer；读取 tpipe_、expertIdsBufSize_，更新 expertIdsBuf_。",
+          "reads": [
+            "tpipe_",
+            "expertIdsBufSize_"
+          ],
+          "writes": [
+            "expertIdsBuf_"
+          ]
+        },
+        {
+          "line": 1376,
+          "kind": "call",
+          "explanation": "调用 Get；读取 outBuf，更新 outTensor_。",
+          "reads": [
+            "outBuf"
+          ],
+          "writes": [
+            "outTensor_"
+          ]
+        },
+        {
+          "line": 1377,
+          "kind": "declaration",
+          "explanation": "合并 token mask、expert mask 与 zero-compute 专家三种条件，得到 needMaskCalFlag。",
+          "reads": [
+            "isTokenMaskFlag_",
+            "isExpertMaskFlag_",
+            "zeroComputeExpertNum_"
+          ],
+          "writes": [
+            "needMaskCalFlag"
+          ]
+        },
+        {
+          "line": 1378,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (needMaskCalFlag) {` 选择 `AllToAllDispatch` 的后续路径；判定涉及 `needMaskCalFlag`。",
+          "reads": [
+            "needMaskCalFlag"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1379,
+          "kind": "call",
+          "explanation": "调用 InitBuffer；读取 tpipe_、expertIdsBufSize_，更新 gatherMaskTBuf_。",
+          "reads": [
+            "tpipe_",
+            "expertIdsBufSize_"
+          ],
+          "writes": [
+            "gatherMaskTBuf_"
+          ]
+        },
+        {
+          "line": 1380,
+          "kind": "brace",
+          "explanation": "结束按需分配 gatherMaskTBuf_ 的分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1381,
+          "kind": "branch",
+          "explanation": "编译期检测量化模式或输入/输出类型差异，决定是否分配转换与 scale 工作区。",
+          "reads": [
+            "constexpr",
+            "QuantMode",
+            "UNQUANT",
+            "ExpandXOutType",
+            "XType"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1382,
+          "kind": "call",
+          "explanation": "将 hOutSizeAlignBlock_ 上取整到 UB_ALIGN，得到 tempBuf 容量 hOutAlignUbSize_。",
+          "reads": [
+            "hOutSizeAlignBlock_",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "hOutAlignUbSize_"
+          ]
+        },
+        {
+          "line": 1383,
+          "kind": "call",
+          "explanation": "调用 InitBuffer；读取 tpipe_、hOutAlignUbSize_，更新 tempBuf。",
+          "reads": [
+            "tpipe_",
+            "hOutAlignUbSize_"
+          ],
+          "writes": [
+            "tempBuf"
+          ]
+        },
+        {
+          "line": 1384,
+          "kind": "call",
+          "explanation": "调用 InitBuffer；读取 tpipe_、maxSize_，更新 receiveDataCastFloatBuf。",
+          "reads": [
+            "tpipe_",
+            "maxSize_"
+          ],
+          "writes": [
+            "receiveDataCastFloatBuf"
+          ]
+        },
+        {
+          "line": 1385,
+          "kind": "call",
+          "explanation": "调用 InitBuffer；读取 tpipe_、maxSize_，更新 smoothScalesBuf。",
+          "reads": [
+            "tpipe_",
+            "maxSize_"
+          ],
+          "writes": [
+            "smoothScalesBuf"
+          ]
+        },
+        {
+          "line": 1386,
+          "kind": "call",
+          "explanation": "调用 Get；读取 tempBuf，更新 tempTensor_。",
+          "reads": [
+            "tempBuf"
+          ],
+          "writes": [
+            "tempTensor_"
+          ]
+        },
+        {
+          "line": 1387,
+          "kind": "call",
+          "explanation": "调用 Get；读取 receiveDataCastFloatBuf，更新 floatLocalTemp_。",
+          "reads": [
+            "receiveDataCastFloatBuf"
+          ],
+          "writes": [
+            "floatLocalTemp_"
+          ]
+        },
+        {
+          "line": 1388,
+          "kind": "call",
+          "explanation": "调用 Get；读取 smoothScalesBuf，更新 smoothScalesTensor_。",
+          "reads": [
+            "smoothScalesBuf"
+          ],
+          "writes": [
+            "smoothScalesTensor_"
+          ]
+        },
+        {
+          "line": 1389,
+          "kind": "branch",
+          "explanation": "仅 PERTOKEN_DYNAMIC_QUANT 需要额外绑定绝对值临时 tensor。",
+          "reads": [
+            "constexpr",
+            "QuantMode",
+            "PERTOKEN_DYNAMIC_QUANT"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1390,
+          "kind": "call",
+          "explanation": "调用 Get；读取 smoothScalesBuf，更新 floatLocalAbsTemp_。",
+          "reads": [
+            "smoothScalesBuf"
+          ],
+          "writes": [
+            "floatLocalAbsTemp_"
+          ]
+        },
+        {
+          "line": 1391,
+          "kind": "brace",
+          "explanation": "结束 per-token 动态量化绝对值临时 tensor 绑定分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1392,
+          "kind": "declaration",
+          "explanation": "让 dstExpBuf_ 复用 receiveDataCastFloatBuf，避免量化与 mask 阶段重复占用 UB。",
+          "reads": [
+            "receiveDataCastFloatBuf"
+          ],
+          "writes": [
+            "dstExpBuf_"
+          ]
+        },
+        {
+          "line": 1393,
+          "kind": "declaration",
+          "explanation": "让 subExpBuf_ 复用 smoothScalesBuf，复用其非重叠生命周期。",
+          "reads": [
+            "smoothScalesBuf"
+          ],
+          "writes": [
+            "subExpBuf_"
+          ]
+        },
+        {
+          "line": 1394,
+          "kind": "branch",
+          "explanation": "纯非量化但 needMaskCalFlag 为真时，切换到独立 mask 工作区分支。",
+          "reads": [
+            "needMaskCalFlag"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1395,
+          "kind": "call",
+          "explanation": "调用 InitBuffer；读取 tpipe_、maxSize_，更新 dstExpBuf_。",
+          "reads": [
+            "tpipe_",
+            "maxSize_"
+          ],
+          "writes": [
+            "dstExpBuf_"
+          ]
+        },
+        {
+          "line": 1396,
+          "kind": "call",
+          "explanation": "调用 InitBuffer；读取 tpipe_、maxSize_，更新 subExpBuf_。",
+          "reads": [
+            "tpipe_",
+            "maxSize_"
+          ],
+          "writes": [
+            "subExpBuf_"
+          ]
+        },
+        {
+          "line": 1397,
+          "kind": "brace",
+          "explanation": "结束量化工作区或非量化 mask 工作区的编译期/运行时分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1398,
+          "kind": "call",
+          "explanation": "用 floatLocalTemp_、smoothScalesTensor_、smoothScalesBuf 和 dynamicScalesOutGMTensor_ 配置 quantInst_。",
+          "reads": [
+            "floatLocalTemp_",
+            "smoothScalesTensor_",
+            "smoothScalesBuf",
+            "dynamicScalesOutGMTensor_"
+          ],
+          "writes": [
+            "quantInst_"
+          ]
+        },
+        {
+          "line": 1399,
+          "kind": "sync",
+          "explanation": "PIPE_ALL 等待所有缓冲初始化/清零准备完成，再开始路由 mask 计算。",
+          "reads": [
+            "PIPE_ALL"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1400,
+          "kind": "call",
+          "explanation": "调用 DebugClock；执行本行参数指定的操作。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1401,
+          "kind": "call",
+          "explanation": "调用 ExpIdsCopyAndMaskCal，复制 expert IDs 并应用 token/expert/zero-compute mask。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1402,
+          "kind": "sync",
+          "explanation": "第二个 PIPE_ALL 等待路由 mask 与压缩索引计算结束。",
+          "reads": [
+            "PIPE_ALL"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1403,
+          "kind": "call",
+          "explanation": "调用 DebugClock；执行本行参数指定的操作。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1404,
+          "kind": "branch",
+          "explanation": "若 ExpIdsCopyAndMaskCal 得到的 activeMaskBsCnt_ 为零，则当前 stage 核无需发送。",
+          "reads": [
+            "activeMaskBsCnt_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1405,
+          "kind": "statement",
+          "explanation": "执行 `return;`；不读取运行时对象。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1406,
+          "kind": "brace",
+          "explanation": "结束 activeMaskBsCnt_ 为零的提前返回分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1407,
+          "kind": "blank",
+          "explanation": "空行在 `AllToAllDispatch` 的 L1407 分隔 `}` 与 `if ((aivId_ >= moeUsedAivNum_) && (sharedExpertRankNum_ != 0)) {` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1408,
+          "kind": "branch",
+          "explanation": "aivId_ 位于 moeUsedAivNum_ 之后且存在共享专家 Rank 时，选择共享专家 stage 角色。",
+          "reads": [
+            "aivId_",
+            "moeUsedAivNum_",
+            "sharedExpertRankNum_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1409,
+          "kind": "call",
+          "explanation": "共享 stage 核调用 SendToSharedExpert，直接向共享专家远端 window 写有效 token。",
+          "reads": [
+            "inQueue",
+            "outBuf"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1410,
+          "kind": "branch",
+          "explanation": "按分支表达式 `} else {` 选择 `AllToAllDispatch` 的后续路径；判定涉及 `编译期/字面量条件`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1411,
+          "kind": "call",
+          "explanation": "把每专家 bit mask 容量按 expertIdsBufSize_/sizeof(int32_t)/8 换算并上取整到 UB_ALIGN。",
+          "reads": [
+            "expertIdsBufSize_",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "maskSizePerExpert_"
+          ]
+        },
+        {
+          "line": 1412,
+          "kind": "call",
+          "explanation": "按 maskSizePerExpert_ 乘每核最多 Ceil(moeExpertNum_,aivNum_) 个专家计算 expertMaskBufSize。",
+          "reads": [
+            "maskSizePerExpert_",
+            "moeExpertNum_",
+            "aivNum_"
+          ],
+          "writes": [
+            "expertMaskBufSize"
+          ]
+        },
+        {
+          "line": 1413,
+          "kind": "call",
+          "explanation": "调用 InitBuffer；读取 tpipe_、expertMaskBufSize，更新 expertMaskBuf。",
+          "reads": [
+            "tpipe_",
+            "expertMaskBufSize"
+          ],
+          "writes": [
+            "expertMaskBuf"
+          ]
+        },
+        {
+          "line": 1414,
+          "kind": "call",
+          "explanation": "为全部 moeExpertNum_ 个 int32_t 计数分配并按 UB_ALIGN 对齐 tokenNumToExpertBuf。",
+          "reads": [
+            "tpipe_",
+            "moeExpertNum_",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "tokenNumToExpertBuf"
+          ]
+        },
+        {
+          "line": 1415,
+          "kind": "call",
+          "explanation": "调用 Get；读取 tokenNumToExpertBuf，更新 tokenNumToExpertTensor_。",
+          "reads": [
+            "tokenNumToExpertBuf"
+          ],
+          "writes": [
+            "tokenNumToExpertTensor_"
+          ]
+        },
+        {
+          "line": 1416,
+          "kind": "call",
+          "explanation": "调用 LocalTensor；读取 expertMaskBuf、Get，更新 expertMaskTensor。",
+          "reads": [
+            "expertMaskBuf",
+            "Get"
+          ],
+          "writes": [
+            "expertMaskTensor"
+          ]
+        },
+        {
+          "line": 1417,
+          "kind": "call",
+          "explanation": "把 expertMaskTensor 的 expertMaskBufSize 字节全部清零。",
+          "reads": [
+            "expertMaskBufSize"
+          ],
+          "writes": [
+            "expertMaskTensor"
+          ]
+        },
+        {
+          "line": 1418,
+          "kind": "sync",
+          "explanation": "SyncFunc<V_S> 等待 expert mask 向量清零完成。",
+          "reads": [
+            "V_S"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1419,
+          "kind": "comment",
+          "explanation": "注释明确当前普通 MoE 算法先写本地 send buffer，随后由 URMA 核按 expert/rank 二次转发。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1420,
+          "kind": "call",
+          "explanation": "调用 SendToMoeExpertNew；expertMaskBuf 为兼容旧接口传入，新实现实际按 token 写本地 staging。",
+          "reads": [
+            "inQueue",
+            "expertMaskBuf"
+          ],
+          "writes": [
+            "outBuf"
+          ]
+        },
+        {
+          "line": 1421,
+          "kind": "brace",
+          "explanation": "结束普通 MoE 本地 staging 分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1422,
+          "kind": "brace",
+          "explanation": "结束 AllToAllDispatch，返回 Process 的 stage 流程。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments": [
+        {
+          "id": "dispatch-init-common-stage-buffers",
+          "start": 1365,
+          "end": 1377,
+          "title": "初始化 token 队列、通信区和 expert ID 缓冲",
+          "detail": "声明本地队列/缓冲句柄，expertIdsBufSize_ 按 256B 对齐以支持 CompareScalar；初始化 inQueue、outBuf 和成员 expertIdsBuf_，并让 outTensor_ 指向 outBuf。needMaskCalFlag 汇总 token mask、expert mask 和 zero-compute 三种需求。",
+          "kind": "input",
+          "input_state": [
+            "tpipe_：UB/队列分配器",
+            "expertIdsCnt_：路由 ID 数",
+            "三类 mask 条件：isTokenMaskFlag_/isExpertMaskFlag_/zeroComputeExpertNum_"
+          ],
+          "mechanism": "expertIdsBufSize_=Ceil(expertIdsCnt_*sizeof(int32_t),256)*256；InitBuffer 分配输入队列、双通信块 outBuf 和 expertIdsBuf_；Get 建立 outTensor_。",
+          "output_state": [
+            "inQueue/outBuf/expertIdsBuf_：公共 stage 资源",
+            "outTensor_：通信打包输出 UB",
+            "needMaskCalFlag：是否需要额外 mask 临时区"
+          ],
+          "why": "路由预处理与 token 打包共享同一 stage 生命周期；对齐 expert IDs 可满足矢量 CompareScalar 的访问要求。",
+          "calls": [
+            {
+              "name": "Ceil",
+              "line": 1372,
+              "type": "external"
+            },
+            {
+              "name": "InitBuffer",
+              "line": 1373,
+              "type": "external"
+            },
+            {
+              "name": "InitBuffer",
+              "line": 1374,
+              "type": "external"
+            },
+            {
+              "name": "InitBuffer",
+              "line": 1375,
+              "type": "external"
+            },
+            {
+              "name": "Get",
+              "line": 1376,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "dispatch-allocate-gather-mask-buffer",
+          "start": 1378,
+          "end": 1380,
+          "title": "仅在需要路由 mask 时分配 gatherMaskTBuf_",
+          "detail": "needMaskCalFlag 为真才按 expertIdsBufSize_ 初始化 gatherMaskTBuf_。",
+          "kind": "guard",
+          "input_state": [
+            "needMaskCalFlag：三类 mask 需求合并结果",
+            "expertIdsBufSize_：对齐路由 ID 容量"
+          ],
+          "mechanism": "运行时 if 包围 tpipe_->InitBuffer(gatherMaskTBuf_,expertIdsBufSize_)。",
+          "output_state": [
+            "gatherMaskTBuf_：仅在路由压缩/屏蔽需要时存在"
+          ],
+          "why": "无 mask 的普通路径不需要 gather 临时区，可节省有限 UB。",
+          "calls": [
+            {
+              "name": "InitBuffer",
+              "line": 1379,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "dispatch-bind-quant-or-mask-workspaces",
+          "start": 1381,
+          "end": 1397,
+          "title": "按编译期量化模式绑定转换、scale 与 mask 复用缓冲",
+          "detail": "量化或输入/输出类型不同时，初始化对齐 tempBuf、float cast 缓冲和 smooth scale 缓冲，绑定 tempTensor_/floatLocalTemp_/smoothScalesTensor_；per-token 动态量化额外让 floatLocalAbsTemp_ 复用 scale 缓冲，并将两块内存别名给 dstExpBuf_/subExpBuf_。纯非量化仅在 mask 需要时为后两者单独分配。",
+          "kind": "guard",
+          "input_state": [
+            "QuantMode 与 ExpandXOutType/XType：编译期路径",
+            "hOutSizeAlignBlock_/maxSize_：临时区容量",
+            "needMaskCalFlag：非量化 mask 需求"
+          ],
+          "mechanism": "if constexpr 为量化/转换路径分配三块 UB 并复用别名；else if 只给 mask 计算分配 dstExpBuf_/subExpBuf_。",
+          "output_state": [
+            "tempTensor_/floatLocalTemp_/smoothScalesTensor_：量化工作 tensor",
+            "dstExpBuf_/subExpBuf_：复用或独立的路由 mask 工作区"
+          ],
+          "why": "量化与 mask 计算生命周期可复用相同 UB；纯无 mask 非量化路径则无需这些大缓冲。",
+          "calls": [
+            {
+              "name": "Ceil",
+              "line": 1382,
+              "type": "external"
+            },
+            {
+              "name": "InitBuffer",
+              "line": 1383,
+              "type": "external"
+            },
+            {
+              "name": "InitBuffer",
+              "line": 1384,
+              "type": "external"
+            },
+            {
+              "name": "InitBuffer",
+              "line": 1385,
+              "type": "external"
+            },
+            {
+              "name": "Get",
+              "line": 1386,
+              "type": "external"
+            },
+            {
+              "name": "Get",
+              "line": 1387,
+              "type": "external"
+            },
+            {
+              "name": "Get",
+              "line": 1388,
+              "type": "external"
+            },
+            {
+              "name": "Get",
+              "line": 1390,
+              "type": "external"
+            },
+            {
+              "name": "InitBuffer",
+              "line": 1395,
+              "type": "external"
+            },
+            {
+              "name": "InitBuffer",
+              "line": 1396,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "dispatch-calculate-valid-route-mask",
+          "start": 1398,
+          "end": 1406,
+          "title": "配置量化实例并生成有效路由，零有效 token 时退出",
+          "detail": "SetQuantInitParams 绑定量化临时对象；PIPE_ALL 后记录时钟 1，ExpIdsCopyAndMaskCal 复制 expert IDs 并应用 token/expert/zero-compute mask，再 barrier 和时钟 2。activeMaskBsCnt_ 为零时不进入任何发送。",
+          "kind": "guard",
+          "input_state": [
+            "量化 tensor/buffer 绑定",
+            "原始 expertIds 与各类 mask",
+            "activeMaskBsCnt_：路由预处理输出"
+          ],
+          "mechanism": "SetQuantInitParams；PIPE_ALL→DebugClock(1)→ExpIdsCopyAndMaskCal→PIPE_ALL→DebugClock(2)；检查 activeMaskBsCnt_。",
+          "output_state": [
+            "validExpertIdsTensor_ 与有效 BS 索引可供发送路径使用",
+            "零有效 token 的 stage 核立即返回"
+          ],
+          "why": "共享与普通专家发送都依赖同一份掩码后路由；先统一计算可避免在两条发送路径重复处理无效 token。",
+          "calls": [
+            {
+              "name": "SetQuantInitParams",
+              "line": 1398,
+              "type": "external"
+            },
+            {
+              "name": "PipeBarrier",
+              "line": 1399,
+              "type": "external"
+            },
+            {
+              "name": "DebugClock",
+              "line": 1400,
+              "type": "external"
+            },
+            {
+              "name": "ExpIdsCopyAndMaskCal",
+              "line": 1401,
+              "type": "internal",
+              "target": "m-moedistributedispatchv2fullmesh-expidscopyandmaskcal-17a5b857e1"
+            },
+            {
+              "name": "PipeBarrier",
+              "line": 1402,
+              "type": "external"
+            },
+            {
+              "name": "DebugClock",
+              "line": 1403,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "dispatch-route-shared-stage-cores",
+          "start": 1407,
+          "end": 1410,
+          "title": "把 MoE 核预算之后的 stage 核送入共享专家直写路径",
+          "detail": "aivId_ >= moeUsedAivNum_ 且 sharedExpertRankNum_ 非零时，当前 stage 核调用 SendToSharedExpert；否则进入普通 MoE staging。",
+          "kind": "guard",
+          "input_state": [
+            "aivId_/moeUsedAivNum_：当前核角色边界",
+            "sharedExpertRankNum_：共享专家是否启用"
+          ],
+          "mechanism": "运行时条件把后 sharedUsedAivNum_ 个 stage 核分派给共享专家路径。",
+          "output_state": [
+            "共享 stage 核完成共享专家远端 window 直写"
+          ],
+          "why": "共享专家任务数与普通 top-k 路由不同，需要独立核预算和直接广播式发送算法。",
+          "calls": [
+            {
+              "name": "SendToSharedExpert",
+              "line": 1409,
+              "type": "internal",
+              "target": "m-moedistributedispatchv2fullmesh-sendtosharedexpert-ba8dee0206"
+            }
+          ]
+        },
+        {
+          "id": "dispatch-prepare-moe-mask-and-stage-locally",
+          "start": 1411,
+          "end": 1420,
+          "title": "为普通 MoE 分配清零 mask 缓冲并调用本地 staging 新实现",
+          "detail": "maskSizePerExpert_ 按 expert ID 对齐容量换算 bit 并对齐 UB；expertMaskBufSize 覆盖每核最多专家数，另分配 tokenNumToExpertBuf。建立 int32 视图后 Duplicate 清零并执行 V_S，同步完成后调用 SendToMoeExpertNew。注释明确 token 先写本地 send buffer，再由 URMA 核二次转发。",
+          "kind": "output",
+          "input_state": [
+            "expertIdsBufSize_/moeExpertNum_/aivNum_：mask 容量",
+            "inQueue/outBuf：普通 token 打包资源"
+          ],
+          "mechanism": "计算并分配 expertMaskBuf/tokenNumToExpertBuf，建立 tensor 视图、全零初始化并 V_S；随后 SendToMoeExpertNew。",
+          "output_state": [
+            "普通 MoE token：写入本地 send buffer 而非目标专家窗口",
+            "expertMaskBuf：当前新实现未消费的兼容参数"
+          ],
+          "why": "新架构把 stage 打包与 URMA 路由发送解耦；保留 mask 缓冲接口便于与旧实现结构兼容。",
+          "calls": [
+            {
+              "name": "Ceil",
+              "line": 1411,
+              "type": "external"
+            },
+            {
+              "name": "Ceil",
+              "line": 1412,
+              "type": "external"
+            },
+            {
+              "name": "InitBuffer",
+              "line": 1413,
+              "type": "external"
+            },
+            {
+              "name": "InitBuffer",
+              "line": 1414,
+              "type": "external"
+            },
+            {
+              "name": "Ceil",
+              "line": 1414,
+              "type": "external"
+            },
+            {
+              "name": "Get",
+              "line": 1415,
+              "type": "external"
+            },
+            {
+              "name": "Get",
+              "line": 1416,
+              "type": "external"
+            },
+            {
+              "name": "Duplicate",
+              "line": 1417,
+              "type": "external"
+            },
+            {
+              "name": "SyncFunc",
+              "line": 1418,
+              "type": "external"
+            },
+            {
+              "name": "SendToMoeExpertNew",
+              "line": 1420,
+              "type": "internal",
+              "target": "m-moedistributedispatchv2fullmesh-sendtomoeexpertnew-12b59c248e"
+            }
+          ]
+        },
+        {
+          "id": "dispatch-close-moe-branch-and-function",
+          "start": 1421,
+          "end": 1422,
+          "title": "结束普通 MoE 分支与 stage dispatch",
+          "detail": "依次闭合 else 普通 MoE 分支和 AllToAllDispatch 函数体。",
+          "kind": "output",
+          "input_state": [
+            "共享或普通 MoE 发送分支已完成"
+          ],
+          "mechanism": "两个右花括号结束分支与函数作用域。",
+          "output_state": [
+            "当前 stage AIV 的 AllToAllDispatch 返回 Process"
+          ],
+          "why": "Process 随后发布 stageDone，并由 URMA/SelfCopy 核消费本地 staging 或共享专家直写结果。",
+          "calls": []
+        }
+      ]
+    }
+  ]
+}

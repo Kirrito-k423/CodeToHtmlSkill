@@ -1,0 +1,1605 @@
+{
+  "source":{"sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc"},
+  "functions":[
+    {
+      "id":"m-moedistributedispatchv2fullmesh-tokenactivemaskcal-962a68fb09","module_id":"mask-routing","name":"TokenActiveMaskCal","start":2254,"end":2277,"inactive":false,
+      "summary":"搬入 axisBS_ 个 token active bool，转为 half 后求和得到 activeMaskBsCnt_，再乘 axisK_ 得到 token mask 口径下待发送的扁平路由槽数 sendToMoeExpTokenCnt_。",
+      "inputs":["axisBS_","axisK_","xActiveMaskGMTensor_","dstExpBuf_","subExpBuf_","gatherMaskTBuf_"],
+      "outputs":["activeMaskBsCnt_","sendToMoeExpTokenCnt_"],
+      "side_effects":["DataCopyPad 从 xActiveMaskGMTensor_ 搬 token mask 到 UB","MTE2_V、PIPE_V、V_S 建立搬入→Cast→Sum→标量读取顺序"],
+      "review":{"status":"PASS","verdict":"PASS","reviewer":"function-block-review-agent","draft_author":"full-analysis-draft-agent","revision":1,"source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","line_range":[2254,2277],"gaps":[],"overlaps":[],"unresolved":[],"required_changes":[]},
+      "line_review_certification":{"complete":true,"reviewed_line_range":[2254,2277],"reviewed_line_count":24,"coverage":"every_source_line_reviewed_once","source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","gaps":[],"overlaps":[]},
+      "line_notes":[
+        {
+          "line": 2254,
+          "kind": "signature",
+          "explanation": "构成函数 `TokenActiveMaskCal` 的签名片段 `template <TemplateMC2TypeFullmeshClass>`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2255,
+          "kind": "signature",
+          "explanation": "构成函数 `TokenActiveMaskCal` 的签名片段 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::TokenActiveMaskCal()`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2256,
+          "kind": "brace",
+          "explanation": "在 `TokenActiveMaskCal` 的 L2256 打开 代码块 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::TokenActiv…` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2257,
+          "kind": "comment",
+          "explanation": "注释记录 `搬运x_active_mask，当前仅用于计算有效token总数`，说明 `TokenActiveMaskCal` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2258,
+          "kind": "declaration",
+          "explanation": "声明 `maskTmpTensor`；源码初始化式 `LocalTensor<half> maskTmpTensor;`读取 `half`。",
+          "reads": [
+            "half"
+          ],
+          "writes": [
+            "maskTmpTensor"
+          ]
+        },
+        {
+          "line": 2259,
+          "kind": "declaration",
+          "explanation": "声明 `sumOutTensor`；源码初始化式 `LocalTensor<half> sumOutTensor;`读取 `half`。",
+          "reads": [
+            "half"
+          ],
+          "writes": [
+            "sumOutTensor"
+          ]
+        },
+        {
+          "line": 2260,
+          "kind": "declaration",
+          "explanation": "声明 `maskInputTensor`；源码初始化式 `LocalTensor<bool> maskInputTensor;`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": [
+            "maskInputTensor"
+          ]
+        },
+        {
+          "line": 2261,
+          "kind": "call",
+          "explanation": "把 axisBS_ 个 bool 的真实字节数上取整到 UB_ALIGN，得到 token mask UB 覆盖长度 axisBsAlignSize。",
+          "reads": [
+            "axisBS_",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "axisBsAlignSize"
+          ]
+        },
+        {
+          "line": 2262,
+          "kind": "call",
+          "explanation": "调用 `Get` 并更新 `maskInputTensor、r`；本行实参或对象来自 `dstExpBuf_`。",
+          "reads": [
+            "dstExpBuf_"
+          ],
+          "writes": [
+            "maskInputTensor"
+          ]
+        },
+        {
+          "line": 2263,
+          "kind": "call",
+          "explanation": "调用 `Get` 并更新 `maskTmpTensor、r`；本行实参或对象来自 `subExpBuf_、half`。",
+          "reads": [
+            "subExpBuf_",
+            "half"
+          ],
+          "writes": [
+            "maskTmpTensor"
+          ]
+        },
+        {
+          "line": 2264,
+          "kind": "call",
+          "explanation": "调用 `Get` 并更新 `sumOutTensor、r`；本行实参或对象来自 `gatherMaskTBuf_、half`。",
+          "reads": [
+            "gatherMaskTBuf_",
+            "half"
+          ],
+          "writes": [
+            "sumOutTensor"
+          ]
+        },
+        {
+          "line": 2265,
+          "kind": "declaration",
+          "explanation": "声明 `maskParams`；源码初始化式 `DataCopyExtParams maskParams = {1U, static_cast<uint32_t>(axisBS_ * sizeof(bool)), 0U, 0U, 0U};`读取 `axisBS_`。",
+          "reads": [
+            "axisBS_"
+          ],
+          "writes": [
+            "maskParams"
+          ]
+        },
+        {
+          "line": 2266,
+          "kind": "declaration",
+          "explanation": "声明 `maskCopyPadParams`；源码初始化式 `DataCopyPadExtParams<bool> maskCopyPadParams{false, 0U, 0U, 0U};`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": [
+            "maskCopyPadParams"
+          ]
+        },
+        {
+          "line": 2267,
+          "kind": "call",
+          "explanation": "DataCopyPad 按 maskParams 从 xActiveMaskGMTensor_ 搬 axisBS_ 个 token bool 到 maskInputTensor。",
+          "reads": [
+            "xActiveMaskGMTensor_",
+            "maskParams",
+            "maskCopyPadParams"
+          ],
+          "writes": [
+            "maskInputTensor"
+          ]
+        },
+        {
+          "line": 2268,
+          "kind": "sync",
+          "explanation": "SyncFunc<MTE2_V> 等待 token mask 搬入完成后才启动向量 Cast。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "MTE2_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2269,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `maskInputInt8Tensor`；本行实参或对象来自 `maskInputTensor、ReinterpretCast`。",
+          "reads": [
+            "maskInputTensor",
+            "ReinterpretCast"
+          ],
+          "writes": [
+            "maskInputInt8Tensor"
+          ]
+        },
+        {
+          "line": 2270,
+          "kind": "call",
+          "explanation": "Cast 把 axisBS_ 个 int8 bool 转成 0/1 half，写入 maskTmpTensor。",
+          "reads": [
+            "maskInputInt8Tensor",
+            "RoundMode",
+            "CAST_NONE",
+            "axisBS_"
+          ],
+          "writes": [
+            "maskTmpTensor"
+          ]
+        },
+        {
+          "line": 2271,
+          "kind": "sync",
+          "explanation": "PipeBarrier<PIPE_V> 等待 bool→half 转换完成后再做 Sum。",
+          "reads": [
+            "PIPE_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2272,
+          "kind": "declaration",
+          "explanation": "配置 SumParams：单次归约 axisBS_ 个 half，inner span 使用 axisBsAlignSize。",
+          "reads": [
+            "SumParams",
+            "axisBsAlignSize",
+            "axisBS_"
+          ],
+          "writes": [
+            "params"
+          ]
+        },
+        {
+          "line": 2273,
+          "kind": "call",
+          "explanation": "Sum 归约 maskTmpTensor 的 0/1 值，把有效 token 数写入 sumOutTensor。",
+          "reads": [
+            "maskTmpTensor",
+            "params"
+          ],
+          "writes": [
+            "sumOutTensor"
+          ]
+        },
+        {
+          "line": 2274,
+          "kind": "sync",
+          "explanation": "SyncFunc<V_S> 保证向量 Sum 完成后才能标量读取结果。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "V_S"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2275,
+          "kind": "call",
+          "explanation": "读取 sumOutTensor[0] 并转成 int32_t，写入 activeMaskBsCnt_。",
+          "reads": [
+            "sumOutTensor"
+          ],
+          "writes": [
+            "activeMaskBsCnt_"
+          ]
+        },
+        {
+          "line": 2276,
+          "kind": "declaration",
+          "explanation": "按每个有效 token 有 axisK_ 个路由槽，计算 sendToMoeExpTokenCnt_=activeMaskBsCnt_*axisK_。",
+          "reads": [
+            "activeMaskBsCnt_",
+            "axisK_"
+          ],
+          "writes": [
+            "sendToMoeExpTokenCnt_"
+          ]
+        },
+        {
+          "line": 2277,
+          "kind": "brace",
+          "explanation": "在 `TokenActiveMaskCal` 的 L2277 结束 代码块 `SumParams params{1, axisBsAlignSize, axisBS_};` 作用域。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments":[
+        {"id":"token-mask-copy-and-cast","start":2254,"end":2271,"title":"搬入 axisBS_ 个 token mask 并转为 half","detail":"从三块复用 UB 建 bool 输入、half 临时和 half 标量输出；按 axisBS_ 真实字节搬入 xActiveMaskGMTensor_，再把 int8 bool 转 half。","kind":"input","input_state":["xActiveMaskGMTensor_：每 token bool active 标志","axisBS_：本 Rank token 数"],"mechanism":"Ceil 计算 UB 对齐容量；DataCopyPad→MTE2_V→ReinterpretCast<int8_t>→Cast→PIPE_V。","output_state":["maskTmpTensor：axisBS_ 个 0/1 half mask","sumOutTensor：待写归约标量"],"why":"Sum 不能直接归约 bool；转 half 后可使用向量 Sum，并保留 0/1 计数语义。","calls":[{"name":"Ceil","line":2261,"type":"external"},{"name":"Get","line":2262,"type":"external"},{"name":"Get","line":2263,"type":"external"},{"name":"Get","line":2264,"type":"external"},{"name":"DataCopyPad","line":2267,"type":"external"},{"name":"SyncFunc","line":2268,"type":"external"},{"name":"LocalTensor","line":2269,"type":"external"},{"name":"Cast","line":2270,"type":"external"},{"name":"PipeBarrier","line":2271,"type":"external"}]},
+        {"id":"token-mask-count-and-route-slots","start":2272,"end":2277,"title":"归约有效 token 数并换算 Top-K 路由槽数","detail":"Sum axisBS_ 个 0/1 half，读取 activeMaskBsCnt_，再乘 axisK_ 得到全部有效 token 的路由项数量。","kind":"output","input_state":["maskTmpTensor：0/1 token mask","axisBS_、axisK_：行数与每行路由槽数"],"mechanism":"SumParams 覆盖 axisBS_；Sum→V_S→GetValue；sendToMoeExpTokenCnt_=activeMaskBsCnt_*axisK_。","output_state":["activeMaskBsCnt_：有效 token 数","sendToMoeExpTokenCnt_：token mask 口径的有效扁平槽数"],"why":"后续发送分核以 token 数和扁平 Top-K 槽数为两个不同边界，必须同时派生。","calls":[{"name":"Sum","line":2273,"type":"external"},{"name":"SyncFunc","line":2274,"type":"external"},{"name":"GetValue","line":2275,"type":"external"}]}
+      ]
+    },
+    {
+      "id":"m-moedistributedispatchv2fullmesh-calvalidbscnt-33a4841789","module_id":"mask-routing","name":"CalValidBSCnt","start":2279,"end":2309,"inactive":false,
+      "summary":"把按 token 行做 UB_ALIGN padding 的 axisBS_×axisK_ expert active mask 转为 half；逐行求和并夹到 1，生成“该 token 至少一个路由槽有效”的 bitmask，压缩出有效 BS 原索引 validBsIndexTensor_ 及数量 activeMaskBsCnt_。",
+      "inputs":["maskStrideTensor","axisBS_","axisK_","validExpertIndexBuf_","expertIdsBuf_","validBsIndexTBuf_","gatherMaskTBuf_","subExpBuf_"],
+      "outputs":["validBsIndexTensor_","activeMaskBsCnt_"],
+      "side_effects":["复用多个 UB buffer 生成行和、bool bitmask 与 0..axisBS_-1 索引","GatherMask 根据 bitmask 稳定压缩有效 token 原索引"],
+      "review":{"status":"PASS","verdict":"PASS","reviewer":"function-block-review-agent","draft_author":"full-analysis-draft-agent","revision":1,"source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","line_range":[2279,2309],"gaps":[],"overlaps":[],"unresolved":[],"required_changes":[]},
+      "line_review_certification":{"complete":true,"reviewed_line_range":[2279,2309],"reviewed_line_count":31,"coverage":"every_source_line_reviewed_once","source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","gaps":[],"overlaps":[]},
+      "line_notes":[
+        {
+          "line": 2279,
+          "kind": "signature",
+          "explanation": "构成函数 `CalValidBSCnt` 的签名片段 `template <TemplateMC2TypeFullmeshClass>`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2280,
+          "kind": "signature",
+          "explanation": "构成函数 `CalValidBSCnt` 的签名片段 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::CalValidBSCnt(LocalTensor<bool> maskStrideTensor)`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2281,
+          "kind": "brace",
+          "explanation": "在 `CalValidBSCnt` 的 L2281 打开 代码块 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::CalValidBS…` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2282,
+          "kind": "declaration",
+          "explanation": "声明 `rsvdCnt`；源码初始化式 `uint64_t rsvdCnt = 0;`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": [
+            "rsvdCnt"
+          ]
+        },
+        {
+          "line": 2283,
+          "kind": "declaration",
+          "explanation": "声明 `mask`；源码初始化式 `uint32_t mask = axisBS_;`读取 `axisBS_`。",
+          "reads": [
+            "axisBS_"
+          ],
+          "writes": [
+            "mask"
+          ]
+        },
+        {
+          "line": 2284,
+          "kind": "call",
+          "explanation": "按每个 token 一行、每行 axisK_ bool 上取整到 UB_ALIGN，计算全部 padded 行字节数 activeMaskAlignSize。",
+          "reads": [
+            "axisBS_",
+            "axisK_",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "activeMaskAlignSize"
+          ]
+        },
+        {
+          "line": 2285,
+          "kind": "call",
+          "explanation": "把 axisBS_ 个 half 的比较/归约长度上取整到 SIZE_ALIGN_256，得到 calCnt。",
+          "reads": [
+            "axisBS_",
+            "half",
+            "SIZE_ALIGN_256"
+          ],
+          "writes": [
+            "calCnt"
+          ]
+        },
+        {
+          "line": 2286,
+          "kind": "call",
+          "explanation": "计算 Cast 后每个 padded mask 行的 half 跨度 innerAlign，并乘 BUFFER_NUM 覆盖双缓冲布局。",
+          "reads": [
+            "axisK_",
+            "half",
+            "UB_ALIGN",
+            "BUFFER_NUM"
+          ],
+          "writes": [
+            "innerAlign"
+          ]
+        },
+        {
+          "line": 2287,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `tempTensor`；本行实参或对象来自 `half、validExpertIndexBuf_、Get`。",
+          "reads": [
+            "half",
+            "validExpertIndexBuf_",
+            "Get"
+          ],
+          "writes": [
+            "tempTensor"
+          ]
+        },
+        {
+          "line": 2288,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `maskTempTensor`；本行实参或对象来自 `half、expertIdsBuf_、Get`。",
+          "reads": [
+            "half",
+            "expertIdsBuf_",
+            "Get"
+          ],
+          "writes": [
+            "maskTempTensor"
+          ]
+        },
+        {
+          "line": 2289,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `tokenTargetTensor`；本行实参或对象来自 `half、validBsIndexTBuf_、Get`。",
+          "reads": [
+            "half",
+            "validBsIndexTBuf_",
+            "Get"
+          ],
+          "writes": [
+            "tokenTargetTensor"
+          ]
+        },
+        {
+          "line": 2290,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `maskTensor`；本行实参或对象来自 `gatherMaskTBuf_、Get`。",
+          "reads": [
+            "gatherMaskTBuf_",
+            "Get"
+          ],
+          "writes": [
+            "maskTensor"
+          ]
+        },
+        {
+          "line": 2291,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `bsIndexTensor`；本行实参或对象来自 `subExpBuf_、Get`。",
+          "reads": [
+            "subExpBuf_",
+            "Get"
+          ],
+          "writes": [
+            "bsIndexTensor"
+          ]
+        },
+        {
+          "line": 2292,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `maskTensorInt32`；本行实参或对象来自 `gatherMaskTBuf_、Get`。",
+          "reads": [
+            "gatherMaskTBuf_",
+            "Get"
+          ],
+          "writes": [
+            "maskTensorInt32"
+          ]
+        },
+        {
+          "line": 2293,
+          "kind": "declaration",
+          "explanation": "配置 axisKSumParams，以 innerAlign 为行跨度，对 axisBS_ 行各归约 axisK_ 个 mask。",
+          "reads": [
+            "SumParams",
+            "axisBS_",
+            "innerAlign",
+            "axisK_"
+          ],
+          "writes": [
+            "axisKSumParams"
+          ]
+        },
+        {
+          "line": 2294,
+          "kind": "call",
+          "explanation": "调用 `Ceil` 并更新 `axisBsSumParams`；本行实参或对象来自 `SumParams、axisBS_、half、UB_ALIGN`。",
+          "reads": [
+            "SumParams",
+            "axisBS_",
+            "half",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "axisBsSumParams"
+          ]
+        },
+        {
+          "line": 2295,
+          "kind": "blank",
+          "explanation": "空行在 `CalValidBSCnt` 的 L2295 分隔 `SumParams axisBsSumParams{1, static_cast<uint32_t>(Ceil(axisBS_ * sizeo…` 与 `Duplicate<half>(maskTempTensor, (half)0, calCnt);` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2296,
+          "kind": "call",
+          "explanation": "先把 maskTempTensor 清零到 calCnt，避免向量对齐尾部留下旧值。",
+          "reads": [
+            "half",
+            "calCnt"
+          ],
+          "writes": [
+            "maskTempTensor"
+          ]
+        },
+        {
+          "line": 2297,
+          "kind": "sync",
+          "explanation": "SyncFunc<V_S> 等待 CalValidExpIdx 的向量计数结果可被标量消费者读取。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "MTE2_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2298,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `maskStrideInt8Tensor`；本行实参或对象来自 `maskStrideTensor、ReinterpretCast`。",
+          "reads": [
+            "maskStrideTensor",
+            "ReinterpretCast"
+          ],
+          "writes": [
+            "maskStrideInt8Tensor"
+          ]
+        },
+        {
+          "line": 2299,
+          "kind": "call",
+          "explanation": "Cast 把 padded maskStrideTensor 的 activeMaskAlignSize 个 int8 bool 转为 half tempTensor。",
+          "reads": [
+            "maskStrideInt8Tensor",
+            "RoundMode",
+            "CAST_NONE",
+            "activeMaskAlignSize"
+          ],
+          "writes": [
+            "tempTensor"
+          ]
+        },
+        {
+          "line": 2300,
+          "kind": "sync",
+          "explanation": "调用 `PipeBarrier`，等待源码指定流水线上的先前操作完成后再继续。",
+          "reads": [
+            "PIPE_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2301,
+          "kind": "call",
+          "explanation": "按 axisKSumParams 对每个 token 行求和，得到 tokenTargetTensor[token]=该行 active expert 槽数。",
+          "reads": [
+            "tempTensor",
+            "axisKSumParams"
+          ],
+          "writes": [
+            "tokenTargetTensor"
+          ]
+        },
+        {
+          "line": 2302,
+          "kind": "sync",
+          "explanation": "调用 `PipeBarrier`，等待源码指定流水线上的先前操作完成后再继续。",
+          "reads": [
+            "PIPE_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2303,
+          "kind": "call",
+          "explanation": "Mins(...,1) 把每行槽数夹成 0/1，得到 token 级 any(active route)。",
+          "reads": [
+            "maskTempTensor",
+            "tokenTargetTensor",
+            "half",
+            "axisBS_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2304,
+          "kind": "sync",
+          "explanation": "调用 `PipeBarrier`，等待源码指定流水线上的先前操作完成后再继续。",
+          "reads": [
+            "PIPE_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2305,
+          "kind": "call",
+          "explanation": "CompareScalar(EQ 1) 把 token 级 half 0/1 转成 GatherMask 使用的 bitmask。",
+          "reads": [
+            "maskTempTensor",
+            "half",
+            "AscendC",
+            "CMPMODE",
+            "EQ",
+            "calCnt"
+          ],
+          "writes": [
+            "maskTensor"
+          ]
+        },
+        {
+          "line": 2306,
+          "kind": "call",
+          "explanation": "CreateVecIndex 生成 0..axisBS_-1 的原 token 行索引。",
+          "reads": [
+            "bsIndexTensor",
+            "axisBS_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2307,
+          "kind": "sync",
+          "explanation": "调用 `PipeBarrier`，等待源码指定流水线上的先前操作完成后再继续。",
+          "reads": [
+            "PIPE_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2308,
+          "kind": "call",
+          "explanation": "GatherMask 按 token bitmask 稳定压缩 bsIndexTensor，写 validBsIndexTensor_ 并返回 activeMaskBsCnt_。",
+          "reads": [
+            "bsIndexTensor",
+            "maskTensorInt32",
+            "mask",
+            "activeMaskBsCnt_"
+          ],
+          "writes": [
+            "validBsIndexTensor_"
+          ]
+        },
+        {
+          "line": 2309,
+          "kind": "brace",
+          "explanation": "在 `CalValidBSCnt` 的 L2309 结束 代码块 `GatherMask(validBsIndexTensor_, bsIndexTensor, maskTensorInt32, true, mask, {1, 1, 0, 0}, activ…` 作用域。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments":[
+        {"id":"valid-bs-row-layout","start":2279,"end":2295,"title":"建立 padded mask 行视图与两级归约参数","detail":"每个 token 的 axisK_ bool 行按 UB_ALIGN padding；activeMaskAlignSize 覆盖全部 padded 行，innerAlign 是 Cast 后每行 half 跨度；绑定行和、bitmask、索引与压缩输出 tensor。","kind":"input","input_state":["maskStrideTensor：axisBS_ 行、每行 axisK_ bool 并按 32B 对齐","axisBS_、axisK_：矩阵形状"],"mechanism":"计算 activeMaskAlignSize/calCnt/innerAlign，构造 axisKSumParams；多个 Get 只是在预分配 buffer 上建立不同类型视图。","output_state":["tempTensor/maskTempTensor/tokenTargetTensor：转换与行和工作区","bsIndexTensor/maskTensor：压缩输入"],"why":"按行 padding 的 mask 必须用真实 innerAlign 跨行，否则 Sum 会把相邻 token 的 padding/数据混在一起。","calls":[{"name":"Ceil","line":2284,"type":"external"},{"name":"Ceil","line":2285,"type":"external"},{"name":"Ceil","line":2286,"type":"external"},{"name":"LocalTensor","line":2287,"type":"external"},{"name":"LocalTensor","line":2288,"type":"external"},{"name":"LocalTensor","line":2289,"type":"external"},{"name":"LocalTensor","line":2290,"type":"external"},{"name":"LocalTensor","line":2291,"type":"external"},{"name":"LocalTensor","line":2292,"type":"external"}]},
+        {"id":"valid-bs-row-any-reduction","start":2296,"end":2304,"title":"把每行 active 槽求和并夹为 token 级 0/1","detail":"清行和工作区，把 bool mask 转 half；按 axisK_ 对每 token 求和，再用 Mins(...,1) 把任意正数夹成 1。","kind":"compute","input_state":["maskStrideTensor：padded bool 矩阵","axisKSumParams：axisBS_ 次行归约"],"mechanism":"Duplicate 0→MTE2_V→Cast→PIPE_V→Sum→PIPE_V→Mins(1)→PIPE_V。","output_state":["maskTempTensor[token]：该 token 是否至少有一个 active expert 的 0/1 half"],"why":"有效 BS 是行级 any(mask[token,:])，不是全部 route mask 的元素总数。","calls":[{"name":"Duplicate","line":2296,"type":"external"},{"name":"SyncFunc","line":2297,"type":"external"},{"name":"LocalTensor","line":2298,"type":"external"},{"name":"Cast","line":2299,"type":"external"},{"name":"PipeBarrier","line":2300,"type":"external"},{"name":"Sum","line":2301,"type":"external"},{"name":"PipeBarrier","line":2302,"type":"external"},{"name":"Mins","line":2303,"type":"external"},{"name":"PipeBarrier","line":2304,"type":"external"}]},
+        {"id":"valid-bs-index-compaction","start":2305,"end":2309,"title":"按 token 级 bitmask 稳定压缩原 BS 索引","detail":"CompareScalar 把 half==1 转 bitmask，CreateVecIndex 生成 0..axisBS_-1，GatherMask 按位筛入 validBsIndexTensor_ 并返回 activeMaskBsCnt_。","kind":"output","input_state":["maskTempTensor：token 级 0/1","bsIndexTensor：待生成顺序索引"],"mechanism":"CompareScalar(EQ 1)→CreateVecIndex→PIPE_V→GatherMask。","output_state":["validBsIndexTensor_：按原顺序排列的有效 token 索引","activeMaskBsCnt_：压缩长度"],"why":"后续只处理有效 token，但仍需原 BS 索引访问 x/expertIds；稳定压缩同时提供二者。","calls":[{"name":"CompareScalar","line":2305,"type":"external"},{"name":"CreateVecIndex","line":2306,"type":"external"},{"name":"PipeBarrier","line":2307,"type":"external"},{"name":"GatherMask","line":2308,"type":"external"}]}
+      ]
+    },
+    {
+      "id":"m-moedistributedispatchv2fullmesh-calvalidexpidx-8971214ed0","module_id":"mask-routing","name":"CalValidExpIdx","start":2311,"end":2334,"inactive":false,
+      "summary":"把连续 axisBS_×axisK_ expert active bool mask 转为 half bitmask，生成 0..expertIdsCnt_-1 扁平路由索引并稳定压缩到 validExpertIndexBuf_，同时更新 sendToMoeExpTokenCnt_。",
+      "inputs":["maskInputTensor","expertIdsCnt_","axisBS_","axisK_","validExpertIndexBuf_","subExpBuf_","gatherMaskTBuf_","expertIdsBuf_"],
+      "outputs":["validExpertIndexTensor","sendToMoeExpTokenCnt_","gatherMaskTensor_"],
+      "side_effects":["清理 gatherMaskTensor_ 对齐区域并生成每个扁平路由槽的 EQ-1 bitmask","GatherMask 稳定压缩有效路由槽原索引"],
+      "review":{"status":"PASS","verdict":"PASS","reviewer":"function-block-review-agent","draft_author":"full-analysis-draft-agent","revision":1,"source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","line_range":[2311,2334],"gaps":[],"overlaps":[],"unresolved":[],"required_changes":[]},
+      "line_review_certification":{"complete":true,"reviewed_line_range":[2311,2334],"reviewed_line_count":24,"coverage":"every_source_line_reviewed_once","source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","gaps":[],"overlaps":[]},
+      "line_notes":[
+        {
+          "line": 2311,
+          "kind": "signature",
+          "explanation": "构成函数 `CalValidExpIdx` 的签名片段 `template <TemplateMC2TypeFullmeshClass>`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2312,
+          "kind": "signature",
+          "explanation": "构成函数 `CalValidExpIdx` 的签名片段 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::CalValidExpIdx(LocalTensor<bool> maskInputTensor)`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2313,
+          "kind": "brace",
+          "explanation": "在 `CalValidExpIdx` 的 L2313 打开 代码块 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::CalValidEx…` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2314,
+          "kind": "declaration",
+          "explanation": "声明 `mask`；源码初始化式 `uint32_t mask = expertIdsCnt_;`读取 `expertIdsCnt_`。",
+          "reads": [
+            "expertIdsCnt_"
+          ],
+          "writes": [
+            "mask"
+          ]
+        },
+        {
+          "line": 2315,
+          "kind": "declaration",
+          "explanation": "计算连续扁平路由槽数 curMaskCnt=axisBS_*axisK_。",
+          "reads": [
+            "axisBS_",
+            "axisK_"
+          ],
+          "writes": [
+            "curMaskCnt"
+          ]
+        },
+        {
+          "line": 2316,
+          "kind": "call",
+          "explanation": "把 curMaskCnt 个 half 的向量处理长度上取整到 SIZE_ALIGN_256，得到 calCnt。",
+          "reads": [
+            "curMaskCnt",
+            "half",
+            "SIZE_ALIGN_256"
+          ],
+          "writes": [
+            "calCnt"
+          ]
+        },
+        {
+          "line": 2317,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `validExpertIndexTensor`；本行实参或对象来自 `validExpertIndexBuf_、Get`。",
+          "reads": [
+            "validExpertIndexBuf_",
+            "Get"
+          ],
+          "writes": [
+            "validExpertIndexTensor"
+          ]
+        },
+        {
+          "line": 2318,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `tempTensor`；本行实参或对象来自 `half、subExpBuf_、Get`。",
+          "reads": [
+            "half",
+            "subExpBuf_",
+            "Get"
+          ],
+          "writes": [
+            "tempTensor"
+          ]
+        },
+        {
+          "line": 2319,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `gatherMaskTensorInt8`；本行实参或对象来自 `gatherMaskTBuf_、Get`。",
+          "reads": [
+            "gatherMaskTBuf_",
+            "Get"
+          ],
+          "writes": [
+            "gatherMaskTensorInt8"
+          ]
+        },
+        {
+          "line": 2320,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `expertsIndexTensor`；本行实参或对象来自 `expertIdsBuf_、Get`。",
+          "reads": [
+            "expertIdsBuf_",
+            "Get"
+          ],
+          "writes": [
+            "expertsIndexTensor"
+          ]
+        },
+        {
+          "line": 2321,
+          "kind": "blank",
+          "explanation": "空行在 `CalValidExpIdx` 的 L2321 分隔 `LocalTensor<int32_t> expertsIndexTensor = expertIdsBuf_.Get<int32_t>();` 与 `Duplicate<half>(tempTensor, (half)0, calCnt);` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2322,
+          "kind": "call",
+          "explanation": "调用 `Duplicate` 并更新 `e、tempTensor`；本行实参或对象来自 `half、calCnt`。",
+          "reads": [
+            "half",
+            "calCnt"
+          ],
+          "writes": [
+            "tempTensor"
+          ]
+        },
+        {
+          "line": 2323,
+          "kind": "sync",
+          "explanation": "调用 `PipeBarrier`，等待源码指定流水线上的先前操作完成后再继续。",
+          "reads": [
+            "PIPE_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2324,
+          "kind": "sync",
+          "explanation": "SyncFunc<MTE2_V> 等待 expertIds 搬入后才允许向量 Cast。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "MTE2_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2325,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `maskInputInt8Tensor`；本行实参或对象来自 `maskInputTensor、ReinterpretCast`。",
+          "reads": [
+            "maskInputTensor",
+            "ReinterpretCast"
+          ],
+          "writes": [
+            "maskInputInt8Tensor"
+          ]
+        },
+        {
+          "line": 2326,
+          "kind": "call",
+          "explanation": "Cast 把连续 maskInputTensor 的 curMaskCnt 个 int8 bool 转为 half tempTensor。",
+          "reads": [
+            "maskInputInt8Tensor",
+            "RoundMode",
+            "CAST_NONE",
+            "curMaskCnt"
+          ],
+          "writes": [
+            "tempTensor"
+          ]
+        },
+        {
+          "line": 2327,
+          "kind": "sync",
+          "explanation": "调用 `PipeBarrier`，等待源码指定流水线上的先前操作完成后再继续。",
+          "reads": [
+            "PIPE_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2328,
+          "kind": "call",
+          "explanation": "按 expertIdsCnt_ 对齐容量清零 gatherMaskTensor_，避免尾部旧 bit 干扰压缩。",
+          "reads": [
+            "expertIdsCnt_",
+            "SIZE_ALIGN_256",
+            "BITS_PER_BYTE"
+          ],
+          "writes": [
+            "gatherMaskTensor_"
+          ]
+        },
+        {
+          "line": 2329,
+          "kind": "sync",
+          "explanation": "调用 `PipeBarrier`，等待源码指定流水线上的先前操作完成后再继续。",
+          "reads": [
+            "PIPE_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2330,
+          "kind": "call",
+          "explanation": "CompareScalar(EQ 1) 把每个扁平 route 的 half active 值写成 gatherMaskTensor_ 位图。",
+          "reads": [
+            "tempTensor",
+            "half",
+            "AscendC",
+            "CMPMODE",
+            "EQ",
+            "calCnt"
+          ],
+          "writes": [
+            "gatherMaskTensorInt8"
+          ]
+        },
+        {
+          "line": 2331,
+          "kind": "call",
+          "explanation": "CreateVecIndex 生成 0..curMaskCnt-1 的扁平 token×Top-K 槽索引。",
+          "reads": [
+            "expertsIndexTensor",
+            "curMaskCnt"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2332,
+          "kind": "sync",
+          "explanation": "调用 `PipeBarrier`，等待源码指定流水线上的先前操作完成后再继续。",
+          "reads": [
+            "PIPE_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2333,
+          "kind": "call",
+          "explanation": "GatherMask 按 route 位图压缩 expertsIndexTensor，输出 validExpertIndexTensor 并更新 sendToMoeExpTokenCnt_。",
+          "reads": [
+            "expertsIndexTensor",
+            "gatherMaskTensor_",
+            "mask",
+            "sendToMoeExpTokenCnt_"
+          ],
+          "writes": [
+            "validExpertIndexTensor"
+          ]
+        },
+        {
+          "line": 2334,
+          "kind": "brace",
+          "explanation": "在 `CalValidExpIdx` 的 L2334 结束 代码块 `GatherMask(validExpertIndexTensor, expertsIndexTensor, gatherMaskTensor_, true, mask, {1, 1, 0,…` 作用域。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments":[
+        {"id":"valid-route-flat-mask-setup","start":2311,"end":2324,"title":"建立连续扁平 mask 的转换与压缩视图","detail":"curMaskCnt=axisBS_*axisK_，calCnt 对齐向量比较；绑定有效索引输出、half 临时、uint8 bitmask 与扁平索引 tensor，并清临时区。","kind":"input","input_state":["maskInputTensor：连续 axisBS_*axisK_ bool mask","expertIdsCnt_：扁平路由表长度"],"mechanism":"计算 calCnt，Get 多个视图，Duplicate tempTensor=0，PIPE_V 与 MTE2_V 准备转换。","output_state":["tempTensor：待写 half mask","validExpertIndexTensor/expertsIndexTensor/gatherMaskTensorInt8：压缩链路视图"],"why":"连续视图用于逐路由槽压缩，不使用 CalValidBSCnt 的按行 padding stride。","calls":[{"name":"Ceil","line":2316,"type":"external"},{"name":"LocalTensor","line":2317,"type":"external"},{"name":"LocalTensor","line":2318,"type":"external"},{"name":"LocalTensor","line":2319,"type":"external"},{"name":"LocalTensor","line":2320,"type":"external"},{"name":"Duplicate","line":2322,"type":"external"},{"name":"PipeBarrier","line":2323,"type":"external"},{"name":"SyncFunc","line":2324,"type":"external"}]},
+        {"id":"valid-route-flat-index-compaction","start":2325,"end":2334,"title":"生成 expert active bitmask 并压缩扁平槽索引","detail":"bool→int8→half 后清 gather mask；CompareScalar(EQ 1) 生成位图，CreateVecIndex 生成原槽号，GatherMask 输出有效槽。","kind":"output","input_state":["maskInputTensor：连续 0/1 route mask","curMaskCnt：axisBS_*axisK_"],"mechanism":"ReinterpretCast→Cast→PIPE；Duplicate mask=0→CompareScalar→CreateVecIndex→PIPE→GatherMask。","output_state":["validExpertIndexTensor：按原顺序的 active route 槽索引","sendToMoeExpTokenCnt_：有效槽数","gatherMaskTensor_：对应位图"],"why":"发送阶段需要从压缩序号恢复原 token/top-k 行，故输出索引而非仅 count。","calls":[{"name":"LocalTensor","line":2325,"type":"external"},{"name":"Cast","line":2326,"type":"external"},{"name":"PipeBarrier","line":2327,"type":"external"},{"name":"Duplicate","line":2328,"type":"external"},{"name":"PipeBarrier","line":2329,"type":"external"},{"name":"CompareScalar","line":2330,"type":"external"},{"name":"CreateVecIndex","line":2331,"type":"external"},{"name":"PipeBarrier","line":2332,"type":"external"},{"name":"GatherMask","line":2333,"type":"external"}]}
+      ]
+    },
+    {
+      "id":"m-moedistributedispatchv2fullmesh-expertactivemaskinit-af6310d8cb","module_id":"mask-routing","name":"ExpertActiveMaskInit","start":2336,"end":2346,"inactive":false,
+      "summary":"按 axisBS_ 为有效 BS 索引分配 int32 UB；再取 expertIdsSize_ 与 padded axisBS_×axisK_ half mask 容量的较大值分配 validExpertIndexBuf_，并建立 validBsIndexTensor_ 与 gatherMaskTensor_ 视图。",
+      "inputs":["axisBS_","axisK_","expertIdsSize_","tpipe_","gatherMaskTBuf_"],
+      "outputs":["validBsIndexTBuf_","validExpertIndexBuf_","validBsIndexTensor_","gatherMaskTensor_"],
+      "side_effects":["通过 tpipe_->InitBuffer 分配两个本轮 expert active mask 专用 UB"],
+      "review":{"status":"PASS","verdict":"PASS","reviewer":"function-block-review-agent","draft_author":"full-analysis-draft-agent","revision":1,"source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","line_range":[2336,2346],"gaps":[],"overlaps":[],"unresolved":[],"required_changes":[]},
+      "line_review_certification":{"complete":true,"reviewed_line_range":[2336,2346],"reviewed_line_count":11,"coverage":"every_source_line_reviewed_once","source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","gaps":[],"overlaps":[]},
+      "line_notes":[
+        {
+          "line": 2336,
+          "kind": "signature",
+          "explanation": "构成函数 `ExpertActiveMaskInit` 的签名片段 `template <TemplateMC2TypeFullmeshClass>`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2337,
+          "kind": "signature",
+          "explanation": "构成函数 `ExpertActiveMaskInit` 的签名片段 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::ExpertActiveMaskInit()`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2338,
+          "kind": "brace",
+          "explanation": "在 `ExpertActiveMaskInit` 的 L2338 打开 代码块 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::ExpertActi…` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2339,
+          "kind": "call",
+          "explanation": "把 axisBS_ 个 int32 有效 BS 索引容量上取整到 UB_ALIGN，得到 axisBSAlign。",
+          "reads": [
+            "axisBS_",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "axisBSAlign"
+          ]
+        },
+        {
+          "line": 2340,
+          "kind": "call",
+          "explanation": "计算 axisBS_ 行 padded axisK_ bool 在转为 half 后所需 xActivateMaskSize。",
+          "reads": [
+            "axisBS_",
+            "axisK_",
+            "UB_ALIGN",
+            "half"
+          ],
+          "writes": [
+            "xActivateMaskSize"
+          ]
+        },
+        {
+          "line": 2341,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer` 并更新 `_`；本行实参或对象来自 `tpipe_、validBsIndexTBuf_、axisBSAlign`。",
+          "reads": [
+            "tpipe_",
+            "validBsIndexTBuf_",
+            "axisBSAlign"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2342,
+          "kind": "declaration",
+          "explanation": "validBufferSize 取 expertIdsSize_ 与 xActivateMaskSize 较大值，使同一 buffer 可复用为扁平索引或 padded half mask。",
+          "reads": [
+            "expertIdsSize_",
+            "xActivateMaskSize"
+          ],
+          "writes": [
+            "validBufferSize"
+          ]
+        },
+        {
+          "line": 2343,
+          "kind": "call",
+          "explanation": "调用 `InitBuffer` 并更新 `_`；本行实参或对象来自 `tpipe_、validExpertIndexBuf_、validBufferSize`。",
+          "reads": [
+            "tpipe_",
+            "validExpertIndexBuf_",
+            "validBufferSize"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2344,
+          "kind": "call",
+          "explanation": "调用 `Get` 并更新 `validBsIndexTensor_、_`；本行实参或对象来自 `validBsIndexTBuf_`。",
+          "reads": [
+            "validBsIndexTBuf_"
+          ],
+          "writes": [
+            "validBsIndexTensor_"
+          ]
+        },
+        {
+          "line": 2345,
+          "kind": "call",
+          "explanation": "调用 `Get` 并更新 `gatherMaskTensor_、_`；本行实参或对象来自 `gatherMaskTBuf_`。",
+          "reads": [
+            "gatherMaskTBuf_"
+          ],
+          "writes": [
+            "gatherMaskTensor_"
+          ]
+        },
+        {
+          "line": 2346,
+          "kind": "brace",
+          "explanation": "在 `ExpertActiveMaskInit` 的 L2346 结束 代码块 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::ExpertActi…` 作用域。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments":[
+        {"id":"expert-mask-buffer-sizing","start":2336,"end":2342,"title":"计算有效 BS 与 expert mask 两类 UB 容量","detail":"validBsIndexTBuf_ 容纳 axisBS_ 个 int32 索引；xActivateMaskSize 按每 token 的 axisK_ bool 行先对齐 32B、再扩展为 half。","kind":"compute","input_state":["axisBS_、axisK_：mask 矩阵形状","expertIdsSize_：扁平 expertIds 对齐容量"],"mechanism":"axisBSAlign=Ceil(axisBS_*4,32)*32；xActivateMaskSize=axisBS_*aligned(K bool)*sizeof(half)；validBufferSize 取与 expertIdsSize_ 较大者。","output_state":["axisBSAlign 与 validBufferSize：两个 UB 申请字节数"],"why":"同一 validExpertIndexBuf_ 被 half padded mask 和 int32 扁平索引复用，必须覆盖两者最大容量。","calls":[{"name":"Ceil","line":2339,"type":"external"},{"name":"Ceil","line":2340,"type":"external"},{"name":"InitBuffer","line":2341,"type":"external"}]},
+        {"id":"expert-mask-buffer-bindings","start":2343,"end":2346,"title":"分配复用 buffer 并建立持久索引/bitmask 视图","detail":"按 validBufferSize 分配 validExpertIndexBuf_，从 validBsIndexTBuf_ 取 int32 有效 BS 输出，从 gatherMaskTBuf_ 取 uint32 位图视图。","kind":"output","input_state":["validBufferSize：最大复用容量","已存在 gatherMaskTBuf_"],"mechanism":"InitBuffer 后两次 Get 建立成员 LocalTensor 视图。","output_state":["validExpertIndexBuf_：mask/索引复用区","validBsIndexTensor_：有效 BS 输出","gatherMaskTensor_：GatherMask 位图"],"why":"成员视图供 CalValidBSCnt/CalValidExpIdx/zero-compute 屏蔽链路跨函数共享。","calls":[{"name":"InitBuffer","line":2343,"type":"external"},{"name":"Get","line":2344,"type":"external"},{"name":"Get","line":2345,"type":"external"}]}
+      ]
+    },
+    {
+      "id":"m-moedistributedispatchv2fullmesh-expertactivemaskcal-abd5ee8a73","module_id":"mask-routing","name":"ExpertActiveMaskCal","start":2348,"end":2365,"inactive":false,
+      "summary":"把同一 xActiveMaskGMTensor_ 以两种物理视图搬入：按 token 行 padding 的 stride 视图用于压缩有效 BS，连续扁平视图用于压缩有效 Top-K 路由槽；分别调用 CalValidBSCnt 与 CalValidExpIdx。",
+      "inputs":["xActiveMaskGMTensor_","axisBS_","axisK_","expertIdsCnt_","dstExpBuf_"],
+      "outputs":["activeMaskBsCnt_","validBsIndexTensor_","sendToMoeExpTokenCnt_","validExpertIndexBuf_","gatherMaskTensor_"],
+      "side_effects":["对 xActiveMaskGMTensor_ 发起两种 DataCopyPad 布局搬入","CalValidBSCnt 与 CalValidExpIdx 生成 token 级和 route 级压缩索引"],
+      "review":{"status":"PASS","verdict":"PASS","reviewer":"function-block-review-agent","draft_author":"full-analysis-draft-agent","revision":1,"source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","line_range":[2348,2365],"gaps":[],"overlaps":[],"unresolved":[],"required_changes":[]},
+      "line_review_certification":{"complete":true,"reviewed_line_range":[2348,2365],"reviewed_line_count":18,"coverage":"every_source_line_reviewed_once","source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","gaps":[],"overlaps":[]},
+      "line_notes":[
+        {
+          "line": 2348,
+          "kind": "signature",
+          "explanation": "构成函数 `ExpertActiveMaskCal` 的签名片段 `template <TemplateMC2TypeFullmeshClass>`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2349,
+          "kind": "signature",
+          "explanation": "构成函数 `ExpertActiveMaskCal` 的签名片段 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::ExpertActiveMaskCal()`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2350,
+          "kind": "brace",
+          "explanation": "在 `ExpertActiveMaskCal` 的 L2350 打开 代码块 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::ExpertActi…` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2351,
+          "kind": "comment",
+          "explanation": "注释记录 `计算当前有效bs数量, stride搬入xActiveMask进行sum计算, 用于moe专家发送`，说明 `ExpertActiveMaskCal` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2352,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `maskStrideTensor`；本行实参或对象来自 `dstExpBuf_、Get`。",
+          "reads": [
+            "dstExpBuf_",
+            "Get"
+          ],
+          "writes": [
+            "maskStrideTensor"
+          ]
+        },
+        {
+          "line": 2353,
+          "kind": "declaration",
+          "explanation": "声明 `maskStrideCopyPadParams`；源码初始化式 `DataCopyPadExtParams<bool> maskStrideCopyPadParams{false, 0U, 0U, 0U};`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": [
+            "maskStrideCopyPadParams"
+          ]
+        },
+        {
+          "line": 2354,
+          "kind": "statement",
+          "explanation": "开始构造按 token 分块的 maskStrideParams；blockCount 为 axisBS_。",
+          "reads": [
+            "maskStrideParams"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2355,
+          "kind": "declaration",
+          "explanation": "完成 maskStrideParams：每块 axisK_*sizeof(bool)，使 DataCopyPad 在 UB 形成逐 token 对齐行。",
+          "reads": [
+            "axisBS_",
+            "axisK_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2356,
+          "kind": "call",
+          "explanation": "DataCopyPad 把 xActiveMaskGMTensor_ 按 axisBS_ 个 token 行搬到 maskStrideTensor。",
+          "reads": [
+            "xActiveMaskGMTensor_",
+            "maskStrideParams",
+            "maskStrideCopyPadParams"
+          ],
+          "writes": [
+            "maskStrideTensor"
+          ]
+        },
+        {
+          "line": 2357,
+          "kind": "call",
+          "explanation": "调用 CalValidBSCnt，对每行做 any(active expert) 并压缩有效 BS 索引。",
+          "reads": [
+            "maskStrideTensor"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2358,
+          "kind": "comment",
+          "explanation": "注释记录 `计算validExpIndexTensor, 连续搬入xActiveMask进行GatherMask计算, 用于moe专家的发送`，说明 `ExpertActiveMaskCal` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2359,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `maskInputTensor`；本行实参或对象来自 `dstExpBuf_、Get`。",
+          "reads": [
+            "dstExpBuf_",
+            "Get"
+          ],
+          "writes": [
+            "maskInputTensor"
+          ]
+        },
+        {
+          "line": 2360,
+          "kind": "declaration",
+          "explanation": "声明 `maskCopyPadParams`；源码初始化式 `DataCopyPadExtParams<bool> maskCopyPadParams{false, 0U, 0U, 0U};`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": [
+            "maskCopyPadParams"
+          ]
+        },
+        {
+          "line": 2361,
+          "kind": "declaration",
+          "explanation": "构造单 block maskParams，连续搬入 expertIdsCnt_ 个 bool 路由 mask。",
+          "reads": [
+            "expertIdsCnt_"
+          ],
+          "writes": [
+            "maskParams"
+          ]
+        },
+        {
+          "line": 2362,
+          "kind": "call",
+          "explanation": "DataCopyPad 把同一 xActiveMaskGMTensor_ 连续搬到 maskInputTensor。",
+          "reads": [
+            "xActiveMaskGMTensor_",
+            "maskParams",
+            "maskCopyPadParams"
+          ],
+          "writes": [
+            "maskInputTensor"
+          ]
+        },
+        {
+          "line": 2363,
+          "kind": "call",
+          "explanation": "调用 CalValidExpIdx，按扁平 token×Top-K 槽压缩 active route 索引。",
+          "reads": [
+            "maskInputTensor"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2364,
+          "kind": "sync",
+          "explanation": "SyncFunc<V_S> 等待最终 GatherMask 计数对标量路径可见。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "V_S"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2365,
+          "kind": "brace",
+          "explanation": "在 `ExpertActiveMaskCal` 的 L2365 结束 代码块 `DataCopyExtParams maskParams{1U, static_cast<uint32_t>(expertIdsCnt_ * sizeof(bool)), 0U, 0U, 0…` 作用域。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments":[
+        {"id":"expert-mask-valid-bs-view","start":2348,"end":2357,"title":"按 token 行搬 mask 并压缩有效 BS","detail":"DataCopyExtParams 用 blockCount=axisBS_、blockLen=axisK_*sizeof(bool)，DataCopyPad 在 UB 中保留逐行对齐布局，再调用 CalValidBSCnt。","kind":"compute","input_state":["xActiveMaskGMTensor_：axisBS_×axisK_ expert active mask"],"mechanism":"从 dstExpBuf_ 取 maskStrideTensor；按行 DataCopyPad；CalValidBSCnt 对每行做 any 并压缩 BS 索引。","output_state":["activeMaskBsCnt_、validBsIndexTensor_：有效 token 数与原 BS 索引"],"why":"token 级压缩需要保持行边界，不能直接把扁平 route mask 当 token mask。","calls":[{"name":"LocalTensor","line":2352,"type":"external"},{"name":"DataCopyPad","line":2356,"type":"external"},{"name":"CalValidBSCnt","line":2357,"type":"internal","target":"m-moedistributedispatchv2fullmesh-calvalidbscnt-33a4841789"}]},
+        {"id":"expert-mask-valid-route-view","start":2358,"end":2365,"title":"连续搬 mask 并压缩有效 Top-K 路由槽","detail":"重新从同一 GM 起点连续搬 expertIdsCnt_ 个 bool，CalValidExpIdx 按扁平位置生成有效路由索引，最后 S_V 等待标量计数。","kind":"output","input_state":["xActiveMaskGMTensor_：同一 mask 的连续扁平视图","expertIdsCnt_：axisBS_*axisK_"],"mechanism":"单 block DataCopyPad→CalValidExpIdx→SyncFunc<V_S>。","output_state":["validExpertIndexBuf_：有效扁平 route 索引","sendToMoeExpTokenCnt_：有效 route 数","gatherMaskTensor_：route 位图"],"why":"发送路径需 token 行索引与具体 Top-K 槽索引两套压缩结果，故同一 mask 必须以两种布局处理。","calls":[{"name":"LocalTensor","line":2359,"type":"external"},{"name":"DataCopyPad","line":2362,"type":"external"},{"name":"CalValidExpIdx","line":2363,"type":"internal","target":"m-moedistributedispatchv2fullmesh-calvalidexpidx-8971214ed0"},{"name":"SyncFunc","line":2364,"type":"external"}]}
+      ]
+    },
+    {
+      "id":"m-moedistributedispatchv2fullmesh-maskzerocomputeexpert-fe6a3a3ce9","module_id":"mask-routing","name":"MaskZeroComputeExpert","start":2367,"end":2402,"inactive":false,
+      "summary":"搬入完整 expertIds，把 expertId<moeExpertNum_ 转为逐槽 bitmask，与此前 token/expert active gatherMaskTensor_ 按位 AND；随后重新压缩扁平槽索引，从发送集合中排除 zero-compute/special expert。",
+      "inputs":["maskCnt","expertIdsCnt_","moeExpertNum_","expertIdsGMTensor_","validExpertIdsTensor_","gatherMaskTensor_","dstExpBuf_","validExpertIndexBuf_","subExpBuf_","gatherMaskTBuf_"],
+      "outputs":["gatherMaskTensor_","validExpertIndexTensor","sendToMoeExpTokenCnt_"],
+      "side_effects":["DataCopyPad 刷新 validExpertIdsTensor_","And 原地收紧既有 gatherMaskTensor_","GatherMask 重建 validExpertIndexTensor 和发送槽数"],
+      "review":{"status":"PASS","verdict":"PASS","reviewer":"function-block-review-agent","draft_author":"full-analysis-draft-agent","revision":1,"source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","line_range":[2367,2402],"gaps":[],"overlaps":[],"unresolved":[],"required_changes":[]},
+      "line_review_certification":{"complete":true,"reviewed_line_range":[2367,2402],"reviewed_line_count":36,"coverage":"every_source_line_reviewed_once","source_sha256":"e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc","gaps":[],"overlaps":[]},
+      "line_notes":[
+        {
+          "line": 2367,
+          "kind": "signature",
+          "explanation": "构成函数 `MaskZeroComputeExpert` 的签名片段 `template <TemplateMC2TypeFullmeshClass>`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2368,
+          "kind": "signature",
+          "explanation": "构成函数 `MaskZeroComputeExpert` 的签名片段 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::MaskZeroComputeExpert(uint32_t maskCnt)`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2369,
+          "kind": "brace",
+          "explanation": "在 `MaskZeroComputeExpert` 的 L2369 打开 代码块 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::MaskZeroCo…` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2370,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `expertsIndexTensor`；本行实参或对象来自 `dstExpBuf_、Get`。",
+          "reads": [
+            "dstExpBuf_",
+            "Get"
+          ],
+          "writes": [
+            "expertsIndexTensor"
+          ]
+        },
+        {
+          "line": 2371,
+          "kind": "call",
+          "explanation": "把 expertIdsCnt_ 个 mask bit 换算为 uint16 And 处理长度 maskTensorInt16Cnt。",
+          "reads": [
+            "expertIdsCnt_",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "maskTensorInt16Cnt"
+          ]
+        },
+        {
+          "line": 2372,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `maskTensorInt8`；本行实参或对象来自 `validExpertIndexBuf_、Get`。",
+          "reads": [
+            "validExpertIndexBuf_",
+            "Get"
+          ],
+          "writes": [
+            "maskTensorInt8"
+          ]
+        },
+        {
+          "line": 2373,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `maskTensorInt32`；本行实参或对象来自 `validExpertIndexBuf_、Get`。",
+          "reads": [
+            "validExpertIndexBuf_",
+            "Get"
+          ],
+          "writes": [
+            "maskTensorInt32"
+          ]
+        },
+        {
+          "line": 2374,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `expertIdsTensorCast`；本行实参或对象来自 `half、subExpBuf_、Get`。",
+          "reads": [
+            "half",
+            "subExpBuf_",
+            "Get"
+          ],
+          "writes": [
+            "expertIdsTensorCast"
+          ]
+        },
+        {
+          "line": 2375,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `validExpertIndexTensor`；本行实参或对象来自 `validExpertIndexBuf_、Get`。",
+          "reads": [
+            "validExpertIndexBuf_",
+            "Get"
+          ],
+          "writes": [
+            "validExpertIndexTensor"
+          ]
+        },
+        {
+          "line": 2376,
+          "kind": "declaration",
+          "explanation": "把 moeExpertNum_ 收窄为 int32_t/half 比较阈值 moeExpertNumInt32。",
+          "reads": [
+            "moeExpertNum_"
+          ],
+          "writes": [
+            "moeExpertNumInt32"
+          ]
+        },
+        {
+          "line": 2377,
+          "kind": "blank",
+          "explanation": "空行在 `MaskZeroComputeExpert` 的 L2377 分隔 `int32_t moeExpertNumInt32 = static_cast<int32_t>(moeExpertNum_);` 与 `DataCopyExtParams expertIdsCntParams = {1U, static_cast<uint32_t>(exper…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2378,
+          "kind": "declaration",
+          "explanation": "声明 `expertIdsCntParams`；源码初始化式 `DataCopyExtParams expertIdsCntParams = {1U, static_cast<uint32_t>(expertIdsCnt_ * sizeof(uint32_t)), 0U, 0U, 0U};`读取 `expertIdsCnt_`。",
+          "reads": [
+            "expertIdsCnt_"
+          ],
+          "writes": [
+            "expertIdsCntParams"
+          ]
+        },
+        {
+          "line": 2379,
+          "kind": "declaration",
+          "explanation": "声明 `expertIdsCntCopyPadParams`；源码初始化式 `DataCopyPadExtParams<int32_t> expertIdsCntCopyPadParams{false, 0U, 0U, 0U};`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": [
+            "expertIdsCntCopyPadParams"
+          ]
+        },
+        {
+          "line": 2380,
+          "kind": "call",
+          "explanation": "DataCopyPad 把 expertIdsCnt_ 个 int32 expert ID 从 expertIdsGMTensor_ 搬到 validExpertIdsTensor_。",
+          "reads": [
+            "expertIdsGMTensor_",
+            "expertIdsCntParams",
+            "expertIdsCntCopyPadParams"
+          ],
+          "writes": [
+            "validExpertIdsTensor_"
+          ]
+        },
+        {
+          "line": 2381,
+          "kind": "sync",
+          "explanation": "调用 `SyncFunc`，在本行指定的硬件事件或流水线之间建立先后关系。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "MTE2_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2382,
+          "kind": "sync",
+          "explanation": "调用 `PipeBarrier`，等待源码指定流水线上的先前操作完成后再继续。",
+          "reads": [
+            "PIPE_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2383,
+          "kind": "call",
+          "explanation": "SetDeqScale(1) 让 int32→half Cast 保持 expert ID 数值，不引入额外缩放。",
+          "reads": [
+            "half"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2384,
+          "kind": "sync",
+          "explanation": "调用 `PipeBarrier`，等待源码指定流水线上的先前操作完成后再继续。",
+          "reads": [
+            "PIPE_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2385,
+          "kind": "call",
+          "explanation": "Cast 将 validExpertIdsTensor_ 的 expert ID 转为 half，写入 expertIdsTensorCast。",
+          "reads": [
+            "validExpertIdsTensor_",
+            "RoundMode",
+            "CAST_NONE",
+            "expertIdsCnt_"
+          ],
+          "writes": [
+            "expertIdsTensorCast"
+          ]
+        },
+        {
+          "line": 2386,
+          "kind": "call",
+          "explanation": "清零 validExpertIndexBuf_ 的 mask 区，确保 CompareScalar 对齐尾部为 0。",
+          "reads": [
+            "expertIdsCnt_",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "maskTensorInt32"
+          ]
+        },
+        {
+          "line": 2387,
+          "kind": "sync",
+          "explanation": "调用 `PipeBarrier`，等待源码指定流水线上的先前操作完成后再继续。",
+          "reads": [
+            "PIPE_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2388,
+          "kind": "call",
+          "explanation": "把 expertIdsCnt_ 个 half 的比较长度对齐到 SIZE_ALIGN_256，得到 calcCnt。",
+          "reads": [
+            "expertIdsCnt_",
+            "half",
+            "SIZE_ALIGN_256"
+          ],
+          "writes": [
+            "calcCnt"
+          ]
+        },
+        {
+          "line": 2389,
+          "kind": "comment",
+          "explanation": "注释记录 `逐元素比较一个tensor中的元素和另一个Scalar的大小，如果比较后的结果为真，则输出结果的对应比特位为1，否则为0。筛掉零计算量专家`，说明 `MaskZeroComputeExpert` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2390,
+          "kind": "call",
+          "explanation": "CompareScalar(LT moeExpertNumInt32) 生成普通可计算 MoE expert 位图；越界 special/zero-compute ID 得 0。",
+          "reads": [
+            "expertIdsTensorCast",
+            "half",
+            "moeExpertNumInt32",
+            "AscendC",
+            "CMPMODE",
+            "LT",
+            "calcCnt"
+          ],
+          "writes": [
+            "maskTensorInt8"
+          ]
+        },
+        {
+          "line": 2391,
+          "kind": "sync",
+          "explanation": "调用 `PipeBarrier`，等待源码指定流水线上的先前操作完成后再继续。",
+          "reads": [
+            "PIPE_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2392,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `maskTensorInt16`；本行实参或对象来自 `validExpertIndexBuf_、Get`。",
+          "reads": [
+            "validExpertIndexBuf_",
+            "Get"
+          ],
+          "writes": [
+            "maskTensorInt16"
+          ]
+        },
+        {
+          "line": 2393,
+          "kind": "call",
+          "explanation": "调用 `LocalTensor` 并更新 `gatherMaskTensorint16`；本行实参或对象来自 `gatherMaskTBuf_、Get`。",
+          "reads": [
+            "gatherMaskTBuf_",
+            "Get"
+          ],
+          "writes": [
+            "gatherMaskTensorint16"
+          ]
+        },
+        {
+          "line": 2394,
+          "kind": "comment",
+          "explanation": "注释记录 `特殊专家的maskTensorInt16和之前的gatherMaskTensor_结果按位相与，AND 支持uint16， gatherMaskTensor_和gatherMaskTensorint16是同一个地址 */`，说明 `MaskZeroComputeExpert` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2395,
+          "kind": "call",
+          "explanation": "以 uint16 粒度执行 gatherMaskTensorint16 &= maskTensorInt16，把 active mask 与非-zero-compute 条件求交。",
+          "reads": [
+            "gatherMaskTensorint16",
+            "maskTensorInt16",
+            "maskTensorInt16Cnt"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2396,
+          "kind": "sync",
+          "explanation": "调用 `PipeBarrier`，等待源码指定流水线上的先前操作完成后再继续。",
+          "reads": [
+            "PIPE_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2397,
+          "kind": "comment",
+          "explanation": "注释记录 `再筛一次`，说明 `MaskZeroComputeExpert` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2398,
+          "kind": "call",
+          "explanation": "CreateVecIndex 重建 0..expertIdsCnt_-1 的扁平 route 索引。",
+          "reads": [
+            "expertsIndexTensor",
+            "expertIdsCnt_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2399,
+          "kind": "sync",
+          "explanation": "调用 `PipeBarrier`，等待源码指定流水线上的先前操作完成后再继续。",
+          "reads": [
+            "PIPE_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2400,
+          "kind": "call",
+          "explanation": "GatherMask 按交集位图重新压缩 route 索引，写 validExpertIndexTensor 并更新 sendToMoeExpTokenCnt_。",
+          "reads": [
+            "expertsIndexTensor",
+            "gatherMaskTensor_",
+            "maskCnt",
+            "sendToMoeExpTokenCnt_"
+          ],
+          "writes": [
+            "validExpertIndexTensor"
+          ]
+        },
+        {
+          "line": 2401,
+          "kind": "sync",
+          "explanation": "调用 `SyncFunc`，在本行指定的硬件事件或流水线之间建立先后关系。",
+          "reads": [
+            "AscendC",
+            "HardEvent",
+            "V_S"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2402,
+          "kind": "brace",
+          "explanation": "在 `MaskZeroComputeExpert` 的 L2402 结束 代码块 `GatherMask(validExpertIndexTensor, expertsIndexTensor, gatherMaskTensor_, true, maskCnt, {1, 1,…` 作用域。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments":[
+        {"id":"zero-expert-mask-views-and-input","start":2367,"end":2384,"title":"建立复用视图并搬入完整 expertIds","detail":"在 dst/sub/valid/gather buffer 上建立索引、uint8/uint16/uint32 mask 和 half expertId 视图；搬入 expertIds 后设置 dequant scale=1。","kind":"input","input_state":["expertIdsGMTensor_：全部扁平 expert IDs","moeExpertNum_：普通可计算 expert ID 上界"],"mechanism":"计算 maskTensorInt16Cnt；DataCopyPad expertIdsCnt_ 个 int32；MTE2_V/PIPE_V 后 SetDeqScale(1)。","output_state":["validExpertIdsTensor_：完整 expertIds UB","多种 mask 视图：共享 validExpertIndexBuf_ 地址"],"why":"CompareScalar 需要 half 输入，而 AND 只支持 uint16；多类型视图让同一位图无需额外复制即可跨算子使用。","calls":[{"name":"LocalTensor","line":2370,"type":"external"},{"name":"Ceil","line":2371,"type":"external"},{"name":"LocalTensor","line":2372,"type":"external"},{"name":"LocalTensor","line":2373,"type":"external"},{"name":"LocalTensor","line":2374,"type":"external"},{"name":"LocalTensor","line":2375,"type":"external"},{"name":"DataCopyPad","line":2380,"type":"external"},{"name":"SyncFunc","line":2381,"type":"external"},{"name":"PipeBarrier","line":2382,"type":"external"},{"name":"SetDeqScale","line":2383,"type":"external"},{"name":"PipeBarrier","line":2384,"type":"external"}]},
+        {"id":"zero-expert-less-than-mask","start":2385,"end":2396,"title":"生成 expertId<moeExpertNum_ 位图并与 active mask 求交","detail":"Cast expertIds 为 half，清 mask buffer；CompareScalar(LT moeExpertNum_) 生成普通 MoE expert 位图，再以 uint16 And 原地收紧 gatherMaskTensor_。","kind":"compute","input_state":["validExpertIdsTensor_：int32 expert IDs","gatherMaskTensor_：已有 token/expert active 位图"],"mechanism":"Cast→Duplicate 0→CompareScalar LT→把同址 mask 视为 uint16→And(existing,zero-filter)。","output_state":["gatherMaskTensor_：同时满足 active 且 expertId<moeExpertNum_ 的交集位图"],"why":"zero-compute/special expert 的 ID 位于普通 moeExpertNum_ 范围之外；按位求交保留此前所有 mask 条件。","calls":[{"name":"Cast","line":2385,"type":"external"},{"name":"Duplicate","line":2386,"type":"external"},{"name":"PipeBarrier","line":2387,"type":"external"},{"name":"Ceil","line":2388,"type":"external"},{"name":"CompareScalar","line":2390,"type":"external"},{"name":"PipeBarrier","line":2391,"type":"external"},{"name":"LocalTensor","line":2392,"type":"external"},{"name":"LocalTensor","line":2393,"type":"external"},{"name":"And","line":2395,"type":"external"},{"name":"PipeBarrier","line":2396,"type":"external"}]},
+        {"id":"zero-expert-index-recompaction","start":2397,"end":2402,"title":"按交集位图重新压缩发送槽索引","detail":"CreateVecIndex 重建 0..expertIdsCnt_-1，GatherMask 使用收紧后的 gatherMaskTensor_ 和 maskCnt 输出最终发送槽及数量。","kind":"output","input_state":["gatherMaskTensor_：active 与非-zero-compute 交集","maskCnt：上游当前候选槽边界"],"mechanism":"CreateVecIndex→PIPE_V→GatherMask→V_S。","output_state":["validExpertIndexTensor：最终有效扁平槽索引","sendToMoeExpTokenCnt_：排除 zero-compute expert 后发送数"],"why":"位图变化后旧压缩索引失效，必须重新 GatherMask 才能让发送循环只遍历最终交集。","calls":[{"name":"CreateVecIndex","line":2398,"type":"external"},{"name":"PipeBarrier","line":2399,"type":"external"},{"name":"GatherMask","line":2400,"type":"external"},{"name":"SyncFunc","line":2401,"type":"external"}]}
+      ]
+    }
+  ]
+}

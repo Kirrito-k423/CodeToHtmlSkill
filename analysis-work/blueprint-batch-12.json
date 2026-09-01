@@ -1,0 +1,3513 @@
+{
+  "source": {
+    "sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc"
+  },
+  "functions": [
+    {
+      "id": "f-moedistributedispatchv2fullmeshimpl-get-sqs-and-cqs-xb-ub-v3-5d39e16cd7",
+      "module_id": "urma-context-alternates",
+      "name": "get_sqs_and_cqs_xb_ub_v3",
+      "start": 2836,
+      "end": 2891,
+      "inactive": true,
+      "summary": "入口不可达的 GM→UB UDMA context 备选 loader：遍历除本 PE 外的 rank/port/jetty，从 udmaInfo 的 SQ/CQ/mem 三类 GM 表逐字段复制到调用方 sqs/cqs UB 数组，包括 16B remote EID。",
+      "inputs": [
+        "sqs",
+        "cqs",
+        "PORT_NUM",
+        "JETTY_NUM"
+      ],
+      "outputs": [
+        "hcclAiRMAWQ",
+        "hcclAiRMACQ"
+      ],
+      "side_effects": [
+        "读取 aclshmem UDMA QP 全局 context",
+        "直接写调用方 sqs/cqs 指向的 UB 结构数组",
+        "当前 Init/Process 调用闭包没有调用点，保持 inactive"
+      ],
+      "review": {
+        "status": "PASS",
+        "verdict": "PASS",
+        "reviewer": "function-block-review-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "source_sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc",
+        "line_range": [
+          2836,
+          2891
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "complete": true,
+        "reviewed_line_range": [
+          2836,
+          2891
+        ],
+        "reviewed_line_count": 56,
+        "coverage": "every_source_line_reviewed_once",
+        "source_sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc",
+        "gaps": [],
+        "overlaps": []
+      },
+    "line_notes": [
+      {
+        "line": 2836,
+        "kind": "signature",
+        "explanation": "构成函数 `get_sqs_and_cqs_xb_ub_v3` 的签名片段 `ACLSHMEM_DEVICE void get_sqs_and_cqs_xb_ub_v3(uint64_t sqs, uint64_t cqs)`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2837,
+        "kind": "brace",
+        "explanation": "在 `get_sqs_and_cqs_xb_ub_v3` 的 L2837 打开 代码块 `ACLSHMEM_DEVICE void get_sqs_and_cqs_xb_ub_v3(uint64_t sqs, uint64_t cqs)` 作用域。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2838,
+        "kind": "call",
+        "explanation": "调用 `aclshmem_n_pes` 并更新 `rankNum`；本行实参或对象来自 `字面量`。",
+        "reads": [],
+        "writes": [
+          "rankNum"
+        ]
+      },
+      {
+        "line": 2839,
+        "kind": "blank",
+        "explanation": "空行在 `get_sqs_and_cqs_xb_ub_v3` 的 L2839 分隔 `uint32_t rankNum = aclshmem_n_pes();` 与 `__gm__ ACLSHMEMAIVUDMAInfo* udmaInfo = aclshmemi_udma_qp_info_fetch();` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2840,
+        "kind": "call",
+        "explanation": "调用 `aclshmemi_udma_qp_info_fetch` 并更新 `udmaInfo、ACLSHMEMAIVUDMAInfo`；本行实参或对象来自 `__gm__`。",
+        "reads": [
+          "__gm__"
+        ],
+        "writes": [
+          "udmaInfo",
+          "ACLSHMEMAIVUDMAInfo"
+        ]
+      },
+      {
+        "line": 2841,
+        "kind": "blank",
+        "explanation": "空行在 `get_sqs_and_cqs_xb_ub_v3` 的 L2841 分隔 `__gm__ ACLSHMEMAIVUDMAInfo* udmaInfo = aclshmemi_udma_qp_info_fetch();` 与 `// GM -> UB临时缓冲区` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2842,
+        "kind": "comment",
+        "explanation": "注释记录 `GM -> UB临时缓冲区`，说明 `get_sqs_and_cqs_xb_ub_v3` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2843,
+        "kind": "loop",
+        "explanation": "启动或推进 `for` 循环 `for (uint32_t rankIdx = 0; rankIdx < rankNum; rankIdx++) {`；迭代式涉及 `rankIdx、rankNum`。",
+        "reads": [
+          "rankNum"
+        ],
+        "writes": [
+          "rankIdx"
+        ]
+      },
+      {
+        "line": 2844,
+        "kind": "branch",
+        "explanation": "按分支表达式 `if (rankIdx == aclshmem_my_pe()) {` 选择 `get_sqs_and_cqs_xb_ub_v3` 的后续路径；判定涉及 `rankIdx`。",
+        "reads": [
+          "rankIdx"
+        ],
+        "writes": []
+      },
+      {
+        "line": 2845,
+        "kind": "declaration",
+        "explanation": "声明 `e`；源码初始化式 `continue;`读取 `无运行时对象`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2846,
+        "kind": "brace",
+        "explanation": "在 `get_sqs_and_cqs_xb_ub_v3` 的 L2846 结束 if 分支 `if (rankIdx == aclshmem_my_pe()) {` 作用域。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2847,
+        "kind": "loop",
+        "explanation": "启动或推进 `for` 循环 `for (uint32_t portIdx = 0; portIdx < PORT_NUM; portIdx++) {`；迭代式涉及 `portIdx、PORT_NUM`。",
+        "reads": [
+          "PORT_NUM"
+        ],
+        "writes": [
+          "portIdx"
+        ]
+      },
+      {
+        "line": 2848,
+        "kind": "loop",
+        "explanation": "启动或推进 `for` 循环 `for (uint32_t jettyIdx = 0; jettyIdx < JETTY_NUM; jettyIdx++) {`；迭代式涉及 `jettyIdx、JETTY_NUM`。",
+        "reads": [
+          "JETTY_NUM"
+        ],
+        "writes": [
+          "jettyIdx"
+        ]
+      },
+      {
+        "line": 2849,
+        "kind": "declaration",
+        "explanation": "声明 `offset`；源码初始化式 `auto offset = rankIdx * PORT_NUM * JETTY_NUM + portIdx * JETTY_NUM + jettyIdx;`读取 `rankIdx、PORT_NUM、JETTY_NUM、portIdx、jettyIdx`。",
+        "reads": [
+          "rankIdx",
+          "PORT_NUM",
+          "JETTY_NUM",
+          "portIdx",
+          "jettyIdx"
+        ],
+        "writes": [
+          "offset"
+        ]
+      },
+      {
+        "line": 2850,
+        "kind": "blank",
+        "explanation": "空行在 `get_sqs_and_cqs_xb_ub_v3` 的 L2850 分隔 `auto offset = rankIdx * PORT_NUM * JETTY_NUM + portIdx * JETTY_NUM + je…` 与 `__gm__ ACLSHMEMUDMAWQCtx* wqCtx =` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2851,
+        "kind": "statement",
+        "explanation": "按表达式 `__gm__ ACLSHMEMUDMAWQCtx* wqCtx =` 更新 `wqCtx`；右侧读取 `__gm__、ACLSHMEMUDMAWQCtx`。",
+        "reads": [
+          "__gm__",
+          "ACLSHMEMUDMAWQCtx"
+        ],
+        "writes": [
+          "wqCtx"
+        ]
+      },
+      {
+        "line": 2852,
+        "kind": "statement",
+        "explanation": "求值源码语句 `(__gm__ ACLSHMEMUDMAWQCtx*)(udmaInfo->sqPtr + offset * sizeof(ACLSHMEMUDMAWQCtx));`；该语句明确涉及 `__gm__、ACLSHMEMUDMAWQCtx、udmaInfo、sqPtr、offset`。",
+        "reads": [
+          "__gm__",
+          "ACLSHMEMUDMAWQCtx",
+          "udmaInfo",
+          "sqPtr",
+          "offset"
+        ],
+        "writes": []
+      },
+      {
+        "line": 2853,
+        "kind": "statement",
+        "explanation": "按表达式 `__gm__ ACLSHMEMUDMACqCtx* cqCtx =` 更新 `cqCtx`；右侧读取 `__gm__、ACLSHMEMUDMACqCtx`。",
+        "reads": [
+          "__gm__",
+          "ACLSHMEMUDMACqCtx"
+        ],
+        "writes": [
+          "cqCtx"
+        ]
+      },
+      {
+        "line": 2854,
+        "kind": "statement",
+        "explanation": "求值源码语句 `(__gm__ ACLSHMEMUDMACqCtx*)(udmaInfo->scqPtr + offset * sizeof(ACLSHMEMUDMACqCtx));`；该语句明确涉及 `__gm__、ACLSHMEMUDMACqCtx、udmaInfo、scqPtr、offset`。",
+        "reads": [
+          "__gm__",
+          "ACLSHMEMUDMACqCtx",
+          "udmaInfo",
+          "scqPtr",
+          "offset"
+        ],
+        "writes": []
+      },
+      {
+        "line": 2855,
+        "kind": "statement",
+        "explanation": "按表达式 `__gm__ ACLSHMEMUBmemInfo* memCtx =` 更新 `memCtx`；右侧读取 `__gm__、ACLSHMEMUBmemInfo`。",
+        "reads": [
+          "__gm__",
+          "ACLSHMEMUBmemInfo"
+        ],
+        "writes": [
+          "memCtx"
+        ]
+      },
+      {
+        "line": 2856,
+        "kind": "statement",
+        "explanation": "求值源码语句 `(__gm__ ACLSHMEMUBmemInfo*)(udmaInfo->memPtr + offset * sizeof(ACLSHMEMUBmemInfo));`；该语句明确涉及 `__gm__、ACLSHMEMUBmemInfo、udmaInfo、memPtr、offset`。",
+        "reads": [
+          "__gm__",
+          "ACLSHMEMUBmemInfo",
+          "udmaInfo",
+          "memPtr",
+          "offset"
+        ],
+        "writes": []
+      },
+      {
+        "line": 2857,
+        "kind": "blank",
+        "explanation": "空行在 `get_sqs_and_cqs_xb_ub_v3` 的 L2857 分隔 `(__gm__ ACLSHMEMUBmemInfo*)(udmaInfo->memPtr + offset * sizeof(ACLSHMEM…` 与 `__ubuf__ HcclAiRMAWQ* hcclAiRMAWQ = (__ubuf__ HcclAiRMAWQ*)(sqs + offse…` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2858,
+        "kind": "declaration",
+        "explanation": "声明 `HcclAiRMAWQ`；源码初始化式 `__ubuf__ HcclAiRMAWQ* hcclAiRMAWQ = (__ubuf__ HcclAiRMAWQ*)(sqs + offset * sizeof(HcclAiRMAWQ));`读取 `__ubuf__、sqs、offset`。",
+        "reads": [
+          "__ubuf__",
+          "sqs",
+          "offset"
+        ],
+        "writes": [
+          "hcclAiRMAWQ",
+          "HcclAiRMAWQ"
+        ]
+      },
+      {
+        "line": 2859,
+        "kind": "declaration",
+        "explanation": "声明 `HcclAiRMACQ`；源码初始化式 `__ubuf__ HcclAiRMACQ* hcclAiRMACQ = (__ubuf__ HcclAiRMACQ*)(cqs + offset * sizeof(HcclAiRMACQ));`读取 `__ubuf__、cqs、offset`。",
+        "reads": [
+          "__ubuf__",
+          "cqs",
+          "offset"
+        ],
+        "writes": [
+          "hcclAiRMACQ",
+          "HcclAiRMACQ"
+        ]
+      },
+      {
+        "line": 2860,
+        "kind": "blank",
+        "explanation": "空行在 `get_sqs_and_cqs_xb_ub_v3` 的 L2860 分隔 `__ubuf__ HcclAiRMACQ* hcclAiRMACQ = (__ubuf__ HcclAiRMACQ*)(cqs + offse…` 与 `// 直接用->赋值` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2861,
+        "kind": "comment",
+        "explanation": "注释记录 `直接用->赋值`，说明 `get_sqs_and_cqs_xb_ub_v3` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2862,
+        "kind": "declaration",
+        "explanation": "声明 `Q`；源码初始化式 `hcclAiRMAWQ->jettyId = wqCtx->wqn;`读取 `hcclAiRMAWQ、wqCtx、wqn`。",
+        "reads": [
+          "hcclAiRMAWQ",
+          "wqCtx",
+          "wqn"
+        ],
+        "writes": [
+          "jettyId"
+        ]
+      },
+      {
+        "line": 2863,
+        "kind": "declaration",
+        "explanation": "声明 `Q`；源码初始化式 `hcclAiRMAWQ->sqVA = wqCtx->bufAddr;`读取 `hcclAiRMAWQ、wqCtx、bufAddr`。",
+        "reads": [
+          "hcclAiRMAWQ",
+          "wqCtx",
+          "bufAddr"
+        ],
+        "writes": [
+          "sqVA"
+        ]
+      },
+      {
+        "line": 2864,
+        "kind": "declaration",
+        "explanation": "声明 `Q`；源码初始化式 `hcclAiRMAWQ->wqeSize = (uint32_t)(1 << wqCtx->baseBkShift);`读取 `hcclAiRMAWQ、wqCtx、baseBkShift`。",
+        "reads": [
+          "hcclAiRMAWQ",
+          "wqCtx",
+          "baseBkShift"
+        ],
+        "writes": [
+          "wqeSize"
+        ]
+      },
+      {
+        "line": 2865,
+        "kind": "declaration",
+        "explanation": "声明 `Q`；源码初始化式 `hcclAiRMAWQ->sqDepth = wqCtx->depth;`读取 `hcclAiRMAWQ、wqCtx、depth`。",
+        "reads": [
+          "hcclAiRMAWQ",
+          "wqCtx",
+          "depth"
+        ],
+        "writes": [
+          "sqDepth"
+        ]
+      },
+      {
+        "line": 2866,
+        "kind": "declaration",
+        "explanation": "声明 `Q`；源码初始化式 `hcclAiRMAWQ->headAddr = wqCtx->headAddr;`读取 `hcclAiRMAWQ、wqCtx`。",
+        "reads": [
+          "hcclAiRMAWQ",
+          "wqCtx"
+        ],
+        "writes": [
+          "headAddr"
+        ]
+      },
+      {
+        "line": 2867,
+        "kind": "declaration",
+        "explanation": "声明 `Q`；源码初始化式 `hcclAiRMAWQ->tailAddr = wqCtx->tailAddr;`读取 `hcclAiRMAWQ、wqCtx`。",
+        "reads": [
+          "hcclAiRMAWQ",
+          "wqCtx"
+        ],
+        "writes": [
+          "tailAddr"
+        ]
+      },
+      {
+        "line": 2868,
+        "kind": "declaration",
+        "explanation": "声明 `Q`；源码初始化式 `hcclAiRMAWQ->dbAddr = wqCtx->dbAddr;`读取 `hcclAiRMAWQ、wqCtx`。",
+        "reads": [
+          "hcclAiRMAWQ",
+          "wqCtx"
+        ],
+        "writes": [
+          "dbAddr"
+        ]
+      },
+      {
+        "line": 2869,
+        "kind": "declaration",
+        "explanation": "声明 `Q`；源码初始化式 `hcclAiRMAWQ->tp_id = memCtx->tpn;`读取 `hcclAiRMAWQ、memCtx、tpn`。",
+        "reads": [
+          "hcclAiRMAWQ",
+          "memCtx",
+          "tpn"
+        ],
+        "writes": [
+          "tp_id"
+        ]
+      },
+      {
+        "line": 2870,
+        "kind": "blank",
+        "explanation": "空行在 `get_sqs_and_cqs_xb_ub_v3` 的 L2870 分隔 `hcclAiRMAWQ->tp_id = memCtx->tpn;` 与 `auto eids = (__ubuf__ uint8_t*)(memCtx->eidAddr);` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2871,
+        "kind": "declaration",
+        "explanation": "声明 `eids`；源码初始化式 `auto eids = (__ubuf__ uint8_t*)(memCtx->eidAddr);`读取 `__ubuf__、memCtx、eidAddr`。",
+        "reads": [
+          "__ubuf__",
+          "memCtx",
+          "eidAddr"
+        ],
+        "writes": [
+          "eids"
+        ]
+      },
+      {
+        "line": 2872,
+        "kind": "loop",
+        "explanation": "启动或推进 `for` 循环 `for (int i = 0; i < 16; i++) {`；迭代式涉及 `i`。",
+        "reads": [],
+        "writes": [
+          "i"
+        ]
+      },
+      {
+        "line": 2873,
+        "kind": "declaration",
+        "explanation": "声明 `Q`；源码初始化式 `hcclAiRMAWQ->rmtEid[i] = eids[i];`读取 `hcclAiRMAWQ、i、eids`。",
+        "reads": [
+          "hcclAiRMAWQ",
+          "i",
+          "eids"
+        ],
+        "writes": [
+          "rmtEid"
+        ]
+      },
+      {
+        "line": 2874,
+        "kind": "brace",
+        "explanation": "在 `get_sqs_and_cqs_xb_ub_v3` 的 L2874 结束 for 循环 `for (int i = 0; i < 16; i++) {` 作用域。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2875,
+        "kind": "blank",
+        "explanation": "空行在 `get_sqs_and_cqs_xb_ub_v3` 的 L2875 分隔 `}` 与 `hcclAiRMAWQ->rmtObjId = memCtx->tid;` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2876,
+        "kind": "declaration",
+        "explanation": "声明 `Q`；源码初始化式 `hcclAiRMAWQ->rmtObjId = memCtx->tid;`读取 `hcclAiRMAWQ、memCtx、tid`。",
+        "reads": [
+          "hcclAiRMAWQ",
+          "memCtx",
+          "tid"
+        ],
+        "writes": [
+          "rmtObjId"
+        ]
+      },
+      {
+        "line": 2877,
+        "kind": "declaration",
+        "explanation": "声明 `Q`；源码初始化式 `hcclAiRMAWQ->rmtTokenValue = memCtx->rmtTokenValue;`读取 `hcclAiRMAWQ、memCtx`。",
+        "reads": [
+          "hcclAiRMAWQ",
+          "memCtx"
+        ],
+        "writes": [
+          "rmtTokenValue"
+        ]
+      },
+      {
+        "line": 2878,
+        "kind": "declaration",
+        "explanation": "声明 `Q`；源码初始化式 `hcclAiRMAWQ->localTokenId = 0;`读取 `hcclAiRMAWQ`。",
+        "reads": [
+          "hcclAiRMAWQ"
+        ],
+        "writes": [
+          "localTokenId"
+        ]
+      },
+      {
+        "line": 2879,
+        "kind": "blank",
+        "explanation": "空行在 `get_sqs_and_cqs_xb_ub_v3` 的 L2879 分隔 `hcclAiRMAWQ->localTokenId = 0;` 与 `hcclAiRMACQ->jfcId = cqCtx->cqn;` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2880,
+        "kind": "declaration",
+        "explanation": "声明 `Q`；源码初始化式 `hcclAiRMACQ->jfcId = cqCtx->cqn;`读取 `hcclAiRMACQ、cqCtx、cqn`。",
+        "reads": [
+          "hcclAiRMACQ",
+          "cqCtx",
+          "cqn"
+        ],
+        "writes": [
+          "jfcId"
+        ]
+      },
+      {
+        "line": 2881,
+        "kind": "declaration",
+        "explanation": "声明 `Q`；源码初始化式 `hcclAiRMACQ->cqVA = cqCtx->bufAddr;`读取 `hcclAiRMACQ、cqCtx、bufAddr`。",
+        "reads": [
+          "hcclAiRMACQ",
+          "cqCtx",
+          "bufAddr"
+        ],
+        "writes": [
+          "cqVA"
+        ]
+      },
+      {
+        "line": 2882,
+        "kind": "declaration",
+        "explanation": "声明 `Q`；源码初始化式 `hcclAiRMACQ->cqeSize = (uint32_t)(1 << cqCtx->baseBkShift);`读取 `hcclAiRMACQ、cqCtx、baseBkShift`。",
+        "reads": [
+          "hcclAiRMACQ",
+          "cqCtx",
+          "baseBkShift"
+        ],
+        "writes": [
+          "cqeSize"
+        ]
+      },
+      {
+        "line": 2883,
+        "kind": "declaration",
+        "explanation": "声明 `Q`；源码初始化式 `hcclAiRMACQ->cqDepth = cqCtx->depth;`读取 `hcclAiRMACQ、cqCtx、depth`。",
+        "reads": [
+          "hcclAiRMACQ",
+          "cqCtx",
+          "depth"
+        ],
+        "writes": [
+          "cqDepth"
+        ]
+      },
+      {
+        "line": 2884,
+        "kind": "declaration",
+        "explanation": "声明 `Q`；源码初始化式 `hcclAiRMACQ->headAddr = cqCtx->headAddr;`读取 `hcclAiRMACQ、cqCtx`。",
+        "reads": [
+          "hcclAiRMACQ",
+          "cqCtx"
+        ],
+        "writes": [
+          "headAddr"
+        ]
+      },
+      {
+        "line": 2885,
+        "kind": "declaration",
+        "explanation": "声明 `Q`；源码初始化式 `hcclAiRMACQ->tailAddr = cqCtx->tailAddr;`读取 `hcclAiRMACQ、cqCtx`。",
+        "reads": [
+          "hcclAiRMACQ",
+          "cqCtx"
+        ],
+        "writes": [
+          "tailAddr"
+        ]
+      },
+      {
+        "line": 2886,
+        "kind": "declaration",
+        "explanation": "声明 `Q`；源码初始化式 `hcclAiRMACQ->dbAddr = cqCtx->dbAddr;`读取 `hcclAiRMACQ、cqCtx`。",
+        "reads": [
+          "hcclAiRMACQ",
+          "cqCtx"
+        ],
+        "writes": [
+          "dbAddr"
+        ]
+      },
+      {
+        "line": 2887,
+        "kind": "sync",
+        "explanation": "调用 `PipeBarrier`，等待源码指定流水线上的先前操作完成后再继续。",
+        "reads": [
+          "PIPE_V"
+        ],
+        "writes": []
+      },
+      {
+        "line": 2888,
+        "kind": "brace",
+        "explanation": "在 `get_sqs_and_cqs_xb_ub_v3` 的 L2888 结束 for 循环 `for (uint32_t jettyIdx = 0; jettyIdx < JETTY_NUM; jettyIdx++) {` 作用域。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2889,
+        "kind": "brace",
+        "explanation": "在 `get_sqs_and_cqs_xb_ub_v3` 的 L2889 结束 for 循环 `for (uint32_t portIdx = 0; portIdx < PORT_NUM; portIdx++) {` 作用域。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2890,
+        "kind": "brace",
+        "explanation": "在 `get_sqs_and_cqs_xb_ub_v3` 的 L2890 结束 for 循环 `for (uint32_t rankIdx = 0; rankIdx < rankNum; rankIdx++) {` 作用域。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2891,
+        "kind": "brace",
+        "explanation": "在 `get_sqs_and_cqs_xb_ub_v3` 的 L2891 结束 代码块 `ACLSHMEM_DEVICE void get_sqs_and_cqs_xb_ub_v3(uint64_t sqs, uint64_t cqs)` 作用域。",
+        "reads": [],
+        "writes": []
+      }
+    ],
+      "segments": [
+        {
+          "id": "ub-v3-rank-port-jetty-scan",
+          "start": 2836,
+          "end": 2850,
+          "title": "遍历非本 Rank 的全部 port/jetty context 槽",
+          "detail": "取得 rankNum 和 UDMA QP info，三层循环跳过 aclshmem_my_pe()，用 rank-major offset 展平 rank×PORT_NUM×JETTY_NUM。",
+          "kind": "loop",
+          "input_state": [
+            "sqs/cqs：调用方 UB 数组基址",
+            "UDMA context：aclshmem runtime 全局表"
+          ],
+          "mechanism": "rankIdx→portIdx→jettyIdx；offset=rankIdx*PORT_NUM*JETTY_NUM+portIdx*JETTY_NUM+jettyIdx。",
+          "output_state": [
+            "offset：当前远端 jetty 的统一 SQ/CQ/mem 索引"
+          ],
+          "why": "三个 context 表与两个输出数组必须使用同一展平索引，且本 Rank 没有远端传输目标。",
+          "calls": [
+            {
+              "name": "aclshmem_n_pes",
+              "line": 2838,
+              "type": "external"
+            },
+            {
+              "name": "aclshmemi_udma_qp_info_fetch",
+              "line": 2840,
+              "type": "external"
+            },
+            {
+              "name": "aclshmem_my_pe",
+              "line": 2844,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "ub-v3-context-address-binding",
+          "start": 2851,
+          "end": 2861,
+          "title": "按 offset 绑定三类 GM context 与两类 UB 输出",
+          "detail": "从 udmaInfo->sqPtr/scqPtr/memPtr 定位 WQ/CQ/memory context，并在 sqs/cqs 中定位 HcclAiRMAWQ/HcclAiRMACQ 目标。",
+          "kind": "input",
+          "input_state": [
+            "udmaInfo 三张 GM 表、offset",
+            "sqs/cqs UB 基址"
+          ],
+          "mechanism": "每张表用 offset*sizeof(struct) 做字节寻址并强转对应指针。",
+          "output_state": [
+            "wqCtx/cqCtx/memCtx：当前 GM 源",
+            "hcclAiRMAWQ/hcclAiRMACQ：当前 UB 目标"
+          ],
+          "why": "后续逐字段赋值只操作当前槽，避免把带指针的 runtime context 整体盲拷贝。",
+          "calls": []
+        },
+        {
+          "id": "ub-v3-copy-wq-mem-cq-fields",
+          "start": 2862,
+          "end": 2891,
+          "title": "逐字段物化 SQ、remote memory 与 CQ context",
+          "detail": "复制 WQ 标识、队列地址/深度/head/tail/db、TP ID、16B EID、remote object/token，再复制 CQ 对应字段。",
+          "kind": "output",
+          "input_state": [
+            "wqCtx/cqCtx/memCtx：当前远端 jetty GM context"
+          ],
+          "mechanism": "标量字段直接赋值；EID 用 16 次字节循环；每 jetty 末尾 PIPE_V barrier。",
+          "output_state": [
+            "hcclAiRMAWQ：可供 WQE writer 使用的完整 UB SQ/remote 信息",
+            "hcclAiRMACQ：可供 CQ/doorbell 使用的 UB CQ 信息"
+          ],
+          "why": "这是“GM context 先物化到 UB”的备选策略；当前实际 RingDoorbell 使用成员版 get_sqs_and_cqs_xb，故本实现不可达。",
+          "calls": [
+            {
+              "name": "PipeBarrier",
+              "line": 2887,
+              "type": "external"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "f-moedistributedispatchv2fullmeshimpl-get-wqe-content-3e6b7c5e4a",
+      "module_id": "wqe-active",
+      "name": "get_wqe_content",
+      "start": 2935,
+      "end": 2942,
+      "inactive": false,
+      "summary": "按 idx 从 SoA wqe_desc_array_t 读取一条 WQE 描述的 localAddr、remoteAddr、dstRank、messageLen 和 opcode，写入五个引用输出供 simt_nw_mj_vf 编码。",
+      "inputs": [
+        "wqe_desc_arr",
+        "idx"
+      ],
+      "outputs": [
+        "localAddr",
+        "remoteAddr",
+        "messageLen",
+        "dstRank",
+        "op"
+      ],
+      "side_effects": [
+        "只读取描述数组并改写引用输出，不访问 SQ、不写 WQE"
+      ],
+      "review": {
+        "status": "PASS",
+        "verdict": "PASS",
+        "reviewer": "function-block-review-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "source_sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc",
+        "line_range": [
+          2935,
+          2942
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "complete": true,
+        "reviewed_line_range": [
+          2935,
+          2942
+        ],
+        "reviewed_line_count": 8,
+        "coverage": "every_source_line_reviewed_once",
+        "source_sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc",
+        "gaps": [],
+        "overlaps": []
+      },
+    "line_notes": [
+      {
+        "line": 2935,
+        "kind": "signature",
+        "explanation": "构成函数 `get_wqe_content` 的签名片段 `__simt_callee__ inline void get_wqe_content(WQE_IN_POS wqe_desc_array_t *wqe_desc_arr, uint32_t idx,`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2936,
+        "kind": "signature",
+        "explanation": "构成函数 `get_wqe_content` 的签名片段 `uint64_t &localAddr, uint64_t &remoteAddr, uint32_t &messageLen, uint32_t &dstRank, URMAOPCODE &op) {`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2937,
+        "kind": "declaration",
+        "explanation": "声明 `r`；源码初始化式 `localAddr = wqe_desc_arr->localAddr[idx];`读取 `wqe_desc_arr、idx`。",
+        "reads": [
+          "wqe_desc_arr",
+          "idx"
+        ],
+        "writes": [
+          "localAddr"
+        ]
+      },
+      {
+        "line": 2938,
+        "kind": "declaration",
+        "explanation": "声明 `r`；源码初始化式 `remoteAddr = wqe_desc_arr->remoteAddr[idx];`读取 `wqe_desc_arr、idx`。",
+        "reads": [
+          "wqe_desc_arr",
+          "idx"
+        ],
+        "writes": [
+          "remoteAddr"
+        ]
+      },
+      {
+        "line": 2939,
+        "kind": "declaration",
+        "explanation": "声明 `k`；源码初始化式 `dstRank = wqe_desc_arr->dstRank[idx];`读取 `wqe_desc_arr、idx`。",
+        "reads": [
+          "wqe_desc_arr",
+          "idx"
+        ],
+        "writes": [
+          "dstRank"
+        ]
+      },
+      {
+        "line": 2940,
+        "kind": "declaration",
+        "explanation": "声明 `n`；源码初始化式 `messageLen = wqe_desc_arr->messageLen[idx];`读取 `wqe_desc_arr、idx`。",
+        "reads": [
+          "wqe_desc_arr",
+          "idx"
+        ],
+        "writes": [
+          "messageLen"
+        ]
+      },
+      {
+        "line": 2941,
+        "kind": "declaration",
+        "explanation": "声明 `p`；源码初始化式 `op = wqe_desc_arr->opcode[idx];`读取 `wqe_desc_arr、opcode、idx`。",
+        "reads": [
+          "wqe_desc_arr",
+          "opcode",
+          "idx"
+        ],
+        "writes": [
+          "op"
+        ]
+      },
+      {
+        "line": 2942,
+        "kind": "brace",
+        "explanation": "在 `get_wqe_content` 的 L2942 结束 代码块 `uint64_t &localAddr, uint64_t &remoteAddr, uint32_t &messageLen, uint32_t &dstRank, URMAOPCODE …` 作用域。",
+        "reads": [],
+        "writes": []
+      }
+    ],
+      "segments": [
+        {
+          "id": "wqe-desc-soa-read",
+          "start": 2935,
+          "end": 2942,
+          "title": "按同一 idx 解包 SoA WQE 描述",
+          "detail": "函数签名接收描述数组与五个引用输出，随后分别索引 localAddr/remoteAddr/dstRank/messageLen/opcode 数组。",
+          "kind": "output",
+          "input_state": [
+            "wqe_desc_arr：五列 SoA 描述",
+            "idx：当前 WQE 序号"
+          ],
+          "mechanism": "五次 wqe_desc_arr->field[idx] 标量读取。",
+          "output_state": [
+            "localAddr、remoteAddr、dstRank、messageLen、op：同一描述行"
+          ],
+          "why": "统一在一个 helper 内用同一 idx 读取所有列，避免 SIMT writer 混用不同任务字段。",
+          "calls": []
+        }
+      ]
+    },
+    {
+      "id": "f-moedistributedispatchv2fullmeshimpl-simt-write-wqe-v5-f7eac0343f",
+      "module_id": "wqe-alternates",
+      "name": "simt_write_wqe_v5",
+      "start": 2969,
+      "end": 3030,
+      "inactive": true,
+      "summary": "入口不可达的 64B WQE v5 备选编码器：按 SQ runtime wqeSize/depth 定位槽，以 8×uint64 拼接控制头、TP/object/EID、remoteAddr 和 SGE，再用两次 ulonglong4 写回；但 opcode 参数未使用且 EID 高 32 位缺少显式 uint64 扩展。",
+      "inputs": [
+        "sq",
+        "myHead",
+        "localAddr",
+        "remoteAddr",
+        "messageLen",
+        "opcode"
+      ],
+      "outputs": [
+        "wqeWords"
+      ],
+      "side_effects": [
+        "向 sq->sqVA 对应 GM WQE 槽写 64B",
+        "当前无入口调用点，且硬编码 OP_WRITE 忽略 opcode"
+      ],
+      "review": {
+        "status": "PASS",
+        "verdict": "PASS",
+        "reviewer": "function-block-review-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "source_sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc",
+        "line_range": [
+          2969,
+          3030
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "complete": true,
+        "reviewed_line_range": [
+          2969,
+          3030
+        ],
+        "reviewed_line_count": 62,
+        "coverage": "every_source_line_reviewed_once",
+        "source_sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc",
+        "gaps": [],
+        "overlaps": []
+      },
+    "line_notes": [
+      {
+        "line": 2969,
+        "kind": "signature",
+        "explanation": "构成函数 `simt_write_wqe_v5` 的签名片段 `__simt_callee__ inline void simt_write_wqe_v5(JETTY_POS HcclAiRMAWQ *sq, uint32_t myHead, uint64_t localAddr, uint64_t remoteAddr, uint32_t messageLen, URMAOPCODE opcode)`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2970,
+        "kind": "brace",
+        "explanation": "在 `simt_write_wqe_v5` 的 L2970 打开 代码块 `__simt_callee__ inline void simt_write_wqe_v5(JETTY_POS HcclAiRMAWQ *sq, uint32_t myHead, uint6…` 作用域。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2971,
+        "kind": "declaration",
+        "explanation": "声明 `shift`；源码初始化式 `auto shift = 14;`读取 `无运行时对象`。",
+        "reads": [],
+        "writes": [
+          "shift"
+        ]
+      },
+      {
+        "line": 2972,
+        "kind": "declaration",
+        "explanation": "声明 `wqeSize`；源码初始化式 `auto wqeSize = sq->wqeSize;`读取 `sq`。",
+        "reads": [
+          "sq"
+        ],
+        "writes": [
+          "wqeSize"
+        ]
+      },
+      {
+        "line": 2973,
+        "kind": "declaration",
+        "explanation": "声明 `qpDepth`；源码初始化式 `auto qpDepth = sq->sqDepth;`读取 `sq、sqDepth`。",
+        "reads": [
+          "sq",
+          "sqDepth"
+        ],
+        "writes": [
+          "qpDepth"
+        ]
+      },
+      {
+        "line": 2974,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v5` 的 L2974 分隔 `auto qpDepth = sq->sqDepth;` 与 `auto sqBaseAddr = sq->sqVA;` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2975,
+        "kind": "declaration",
+        "explanation": "声明 `sqBaseAddr`；源码初始化式 `auto sqBaseAddr = sq->sqVA;`读取 `sq、sqVA`。",
+        "reads": [
+          "sq",
+          "sqVA"
+        ],
+        "writes": [
+          "sqBaseAddr"
+        ]
+      },
+      {
+        "line": 2976,
+        "kind": "declaration",
+        "explanation": "声明 `tpId`；源码初始化式 `auto tpId = (sq->tp_id) & ((1U << 24U) - 1U);`读取 `sq、tp_id`。",
+        "reads": [
+          "sq",
+          "tp_id"
+        ],
+        "writes": [
+          "tpId"
+        ]
+      },
+      {
+        "line": 2977,
+        "kind": "declaration",
+        "explanation": "声明 `rmtObjId`；源码初始化式 `auto rmtObjId = (sq->rmtObjId) & 0xFFFFF;`读取 `sq`。",
+        "reads": [
+          "sq"
+        ],
+        "writes": [
+          "rmtObjId"
+        ]
+      },
+      {
+        "line": 2978,
+        "kind": "declaration",
+        "explanation": "声明 `tokenId`；源码初始化式 `auto tokenId = (sq->localTokenId) & 0xFFFFF;`读取 `sq、localTokenId`。",
+        "reads": [
+          "sq",
+          "localTokenId"
+        ],
+        "writes": [
+          "tokenId"
+        ]
+      },
+      {
+        "line": 2979,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v5` 的 L2979 分隔 `auto tokenId = (sq->localTokenId) & 0xFFFFF;` 与 `__gm__ ulonglong4* wqeWords = (__gm__ ulonglong4*)(sqBaseAddr + wqeSize…` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2980,
+        "kind": "declaration",
+        "explanation": "声明 `ulonglong4`；源码初始化式 `__gm__ ulonglong4* wqeWords = (__gm__ ulonglong4*)(sqBaseAddr + wqeSize * (myHead % qpDepth));`读取 `__gm__、sqBaseAddr、wqeSize、myHead、qpDepth`。",
+        "reads": [
+          "__gm__",
+          "sqBaseAddr",
+          "wqeSize",
+          "myHead",
+          "qpDepth"
+        ],
+        "writes": [
+          "wqeWords",
+          "ulonglong4"
+        ]
+      },
+      {
+        "line": 2981,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v5` 的 L2981 分隔 `__gm__ ulonglong4* wqeWords = (__gm__ ulonglong4*)(sqBaseAddr + wqeSize…` 与 `uint64_t dw[8];` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2982,
+        "kind": "declaration",
+        "explanation": "声明 `dw`；源码初始化式 `uint64_t dw[8];`读取 `无运行时对象`。",
+        "reads": [],
+        "writes": [
+          "dw"
+        ]
+      },
+      {
+        "line": 2983,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 0: sqeBbIdx[15:0] | flag[23:16] | rsv0[26:24] | nf[27] | tokenEn[28] | rmtJettyType[30:29] | owner[31]`，说明 `simt_write_wqe_v5` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2984,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 1: targetHint[7:0] | opcode[15:8] | rsv1[21:16] | inlineMsgLen[31:22]`，说明 `simt_write_wqe_v5` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2985,
+        "kind": "declaration",
+        "explanation": "声明 `owner`；源码初始化式 `auto owner = (myHead & qpDepth) == 0 ? 1 : 0;`读取 `myHead、qpDepth`。",
+        "reads": [
+          "myHead",
+          "qpDepth"
+        ],
+        "writes": [
+          "owner"
+        ]
+      },
+      {
+        "line": 2986,
+        "kind": "statement",
+        "explanation": "按表达式 `dw[0] = (0u << 0)` 更新 `dw`；右侧读取 `字面量`。",
+        "reads": [],
+        "writes": [
+          "dw"
+        ]
+      },
+      {
+        "line": 2987,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (0b00100000u << 16)`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2988,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (0u << 24)`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2989,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (0u << 27)`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2990,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (1u << 28)`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2991,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (1u << 29)`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2992,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| ((uint32_t)owner << 31)`；该语句明确涉及 `owner`。",
+        "reads": [
+          "owner"
+        ],
+        "writes": []
+      },
+      {
+        "line": 2993,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (static_cast<uint32_t>(URMAOPCODE::OP_WRITE) << 40)`；该语句明确涉及 `URMAOPCODE、OP_WRITE`。",
+        "reads": [
+          "URMAOPCODE",
+          "OP_WRITE"
+        ],
+        "writes": []
+      },
+      {
+        "line": 2994,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (0u << 48)`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2995,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (0u << 54);`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2996,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v5` 的 L2996 分隔 `| (0u << 54); // inlineMsgLen` 与 `// Word 2: tpId[23:0] | sgeNum[31:24]` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2997,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 2: tpId[23:0] | sgeNum[31:24]`，说明 `simt_write_wqe_v5` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2998,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 3: rmtJettyOrSegId[19:0] | rsv2[31:20]`，说明 `simt_write_wqe_v5` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 2999,
+        "kind": "statement",
+        "explanation": "按表达式 `dw[1] = (tpId << 0)` 更新 `dw`；右侧读取 `tpId`。",
+        "reads": [
+          "tpId"
+        ],
+        "writes": [
+          "dw"
+        ]
+      },
+      {
+        "line": 3000,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (1u << 24)`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3001,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (static_cast<uint32_t>(rmtObjId) << 32)`；该语句明确涉及 `rmtObjId`。",
+        "reads": [
+          "rmtObjId"
+        ],
+        "writes": []
+      },
+      {
+        "line": 3002,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (0u << 52);`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3003,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v5` 的 L3003 分隔 `| (0u << 52); // rsv2` 与 `// // Word 4-5: rmtEidL (uint64_t)` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3004,
+        "kind": "comment",
+        "explanation": "注释记录 `// Word 4-5: rmtEidL (uint64_t)`，说明 `simt_write_wqe_v5` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3005,
+        "kind": "comment",
+        "explanation": "注释记录 `// Word 6-7: rmtEidH (uint64_t)`，说明 `simt_write_wqe_v5` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3006,
+        "kind": "comment",
+        "explanation": "保留被注释的调试或历史代码 `auto rmtEid = (JETTY_POS uint64_t *)(sq->rmtEid);`；该内容当前不参与 `simt_write_wqe_v5` 执行。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3007,
+        "kind": "comment",
+        "explanation": "保留被注释的调试或历史代码 `dw[2] = rmtEid[0];`；该内容当前不参与 `simt_write_wqe_v5` 执行。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3008,
+        "kind": "comment",
+        "explanation": "保留被注释的调试或历史代码 `dw[3] = rmtEid[1];`；该内容当前不参与 `simt_write_wqe_v5` 执行。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3009,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v5` 的 L3009 分隔 `// dw[3] = rmtEid[1];` 与 `// Word 4-5: rmtEidL (uint64_t)` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3010,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 4-5: rmtEidL (uint64_t)`，说明 `simt_write_wqe_v5` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3011,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 6-7: rmtEidH (uint64_t)`，说明 `simt_write_wqe_v5` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3012,
+        "kind": "declaration",
+        "explanation": "声明 `rmtEid`；源码初始化式 `auto rmtEid = (JETTY_POS uint32_t *)(sq->rmtEid);`读取 `JETTY_POS、sq`。",
+        "reads": [
+          "JETTY_POS",
+          "sq"
+        ],
+        "writes": [
+          "rmtEid"
+        ]
+      },
+      {
+        "line": 3013,
+        "kind": "declaration",
+        "explanation": "声明 `w`；源码初始化式 `dw[2] = rmtEid[0] | ((rmtEid[1]) << 32);`读取 `rmtEid`。",
+        "reads": [
+          "rmtEid"
+        ],
+        "writes": [
+          "dw"
+        ]
+      },
+      {
+        "line": 3014,
+        "kind": "declaration",
+        "explanation": "声明 `w`；源码初始化式 `dw[3] = rmtEid[2] | ((rmtEid[3]) << 32);`读取 `rmtEid`。",
+        "reads": [
+          "rmtEid"
+        ],
+        "writes": [
+          "dw"
+        ]
+      },
+      {
+        "line": 3015,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v5` 的 L3015 分隔 `dw[3] = rmtEid[2] | ((rmtEid[3]) << 32);` 与 `// Word 8: rmtTokenValue` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3016,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 8: rmtTokenValue`，说明 `simt_write_wqe_v5` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3017,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 9: udfType[7:0] | reduceDataType[11:8] | reduceOpcode[15:12] | rsv3[31:16]`，说明 `simt_write_wqe_v5` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3018,
+        "kind": "declaration",
+        "explanation": "声明 `w`；源码初始化式 `dw[4] = 0;`读取 `无运行时对象`。",
+        "reads": [],
+        "writes": [
+          "dw"
+        ]
+      },
+      {
+        "line": 3019,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v5` 的 L3019 分隔 `dw[4] = 0;` 与 `// Word 10: rmtAddrLOrTokenId` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3020,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 10: rmtAddrLOrTokenId`，说明 `simt_write_wqe_v5` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3021,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 11: rmtAddrHOrTokenValue`，说明 `simt_write_wqe_v5` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3022,
+        "kind": "declaration",
+        "explanation": "声明 `w`；源码初始化式 `dw[5] = remoteAddr;`读取 `remoteAddr`。",
+        "reads": [
+          "remoteAddr"
+        ],
+        "writes": [
+          "dw"
+        ]
+      },
+      {
+        "line": 3023,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v5` 的 L3023 分隔 `dw[5] = remoteAddr;` 与 `// SGE` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3024,
+        "kind": "comment",
+        "explanation": "注释记录 `SGE`，说明 `simt_write_wqe_v5` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3025,
+        "kind": "declaration",
+        "explanation": "声明 `w`；源码初始化式 `dw[6] = messageLen;`读取 `messageLen`。",
+        "reads": [
+          "messageLen"
+        ],
+        "writes": [
+          "dw"
+        ]
+      },
+      {
+        "line": 3026,
+        "kind": "declaration",
+        "explanation": "声明 `w`；源码初始化式 `dw[7] = localAddr;`读取 `localAddr`。",
+        "reads": [
+          "localAddr"
+        ],
+        "writes": [
+          "dw"
+        ]
+      },
+      {
+        "line": 3027,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v5` 的 L3027 分隔 `dw[7] = localAddr;` 与 `wqeWords[0] = make_ulonglong4(dw[0], dw[1], dw[2], dw[3]);` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3028,
+        "kind": "call",
+        "explanation": "调用 `make_ulonglong4` 并更新 `wqeWords、s`；本行实参或对象来自 `dw`。",
+        "reads": [
+          "dw"
+        ],
+        "writes": [
+          "wqeWords"
+        ]
+      },
+      {
+        "line": 3029,
+        "kind": "call",
+        "explanation": "调用 `make_ulonglong4` 并更新 `wqeWords、s`；本行实参或对象来自 `dw`。",
+        "reads": [
+          "dw"
+        ],
+        "writes": [
+          "wqeWords"
+        ]
+      },
+      {
+        "line": 3030,
+        "kind": "brace",
+        "explanation": "在 `simt_write_wqe_v5` 的 L3030 结束 代码块 `__simt_callee__ inline void simt_write_wqe_v5(JETTY_POS HcclAiRMAWQ *sq, uint32_t myHead, uint6…` 作用域。",
+        "reads": [],
+        "writes": []
+      }
+    ],
+      "segments": [
+        {
+          "id": "wqe-v5-slot-and-ids",
+          "start": 2969,
+          "end": 2982,
+          "title": "按 runtime SQ 参数定位环形 WQE 槽并截取 ID 位宽",
+          "detail": "读取 wqeSize/sqDepth/sqVA，将 tp_id 截为 24 位、object/token 截为 20 位，按 myHead%qpDepth 定位 64B 槽。",
+          "kind": "input",
+          "input_state": [
+            "sq：SQ/remote context",
+            "myHead：已预留 head"
+          ],
+          "mechanism": "wqeWords=sqVA+wqeSize*(myHead%qpDepth)；准备 dw[8]。",
+          "output_state": [
+            "wqeWords：目标 WQE GM 槽",
+            "tpId/rmtObjId/tokenId：截位局部值"
+          ],
+          "why": "head 环绕必须按实际 SQ depth，字段编码必须先满足硬件位宽。",
+          "calls": []
+        },
+        {
+          "id": "wqe-v5-control-eid-address-sge",
+          "start": 2983,
+          "end": 3027,
+          "title": "拼接 v5 的 8 个 64 位 WQE word",
+          "detail": "dw0 编 owner/flag/tokenEn/type 并硬编码 OP_WRITE；dw1 编 TP/object；dw2/3 拼 16B EID；dw5 remoteAddr；dw6/7 SGE length/localAddr。",
+          "kind": "compute",
+          "input_state": [
+            "owner、tpId、rmtObjId、sq->rmtEid、remoteAddr/messageLen/localAddr"
+          ],
+          "mechanism": "位移/OR 组成 8×uint64；v5 的 rmtEid[1]<<32 与 rmtEid[3]<<32 未先 cast uint64，且 opcode 实参不参与 dw0。",
+          "output_state": [
+            "dw[0..7]：候选 64B WQE"
+          ],
+          "why": "与当前 v4 比较可见 v4 修复了 opcode 使用与 EID 64 位提升，这也是 v5 未接入的关键差异。",
+          "calls": []
+        },
+        {
+          "id": "wqe-v5-two-vector-stores",
+          "start": 3028,
+          "end": 3030,
+          "title": "用两次 256-bit store 写完整 v5 WQE",
+          "detail": "make_ulonglong4 分别组装 dw0..3 和 dw4..7，写 wqeWords[0]/[1]。",
+          "kind": "output",
+          "input_state": [
+            "dw[8]：编码完成"
+          ],
+          "mechanism": "两次 ulonglong4 赋值覆盖 64B。",
+          "output_state": [
+            "目标 SQ WQE 槽：完整候选 v5 描述"
+          ],
+          "why": "宽 store 减少逐 word GM 写次数，但本函数没有独立发布 headRecord。",
+          "calls": [
+            {
+              "name": "make_ulonglong4",
+              "line": 3028,
+              "type": "external"
+            },
+            {
+              "name": "make_ulonglong4",
+              "line": 3029,
+              "type": "external"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "f-moedistributedispatchv2fullmeshimpl-simt-write-wqe-v4-48d4eea0cd",
+      "module_id": "wqe-active",
+      "name": "simt_write_wqe_v4",
+      "start": 3032,
+      "end": 3093,
+      "inactive": false,
+      "summary": "当前实际 64B WQE 编码器：按 SQ runtime size/depth 定位槽，将调用方 opcode 写入控制 word，显式以 uint64_t 拼接 16B remote EID，填 remoteAddr 与单 SGE，并用两次 ulonglong4 写入 GM。",
+      "inputs": [
+        "sq",
+        "myHead",
+        "localAddr",
+        "remoteAddr",
+        "messageLen",
+        "opcode"
+      ],
+      "outputs": [
+        "wqeWords"
+      ],
+      "side_effects": [
+        "向 sq->sqVA 环形队列中 myHead 对应的 GM WQE 槽写 64B",
+        "由实际 simt_nw_mj_vf 调用；完成位发布在上层，不在本函数"
+      ],
+      "review": {
+        "status": "PASS",
+        "verdict": "PASS",
+        "reviewer": "function-block-review-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "source_sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc",
+        "line_range": [
+          3032,
+          3093
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "complete": true,
+        "reviewed_line_range": [
+          3032,
+          3093
+        ],
+        "reviewed_line_count": 62,
+        "coverage": "every_source_line_reviewed_once",
+        "source_sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc",
+        "gaps": [],
+        "overlaps": []
+      },
+    "line_notes": [
+      {
+        "line": 3032,
+        "kind": "signature",
+        "explanation": "构成函数 `simt_write_wqe_v4` 的签名片段 `__simt_callee__ inline void simt_write_wqe_v4(JETTY_POS HcclAiRMAWQ *sq, uint32_t myHead, uint64_t localAddr, uint64_t remoteAddr, uint32_t messageLen, URMAOPCODE opcode)`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3033,
+        "kind": "brace",
+        "explanation": "在 `simt_write_wqe_v4` 的 L3033 打开 代码块 `__simt_callee__ inline void simt_write_wqe_v4(JETTY_POS HcclAiRMAWQ *sq, uint32_t myHead, uint6…` 作用域。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3034,
+        "kind": "comment",
+        "explanation": "保留被注释的调试或历史代码 `auto shift = 14;`；该内容当前不参与 `simt_write_wqe_v4` 执行。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3035,
+        "kind": "declaration",
+        "explanation": "声明 `wqeSize`；源码初始化式 `auto wqeSize = sq->wqeSize;`读取 `sq`。",
+        "reads": [
+          "sq"
+        ],
+        "writes": [
+          "wqeSize"
+        ]
+      },
+      {
+        "line": 3036,
+        "kind": "declaration",
+        "explanation": "声明 `qpDepth`；源码初始化式 `auto qpDepth = sq->sqDepth;`读取 `sq、sqDepth`。",
+        "reads": [
+          "sq",
+          "sqDepth"
+        ],
+        "writes": [
+          "qpDepth"
+        ]
+      },
+      {
+        "line": 3037,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v4` 的 L3037 分隔 `auto qpDepth = sq->sqDepth;` 与 `auto sqBaseAddr = sq->sqVA;` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3038,
+        "kind": "declaration",
+        "explanation": "声明 `sqBaseAddr`；源码初始化式 `auto sqBaseAddr = sq->sqVA;`读取 `sq、sqVA`。",
+        "reads": [
+          "sq",
+          "sqVA"
+        ],
+        "writes": [
+          "sqBaseAddr"
+        ]
+      },
+      {
+        "line": 3039,
+        "kind": "declaration",
+        "explanation": "声明 `tpId`；源码初始化式 `auto tpId = (sq->tp_id) & ((1U << 24U) - 1U);`读取 `sq、tp_id`。",
+        "reads": [
+          "sq",
+          "tp_id"
+        ],
+        "writes": [
+          "tpId"
+        ]
+      },
+      {
+        "line": 3040,
+        "kind": "declaration",
+        "explanation": "声明 `rmtObjId`；源码初始化式 `auto rmtObjId = (sq->rmtObjId) & 0xFFFFFU;`读取 `sq`。",
+        "reads": [
+          "sq"
+        ],
+        "writes": [
+          "rmtObjId"
+        ]
+      },
+      {
+        "line": 3041,
+        "kind": "comment",
+        "explanation": "保留被注释的调试或历史代码 `auto tokenId = (sq->localTokenId) & 0xFFFFF;`；该内容当前不参与 `simt_write_wqe_v4` 执行。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3042,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v4` 的 L3042 分隔 `// auto tokenId = (sq->localTokenId) & 0xFFFFF;` 与 `__gm__ ulonglong4* wqeWords = (__gm__ ulonglong4*)(sqBaseAddr + wqeSize…` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3043,
+        "kind": "declaration",
+        "explanation": "声明 `ulonglong4`；源码初始化式 `__gm__ ulonglong4* wqeWords = (__gm__ ulonglong4*)(sqBaseAddr + wqeSize * (myHead % qpDepth));`读取 `__gm__、sqBaseAddr、wqeSize、myHead、qpDepth`。",
+        "reads": [
+          "__gm__",
+          "sqBaseAddr",
+          "wqeSize",
+          "myHead",
+          "qpDepth"
+        ],
+        "writes": [
+          "wqeWords",
+          "ulonglong4"
+        ]
+      },
+      {
+        "line": 3044,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v4` 的 L3044 分隔 `__gm__ ulonglong4* wqeWords = (__gm__ ulonglong4*)(sqBaseAddr + wqeSize…` 与 `uint64_t dw[8];` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3045,
+        "kind": "declaration",
+        "explanation": "声明 `dw`；源码初始化式 `uint64_t dw[8];`读取 `无运行时对象`。",
+        "reads": [],
+        "writes": [
+          "dw"
+        ]
+      },
+      {
+        "line": 3046,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 0: sqeBbIdx[15:0] | flag[23:16] | rsv0[26:24] | nf[27] | tokenEn[28] | rmtJettyType[30:29] | owner[31]`，说明 `simt_write_wqe_v4` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3047,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 1: targetHint[7:0] | opcode[15:8] | rsv1[21:16] | inlineMsgLen[31:22]`，说明 `simt_write_wqe_v4` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3048,
+        "kind": "declaration",
+        "explanation": "声明 `owner`；源码初始化式 `auto owner = (myHead & qpDepth) == 0U ? 1U : 0U;`读取 `myHead、qpDepth`。",
+        "reads": [
+          "myHead",
+          "qpDepth"
+        ],
+        "writes": [
+          "owner"
+        ]
+      },
+      {
+        "line": 3049,
+        "kind": "statement",
+        "explanation": "按表达式 `dw[0] = (0U << 0U)` 更新 `dw`；右侧读取 `字面量`。",
+        "reads": [],
+        "writes": [
+          "dw"
+        ]
+      },
+      {
+        "line": 3050,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (0b00100000U << 16U)`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3051,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (0U << 24U)`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3052,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (0U << 27U)`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3053,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (1U << 28U)`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3054,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (1U << 29U)`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3055,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (static_cast<uint32_t>(owner) << 31U)`；该语句明确涉及 `owner`。",
+        "reads": [
+          "owner"
+        ],
+        "writes": []
+      },
+      {
+        "line": 3056,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (static_cast<uint64_t>(opcode) << 40U)`；该语句明确涉及 `opcode`。",
+        "reads": [
+          "opcode"
+        ],
+        "writes": []
+      },
+      {
+        "line": 3057,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (0ULL << 48U)`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3058,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (0ULL << 54U);`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3059,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v4` 的 L3059 分隔 `| (0ULL << 54U); // inlineMsgLen` 与 `// Word 2: tpId[23:0] | sgeNum[31:24]` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3060,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 2: tpId[23:0] | sgeNum[31:24]`，说明 `simt_write_wqe_v4` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3061,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 3: rmtJettyOrSegId[19:0] | rsv2[31:20]`，说明 `simt_write_wqe_v4` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3062,
+        "kind": "statement",
+        "explanation": "按表达式 `dw[1] = (tpId << 0U)` 更新 `dw`；右侧读取 `tpId`。",
+        "reads": [
+          "tpId"
+        ],
+        "writes": [
+          "dw"
+        ]
+      },
+      {
+        "line": 3063,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (1U << 24U)`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3064,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (static_cast<uint64_t>(rmtObjId) << 32U)`；该语句明确涉及 `rmtObjId`。",
+        "reads": [
+          "rmtObjId"
+        ],
+        "writes": []
+      },
+      {
+        "line": 3065,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (0ULL << 52U);`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3066,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v4` 的 L3066 分隔 `| (0ULL << 52U); // rsv2` 与 `// // Word 4-5: rmtEidL (uint64_t)` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3067,
+        "kind": "comment",
+        "explanation": "注释记录 `// Word 4-5: rmtEidL (uint64_t)`，说明 `simt_write_wqe_v4` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3068,
+        "kind": "comment",
+        "explanation": "注释记录 `// Word 6-7: rmtEidH (uint64_t)`，说明 `simt_write_wqe_v4` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3069,
+        "kind": "comment",
+        "explanation": "保留被注释的调试或历史代码 `auto rmtEid = (JETTY_POS uint64_t *)(sq->rmtEid);`；该内容当前不参与 `simt_write_wqe_v4` 执行。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3070,
+        "kind": "comment",
+        "explanation": "保留被注释的调试或历史代码 `dw[2] = rmtEid[0];`；该内容当前不参与 `simt_write_wqe_v4` 执行。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3071,
+        "kind": "comment",
+        "explanation": "保留被注释的调试或历史代码 `dw[3] = rmtEid[1];`；该内容当前不参与 `simt_write_wqe_v4` 执行。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3072,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v4` 的 L3072 分隔 `// dw[3] = rmtEid[1];` 与 `// Word 4-5: rmtEidL (uint64_t)` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3073,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 4-5: rmtEidL (uint64_t)`，说明 `simt_write_wqe_v4` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3074,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 6-7: rmtEidH (uint64_t)`，说明 `simt_write_wqe_v4` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3075,
+        "kind": "declaration",
+        "explanation": "声明 `rmtEid`；源码初始化式 `auto rmtEid = (JETTY_POS uint32_t *)(sq->rmtEid);`读取 `JETTY_POS、sq`。",
+        "reads": [
+          "JETTY_POS",
+          "sq"
+        ],
+        "writes": [
+          "rmtEid"
+        ]
+      },
+      {
+        "line": 3076,
+        "kind": "declaration",
+        "explanation": "声明 `w`；源码初始化式 `dw[2] = rmtEid[0] | (static_cast<uint64_t>(rmtEid[1]) << 32U);`读取 `rmtEid`。",
+        "reads": [
+          "rmtEid"
+        ],
+        "writes": [
+          "dw"
+        ]
+      },
+      {
+        "line": 3077,
+        "kind": "declaration",
+        "explanation": "声明 `w`；源码初始化式 `dw[3] = rmtEid[2] | (static_cast<uint64_t>(rmtEid[3]) << 32U);`读取 `rmtEid`。",
+        "reads": [
+          "rmtEid"
+        ],
+        "writes": [
+          "dw"
+        ]
+      },
+      {
+        "line": 3078,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v4` 的 L3078 分隔 `dw[3] = rmtEid[2] | (static_cast<uint64_t>(rmtEid[3]) << 32U);` 与 `// Word 8: rmtTokenValue` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3079,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 8: rmtTokenValue`，说明 `simt_write_wqe_v4` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3080,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 9: udfType[7:0] | reduceDataType[11:8] | reduceOpcode[15:12] | rsv3[31:16]`，说明 `simt_write_wqe_v4` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3081,
+        "kind": "declaration",
+        "explanation": "声明 `w`；源码初始化式 `dw[4] = 0U;`读取 `无运行时对象`。",
+        "reads": [],
+        "writes": [
+          "dw"
+        ]
+      },
+      {
+        "line": 3082,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v4` 的 L3082 分隔 `dw[4] = 0U;` 与 `// Word 10: rmtAddrLOrTokenId` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3083,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 10: rmtAddrLOrTokenId`，说明 `simt_write_wqe_v4` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3084,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 11: rmtAddrHOrTokenValue`，说明 `simt_write_wqe_v4` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3085,
+        "kind": "declaration",
+        "explanation": "声明 `w`；源码初始化式 `dw[5] = remoteAddr;`读取 `remoteAddr`。",
+        "reads": [
+          "remoteAddr"
+        ],
+        "writes": [
+          "dw"
+        ]
+      },
+      {
+        "line": 3086,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v4` 的 L3086 分隔 `dw[5] = remoteAddr;` 与 `// SGE` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3087,
+        "kind": "comment",
+        "explanation": "注释记录 `SGE`，说明 `simt_write_wqe_v4` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3088,
+        "kind": "declaration",
+        "explanation": "声明 `w`；源码初始化式 `dw[6] = messageLen;`读取 `messageLen`。",
+        "reads": [
+          "messageLen"
+        ],
+        "writes": [
+          "dw"
+        ]
+      },
+      {
+        "line": 3089,
+        "kind": "declaration",
+        "explanation": "声明 `w`；源码初始化式 `dw[7] = localAddr;`读取 `localAddr`。",
+        "reads": [
+          "localAddr"
+        ],
+        "writes": [
+          "dw"
+        ]
+      },
+      {
+        "line": 3090,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v4` 的 L3090 分隔 `dw[7] = localAddr;` 与 `wqeWords[0] = make_ulonglong4(dw[0], dw[1], dw[2], dw[3]);` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3091,
+        "kind": "call",
+        "explanation": "调用 `make_ulonglong4` 并更新 `wqeWords、s`；本行实参或对象来自 `dw`。",
+        "reads": [
+          "dw"
+        ],
+        "writes": [
+          "wqeWords"
+        ]
+      },
+      {
+        "line": 3092,
+        "kind": "call",
+        "explanation": "调用 `make_ulonglong4` 并更新 `wqeWords、s`；本行实参或对象来自 `dw`。",
+        "reads": [
+          "dw"
+        ],
+        "writes": [
+          "wqeWords"
+        ]
+      },
+      {
+        "line": 3093,
+        "kind": "brace",
+        "explanation": "在 `simt_write_wqe_v4` 的 L3093 结束 代码块 `__simt_callee__ inline void simt_write_wqe_v4(JETTY_POS HcclAiRMAWQ *sq, uint32_t myHead, uint6…` 作用域。",
+        "reads": [],
+        "writes": []
+      }
+    ],
+      "segments": [
+        {
+          "id": "wqe-v4-slot-owner-and-context",
+          "start": 3032,
+          "end": 3048,
+          "title": "定位实际 SQ 槽并计算 owner/截位 context",
+          "detail": "读取 runtime wqeSize、sqDepth、sqVA；截取 24 位 tpId、20 位 rmtObjId；owner 由 myHead&qpDepth 判断环绕相位。",
+          "kind": "input",
+          "input_state": [
+            "sq 与 myHead：已预留 SQ head",
+            "local/remote/len/opcode：描述字段"
+          ],
+          "mechanism": "wqeWords=sqVA+wqeSize*(myHead%qpDepth)，准备 dw[8]。",
+          "output_state": [
+            "目标 WQE 槽、owner、tpId、rmtObjId"
+          ],
+          "why": "owner bit 区分环形队列代际，runtime depth/size 适配实际 UDMA context。",
+          "calls": []
+        },
+        {
+          "id": "wqe-v4-actual-bitfield-encoding",
+          "start": 3049,
+          "end": 3089,
+          "title": "按当前硬件位域编码控制头、EID、地址与 SGE",
+          "detail": "dw0 设置 flag/tokenEn/rmtJettyType/owner，并把实参 opcode 放 40 位；dw1 编 TP/object；dw2/3 以 uint64_t 安全拼 EID；dw5/6/7 写 remote/len/local。",
+          "kind": "compute",
+          "input_state": [
+            "owner、opcode、tpId、rmtObjId、rmtEid、remoteAddr/messageLen/localAddr"
+          ],
+          "mechanism": "使用 U/ULL 常量与 static_cast<uint64_t> 后移位，避免 v5 的 32 位 EID 高半移位问题。",
+          "output_state": [
+            "dw[0..7]：当前实际 64B WQE 位图"
+          ],
+          "why": "v4 同时保留动态 opcode 与无损 16B EID，是 simt_nw_mj_vf 当前选用版本。",
+          "calls": []
+        },
+        {
+          "id": "wqe-v4-two-vector-stores",
+          "start": 3090,
+          "end": 3093,
+          "title": "以两次 ulonglong4 store 提交实际 WQE 内容",
+          "detail": "分别把 dw0..3、dw4..7 组成 256-bit 向量写入连续 GM。",
+          "kind": "output",
+          "input_state": [
+            "dw[8]：完整实际 WQE"
+          ],
+          "mechanism": "wqeWords[0/1]=make_ulonglong4(...)。",
+          "output_state": [
+            "SQ WQE 槽：64B 内容写完，等待上层发布 bitmap"
+          ],
+          "why": "上层只有在 writer 返回后才设置 headRecord，因此这两次 store 位于发布之前。",
+          "calls": [
+            {
+              "name": "make_ulonglong4",
+              "line": 3091,
+              "type": "external"
+            },
+            {
+              "name": "make_ulonglong4",
+              "line": 3092,
+              "type": "external"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "f-moedistributedispatchv2fullmeshimpl-simt-write-wqe-v3-6d8d424864",
+      "module_id": "wqe-alternates",
+      "name": "simt_write_wqe_v3",
+      "start": 3095,
+      "end": 3158,
+      "inactive": true,
+      "summary": "入口不可达的 v3 编码器：位域内容基本沿用 v4 并使用动态 opcode/显式 uint64 EID 拼接，但目标视为 uint64_t[8]，通过 unroll 循环逐 64 位写 GM，而不是 v4 的两次 256-bit store。",
+      "inputs": [
+        "sq",
+        "myHead",
+        "localAddr",
+        "remoteAddr",
+        "messageLen",
+        "opcode"
+      ],
+      "outputs": [
+        "wqeWords"
+      ],
+      "side_effects": [
+        "逐 word 写 64B GM WQE 槽",
+        "当前无 Init/Process 调用点，保持 inactive"
+      ],
+      "review": {
+        "status": "PASS",
+        "verdict": "PASS",
+        "reviewer": "function-block-review-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "source_sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc",
+        "line_range": [
+          3095,
+          3158
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "complete": true,
+        "reviewed_line_range": [
+          3095,
+          3158
+        ],
+        "reviewed_line_count": 64,
+        "coverage": "every_source_line_reviewed_once",
+        "source_sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc",
+        "gaps": [],
+        "overlaps": []
+      },
+    "line_notes": [
+      {
+        "line": 3095,
+        "kind": "signature",
+        "explanation": "构成函数 `simt_write_wqe_v3` 的签名片段 `__simt_callee__ inline void simt_write_wqe_v3(JETTY_POS HcclAiRMAWQ *sq, uint32_t myHead, uint64_t localAddr, uint64_t remoteAddr, uint32_t messageLen, URMAOPCODE opcode)`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3096,
+        "kind": "brace",
+        "explanation": "在 `simt_write_wqe_v3` 的 L3096 打开 代码块 `__simt_callee__ inline void simt_write_wqe_v3(JETTY_POS HcclAiRMAWQ *sq, uint32_t myHead, uint6…` 作用域。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3097,
+        "kind": "comment",
+        "explanation": "保留被注释的调试或历史代码 `constexpr uint32_t shift = 14;`；该内容当前不参与 `simt_write_wqe_v3` 执行。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3098,
+        "kind": "declaration",
+        "explanation": "声明 `wqeSize`；源码初始化式 `auto wqeSize = sq->wqeSize;`读取 `sq`。",
+        "reads": [
+          "sq"
+        ],
+        "writes": [
+          "wqeSize"
+        ]
+      },
+      {
+        "line": 3099,
+        "kind": "declaration",
+        "explanation": "声明 `qpDepth`；源码初始化式 `auto qpDepth = sq->sqDepth;`读取 `sq、sqDepth`。",
+        "reads": [
+          "sq",
+          "sqDepth"
+        ],
+        "writes": [
+          "qpDepth"
+        ]
+      },
+      {
+        "line": 3100,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v3` 的 L3100 分隔 `auto qpDepth = sq->sqDepth;` 与 `auto sqBaseAddr = sq->sqVA;` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3101,
+        "kind": "declaration",
+        "explanation": "声明 `sqBaseAddr`；源码初始化式 `auto sqBaseAddr = sq->sqVA;`读取 `sq、sqVA`。",
+        "reads": [
+          "sq",
+          "sqVA"
+        ],
+        "writes": [
+          "sqBaseAddr"
+        ]
+      },
+      {
+        "line": 3102,
+        "kind": "declaration",
+        "explanation": "声明 `tpId`；源码初始化式 `auto tpId = (sq->tp_id) & ((1U << 24U) - 1U);`读取 `sq、tp_id`。",
+        "reads": [
+          "sq",
+          "tp_id"
+        ],
+        "writes": [
+          "tpId"
+        ]
+      },
+      {
+        "line": 3103,
+        "kind": "declaration",
+        "explanation": "声明 `rmtObjId`；源码初始化式 `auto rmtObjId = (sq->rmtObjId) & 0xFFFFFU;`读取 `sq`。",
+        "reads": [
+          "sq"
+        ],
+        "writes": [
+          "rmtObjId"
+        ]
+      },
+      {
+        "line": 3104,
+        "kind": "comment",
+        "explanation": "保留被注释的调试或历史代码 `auto tokenId = (sq->localTokenId) & 0xFFFFF;`；该内容当前不参与 `simt_write_wqe_v3` 执行。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3105,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v3` 的 L3105 分隔 `// auto tokenId = (sq->localTokenId) & 0xFFFFF;` 与 `__gm__ uint64_t* wqeWords = (__gm__ uint64_t*)(sqBaseAddr + wqeSize * (…` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3106,
+        "kind": "declaration",
+        "explanation": "声明 `uint64_t`；源码初始化式 `__gm__ uint64_t* wqeWords = (__gm__ uint64_t*)(sqBaseAddr + wqeSize * (myHead % qpDepth));`读取 `__gm__、sqBaseAddr、wqeSize、myHead、qpDepth`。",
+        "reads": [
+          "__gm__",
+          "sqBaseAddr",
+          "wqeSize",
+          "myHead",
+          "qpDepth"
+        ],
+        "writes": [
+          "wqeWords",
+          "uint64_t"
+        ]
+      },
+      {
+        "line": 3107,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v3` 的 L3107 分隔 `__gm__ uint64_t* wqeWords = (__gm__ uint64_t*)(sqBaseAddr + wqeSize * (…` 与 `uint64_t dw[8];` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3108,
+        "kind": "declaration",
+        "explanation": "声明 `dw`；源码初始化式 `uint64_t dw[8];`读取 `无运行时对象`。",
+        "reads": [],
+        "writes": [
+          "dw"
+        ]
+      },
+      {
+        "line": 3109,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 0: sqeBbIdx[15:0] | flag[23:16] | rsv0[26:24] | nf[27] | tokenEn[28] | rmtJettyType[30:29] | owner[31]`，说明 `simt_write_wqe_v3` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3110,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 1: targetHint[7:0] | opcode[15:8] | rsv1[21:16] | inlineMsgLen[31:22]`，说明 `simt_write_wqe_v3` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3111,
+        "kind": "declaration",
+        "explanation": "声明 `owner`；源码初始化式 `auto owner = (myHead & qpDepth) == 0U ? 1U : 0U;`读取 `myHead、qpDepth`。",
+        "reads": [
+          "myHead",
+          "qpDepth"
+        ],
+        "writes": [
+          "owner"
+        ]
+      },
+      {
+        "line": 3112,
+        "kind": "statement",
+        "explanation": "按表达式 `dw[0] = (0U << 0U)` 更新 `dw`；右侧读取 `字面量`。",
+        "reads": [],
+        "writes": [
+          "dw"
+        ]
+      },
+      {
+        "line": 3113,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (0b00100000U << 16U)`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3114,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (0U << 24U)`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3115,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (0U << 27U)`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3116,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (1U << 28U)`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3117,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (1U << 29U)`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3118,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (static_cast<uint32_t>(owner) << 31U)`；该语句明确涉及 `owner`。",
+        "reads": [
+          "owner"
+        ],
+        "writes": []
+      },
+      {
+        "line": 3119,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (static_cast<uint64_t>(opcode) << 40U)`；该语句明确涉及 `opcode`。",
+        "reads": [
+          "opcode"
+        ],
+        "writes": []
+      },
+      {
+        "line": 3120,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (0ULL << 48U)`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3121,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (0ULL << 54U);`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3122,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v3` 的 L3122 分隔 `| (0ULL << 54U); // inlineMsgLen` 与 `// Word 2: tpId[23:0] | sgeNum[31:24]` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3123,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 2: tpId[23:0] | sgeNum[31:24]`，说明 `simt_write_wqe_v3` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3124,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 3: rmtJettyOrSegId[19:0] | rsv2[31:20]`，说明 `simt_write_wqe_v3` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3125,
+        "kind": "statement",
+        "explanation": "按表达式 `dw[1] = (tpId << 0U)` 更新 `dw`；右侧读取 `tpId`。",
+        "reads": [
+          "tpId"
+        ],
+        "writes": [
+          "dw"
+        ]
+      },
+      {
+        "line": 3126,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (1U << 24U)`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3127,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (static_cast<uint64_t>(rmtObjId) << 32U)`；该语句明确涉及 `rmtObjId`。",
+        "reads": [
+          "rmtObjId"
+        ],
+        "writes": []
+      },
+      {
+        "line": 3128,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (0ULL << 52U);`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3129,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v3` 的 L3129 分隔 `| (0ULL << 52U); // rsv2` 与 `// // Word 4-5: rmtEidL (uint64_t)` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3130,
+        "kind": "comment",
+        "explanation": "注释记录 `// Word 4-5: rmtEidL (uint64_t)`，说明 `simt_write_wqe_v3` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3131,
+        "kind": "comment",
+        "explanation": "注释记录 `// Word 6-7: rmtEidH (uint64_t)`，说明 `simt_write_wqe_v3` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3132,
+        "kind": "comment",
+        "explanation": "保留被注释的调试或历史代码 `auto rmtEid = (JETTY_POS uint64_t *)(sq->rmtEid);`；该内容当前不参与 `simt_write_wqe_v3` 执行。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3133,
+        "kind": "comment",
+        "explanation": "保留被注释的调试或历史代码 `dw[2] = rmtEid[0];`；该内容当前不参与 `simt_write_wqe_v3` 执行。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3134,
+        "kind": "comment",
+        "explanation": "保留被注释的调试或历史代码 `dw[3] = rmtEid[1];`；该内容当前不参与 `simt_write_wqe_v3` 执行。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3135,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v3` 的 L3135 分隔 `// dw[3] = rmtEid[1];` 与 `// Word 4-5: rmtEidL (uint64_t)` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3136,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 4-5: rmtEidL (uint64_t)`，说明 `simt_write_wqe_v3` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3137,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 6-7: rmtEidH (uint64_t)`，说明 `simt_write_wqe_v3` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3138,
+        "kind": "declaration",
+        "explanation": "声明 `rmtEid`；源码初始化式 `auto rmtEid = (JETTY_POS uint32_t *)(sq->rmtEid);`读取 `JETTY_POS、sq`。",
+        "reads": [
+          "JETTY_POS",
+          "sq"
+        ],
+        "writes": [
+          "rmtEid"
+        ]
+      },
+      {
+        "line": 3139,
+        "kind": "declaration",
+        "explanation": "声明 `w`；源码初始化式 `dw[2] = rmtEid[0] | (static_cast<uint64_t>(rmtEid[1]) << 32U);`读取 `rmtEid`。",
+        "reads": [
+          "rmtEid"
+        ],
+        "writes": [
+          "dw"
+        ]
+      },
+      {
+        "line": 3140,
+        "kind": "declaration",
+        "explanation": "声明 `w`；源码初始化式 `dw[3] = rmtEid[2] | (static_cast<uint64_t>(rmtEid[3]) << 32U);`读取 `rmtEid`。",
+        "reads": [
+          "rmtEid"
+        ],
+        "writes": [
+          "dw"
+        ]
+      },
+      {
+        "line": 3141,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v3` 的 L3141 分隔 `dw[3] = rmtEid[2] | (static_cast<uint64_t>(rmtEid[3]) << 32U);` 与 `// Word 8: rmtTokenValue` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3142,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 8: rmtTokenValue`，说明 `simt_write_wqe_v3` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3143,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 9: udfType[7:0] | reduceDataType[11:8] | reduceOpcode[15:12] | rsv3[31:16]`，说明 `simt_write_wqe_v3` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3144,
+        "kind": "declaration",
+        "explanation": "声明 `w`；源码初始化式 `dw[4] = 0U;`读取 `无运行时对象`。",
+        "reads": [],
+        "writes": [
+          "dw"
+        ]
+      },
+      {
+        "line": 3145,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v3` 的 L3145 分隔 `dw[4] = 0U;` 与 `// Word 10: rmtAddrLOrTokenId` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3146,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 10: rmtAddrLOrTokenId`，说明 `simt_write_wqe_v3` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3147,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 11: rmtAddrHOrTokenValue`，说明 `simt_write_wqe_v3` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3148,
+        "kind": "declaration",
+        "explanation": "声明 `w`；源码初始化式 `dw[5] = remoteAddr;`读取 `remoteAddr`。",
+        "reads": [
+          "remoteAddr"
+        ],
+        "writes": [
+          "dw"
+        ]
+      },
+      {
+        "line": 3149,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v3` 的 L3149 分隔 `dw[5] = remoteAddr;` 与 `// SGE` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3150,
+        "kind": "comment",
+        "explanation": "注释记录 `SGE`，说明 `simt_write_wqe_v3` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3151,
+        "kind": "declaration",
+        "explanation": "声明 `w`；源码初始化式 `dw[6] = messageLen;`读取 `messageLen`。",
+        "reads": [
+          "messageLen"
+        ],
+        "writes": [
+          "dw"
+        ]
+      },
+      {
+        "line": 3152,
+        "kind": "declaration",
+        "explanation": "声明 `w`；源码初始化式 `dw[7] = localAddr;`读取 `localAddr`。",
+        "reads": [
+          "localAddr"
+        ],
+        "writes": [
+          "dw"
+        ]
+      },
+      {
+        "line": 3153,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v3` 的 L3153 分隔 `dw[7] = localAddr;` 与 `#pragma unroll` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3154,
+        "kind": "preprocessor",
+        "explanation": "应用预处理指令 `#pragma unroll`，改变 `simt_write_wqe_v3` 所在编译单元的构建内容。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3155,
+        "kind": "loop",
+        "explanation": "启动或推进 `for` 循环 `for(int i = 0; i < 8; i ++){`；迭代式涉及 `i`。",
+        "reads": [],
+        "writes": [
+          "i"
+        ]
+      },
+      {
+        "line": 3156,
+        "kind": "declaration",
+        "explanation": "声明 `s`；源码初始化式 `wqeWords[i] = dw[i];`读取 `i、dw`。",
+        "reads": [
+          "i",
+          "dw"
+        ],
+        "writes": [
+          "wqeWords"
+        ]
+      },
+      {
+        "line": 3157,
+        "kind": "brace",
+        "explanation": "在 `simt_write_wqe_v3` 的 L3157 结束 for 循环 `for(int i = 0; i < 8; i ++){` 作用域。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3158,
+        "kind": "brace",
+        "explanation": "在 `simt_write_wqe_v3` 的 L3158 结束 代码块 `__simt_callee__ inline void simt_write_wqe_v3(JETTY_POS HcclAiRMAWQ *sq, uint32_t myHead, uint6…` 作用域。",
+        "reads": [],
+        "writes": []
+      }
+    ],
+      "segments": [
+        {
+          "id": "wqe-v3-runtime-slot-and-encoding",
+          "start": 3095,
+          "end": 3153,
+          "title": "按 v4 同类位域生成 8 个 uint64 word",
+          "detail": "runtime size/depth 定位槽；动态 opcode、TP/object、显式 uint64 EID、remoteAddr 和单 SGE 编入 dw[8]。",
+          "kind": "compute",
+          "input_state": [
+            "sq/head 与 WQE payload 字段"
+          ],
+          "mechanism": "位域与 v4 基本相同，区别是 wqeWords 类型为 uint64_t*。",
+          "output_state": [
+            "dw[8]：候选 v3 WQE"
+          ],
+          "why": "该版本用于比较逐 word store 路径，未被当前 writer 调用。",
+          "calls": []
+        },
+        {
+          "id": "wqe-v3-unrolled-scalar-stores",
+          "start": 3154,
+          "end": 3158,
+          "title": "展开循环逐 64 位写入 v3 WQE",
+          "detail": "#pragma unroll 的 8 次循环执行 wqeWords[i]=dw[i]。",
+          "kind": "output",
+          "input_state": [
+            "dw[8]"
+          ],
+          "mechanism": "8 次 uint64 GM store。",
+          "output_state": [
+            "WQE 槽：64B 写完"
+          ],
+          "why": "比 v4 两次宽 store 指令更多，且当前路径未采用。",
+          "calls": []
+        }
+      ]
+    },
+    {
+      "id": "f-moedistributedispatchv2fullmeshimpl-simt-write-wqe-v2-d832a96558",
+      "module_id": "wqe-alternates",
+      "name": "simt_write_wqe_v2",
+      "start": 3160,
+      "end": 3231,
+      "inactive": true,
+      "summary": "入口不可达的旧 v2 编码器：固定 wqeSize=64、qpDepth=2^14，把 WQE 拆为 16×uint32 word，硬编码 OP_WRITE，手工拆 remote/local 64 位地址，最后展开循环逐 32 位写 GM。",
+      "inputs": [
+        "sq",
+        "myHead",
+        "localAddr",
+        "remoteAddr",
+        "messageLen",
+        "opcode"
+      ],
+      "outputs": [
+        "wqeWords"
+      ],
+      "side_effects": [
+        "逐 32 位写固定布局 WQE 槽",
+        "忽略 runtime sq->wqeSize/sqDepth 与 opcode 参数，当前无入口调用点"
+      ],
+      "review": {
+        "status": "PASS",
+        "verdict": "PASS",
+        "reviewer": "function-block-review-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "source_sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc",
+        "line_range": [
+          3160,
+          3231
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "complete": true,
+        "reviewed_line_range": [
+          3160,
+          3231
+        ],
+        "reviewed_line_count": 72,
+        "coverage": "every_source_line_reviewed_once",
+        "source_sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc",
+        "gaps": [],
+        "overlaps": []
+      },
+    "line_notes": [
+      {
+        "line": 3160,
+        "kind": "signature",
+        "explanation": "构成函数 `simt_write_wqe_v2` 的签名片段 `__simt_callee__ inline void simt_write_wqe_v2(JETTY_POS HcclAiRMAWQ *sq, uint32_t myHead, uint64_t localAddr, uint64_t remoteAddr, uint32_t messageLen, URMAOPCODE opcode)`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3161,
+        "kind": "brace",
+        "explanation": "在 `simt_write_wqe_v2` 的 L3161 打开 代码块 `__simt_callee__ inline void simt_write_wqe_v2(JETTY_POS HcclAiRMAWQ *sq, uint32_t myHead, uint6…` 作用域。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3162,
+        "kind": "declaration",
+        "explanation": "声明 `shift`；源码初始化式 `constexpr uint32_t shift = 14;`读取 `无运行时对象`。",
+        "reads": [],
+        "writes": [
+          "shift"
+        ]
+      },
+      {
+        "line": 3163,
+        "kind": "declaration",
+        "explanation": "声明 `wqeSize`；源码初始化式 `constexpr uint32_t wqeSize = 64;`读取 `无运行时对象`。",
+        "reads": [],
+        "writes": [
+          "wqeSize"
+        ]
+      },
+      {
+        "line": 3164,
+        "kind": "declaration",
+        "explanation": "声明 `qpDepth`；源码初始化式 `constexpr uint32_t qpDepth = 1 << shift;`读取 `shift`。",
+        "reads": [
+          "shift"
+        ],
+        "writes": [
+          "qpDepth"
+        ]
+      },
+      {
+        "line": 3165,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v2` 的 L3165 分隔 `constexpr uint32_t qpDepth = 1 << shift;` 与 `auto sqBaseAddr = sq->sqVA;` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3166,
+        "kind": "declaration",
+        "explanation": "声明 `sqBaseAddr`；源码初始化式 `auto sqBaseAddr = sq->sqVA;`读取 `sq、sqVA`。",
+        "reads": [
+          "sq",
+          "sqVA"
+        ],
+        "writes": [
+          "sqBaseAddr"
+        ]
+      },
+      {
+        "line": 3167,
+        "kind": "declaration",
+        "explanation": "声明 `tpId`；源码初始化式 `auto tpId = (sq->tp_id) & ((1U << 24U) - 1U);`读取 `sq、tp_id`。",
+        "reads": [
+          "sq",
+          "tp_id"
+        ],
+        "writes": [
+          "tpId"
+        ]
+      },
+      {
+        "line": 3168,
+        "kind": "declaration",
+        "explanation": "声明 `rmtObjId`；源码初始化式 `auto rmtObjId = (sq->rmtObjId) & 0xFFFFF;`读取 `sq`。",
+        "reads": [
+          "sq"
+        ],
+        "writes": [
+          "rmtObjId"
+        ]
+      },
+      {
+        "line": 3169,
+        "kind": "declaration",
+        "explanation": "声明 `tokenId`；源码初始化式 `auto tokenId = (sq->localTokenId) & 0xFFFFF;`读取 `sq、localTokenId`。",
+        "reads": [
+          "sq",
+          "localTokenId"
+        ],
+        "writes": [
+          "tokenId"
+        ]
+      },
+      {
+        "line": 3170,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v2` 的 L3170 分隔 `auto tokenId = (sq->localTokenId) & 0xFFFFF;` 与 `__gm__ uint32_t* wqeWords = (__gm__ uint32_t*)(sqBaseAddr + wqeSize * (…` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3171,
+        "kind": "declaration",
+        "explanation": "声明 `uint32_t`；源码初始化式 `__gm__ uint32_t* wqeWords = (__gm__ uint32_t*)(sqBaseAddr + wqeSize * (myHead % qpDepth));`读取 `__gm__、sqBaseAddr、wqeSize、myHead、qpDepth`。",
+        "reads": [
+          "__gm__",
+          "sqBaseAddr",
+          "wqeSize",
+          "myHead",
+          "qpDepth"
+        ],
+        "writes": [
+          "wqeWords",
+          "uint32_t"
+        ]
+      },
+      {
+        "line": 3172,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v2` 的 L3172 分隔 `__gm__ uint32_t* wqeWords = (__gm__ uint32_t*)(sqBaseAddr + wqeSize * (…` 与 `uint32_t w[16];` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3173,
+        "kind": "declaration",
+        "explanation": "声明 `w`；源码初始化式 `uint32_t w[16];`读取 `无运行时对象`。",
+        "reads": [],
+        "writes": [
+          "w"
+        ]
+      },
+      {
+        "line": 3174,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 0: sqeBbIdx[15:0] | flag[23:16] | rsv0[26:24] | nf[27] | tokenEn[28] | rmtJettyType[30:29] | owner[31]`，说明 `simt_write_wqe_v2` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3175,
+        "kind": "declaration",
+        "explanation": "声明 `owner`；源码初始化式 `auto owner = (myHead & qpDepth) == 0 ? 1 : 0;`读取 `myHead、qpDepth`。",
+        "reads": [
+          "myHead",
+          "qpDepth"
+        ],
+        "writes": [
+          "owner"
+        ]
+      },
+      {
+        "line": 3176,
+        "kind": "statement",
+        "explanation": "按表达式 `w[0] = (0u << 0)` 更新 `w`；右侧读取 `字面量`。",
+        "reads": [],
+        "writes": [
+          "w"
+        ]
+      },
+      {
+        "line": 3177,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (0b00100000u << 16)`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3178,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (0u << 24)`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3179,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (0u << 27)`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3180,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (1u << 28)`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3181,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (1u << 29)`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3182,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| ((uint32_t)owner << 31);`；该语句明确涉及 `owner`。",
+        "reads": [
+          "owner"
+        ],
+        "writes": []
+      },
+      {
+        "line": 3183,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v2` 的 L3183 分隔 `| ((uint32_t)owner << 31); // owner` 与 `// Word 1: targetHint[7:0] | opcode[15:8] | rsv1[21:16] | inlineMsgLen[…` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3184,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 1: targetHint[7:0] | opcode[15:8] | rsv1[21:16] | inlineMsgLen[31:22]`，说明 `simt_write_wqe_v2` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3185,
+        "kind": "statement",
+        "explanation": "按表达式 `w[1] = (0u << 0)` 更新 `w`；右侧读取 `字面量`。",
+        "reads": [],
+        "writes": [
+          "w"
+        ]
+      },
+      {
+        "line": 3186,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (static_cast<uint32_t>(URMAOPCODE::OP_WRITE) << 8)`；该语句明确涉及 `URMAOPCODE、OP_WRITE`。",
+        "reads": [
+          "URMAOPCODE",
+          "OP_WRITE"
+        ],
+        "writes": []
+      },
+      {
+        "line": 3187,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (0u << 16)`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3188,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (0u << 22);`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3189,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v2` 的 L3189 分隔 `| (0u << 22); // inlineMsgLen` 与 `// Word 2: tpId[23:0] | sgeNum[31:24]` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3190,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 2: tpId[23:0] | sgeNum[31:24]`，说明 `simt_write_wqe_v2` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3191,
+        "kind": "statement",
+        "explanation": "按表达式 `w[2] = (tpId << 0)` 更新 `w`；右侧读取 `tpId`。",
+        "reads": [
+          "tpId"
+        ],
+        "writes": [
+          "w"
+        ]
+      },
+      {
+        "line": 3192,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (1u << 24);`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3193,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v2` 的 L3193 分隔 `| (1u << 24); // sgeNum = 1` 与 `// Word 3: rmtJettyOrSegId[19:0] | rsv2[31:20]` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3194,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 3: rmtJettyOrSegId[19:0] | rsv2[31:20]`，说明 `simt_write_wqe_v2` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3195,
+        "kind": "statement",
+        "explanation": "按表达式 `w[3] = (rmtObjId << 0)` 更新 `w`；右侧读取 `rmtObjId`。",
+        "reads": [
+          "rmtObjId"
+        ],
+        "writes": [
+          "w"
+        ]
+      },
+      {
+        "line": 3196,
+        "kind": "statement",
+        "explanation": "求值源码语句 `| (0u << 20);`；该语句明确涉及 `标点/字面量`。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3197,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v2` 的 L3197 分隔 `| (0u << 20); // rsv2` 与 `// Word 4-5: rmtEidL (uint64_t)` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3198,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 4-5: rmtEidL (uint64_t)`，说明 `simt_write_wqe_v2` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3199,
+        "kind": "declaration",
+        "explanation": "声明 `rmtEid`；源码初始化式 `auto rmtEid = (JETTY_POS uint32_t *)(sq->rmtEid);`读取 `JETTY_POS、sq`。",
+        "reads": [
+          "JETTY_POS",
+          "sq"
+        ],
+        "writes": [
+          "rmtEid"
+        ]
+      },
+      {
+        "line": 3200,
+        "kind": "statement",
+        "explanation": "按表达式 `w[4] = rmtEid[0];` 更新 `w`；右侧读取 `rmtEid`。",
+        "reads": [
+          "rmtEid"
+        ],
+        "writes": [
+          "w"
+        ]
+      },
+      {
+        "line": 3201,
+        "kind": "statement",
+        "explanation": "按表达式 `w[5] = rmtEid[1];` 更新 `w`；右侧读取 `rmtEid`。",
+        "reads": [
+          "rmtEid"
+        ],
+        "writes": [
+          "w"
+        ]
+      },
+      {
+        "line": 3202,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v2` 的 L3202 分隔 `w[5] = rmtEid[1];` 与 `// Word 6-7: rmtEidH (uint64_t)` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3203,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 6-7: rmtEidH (uint64_t)`，说明 `simt_write_wqe_v2` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3204,
+        "kind": "statement",
+        "explanation": "按表达式 `w[6] = rmtEid[2];` 更新 `w`；右侧读取 `rmtEid`。",
+        "reads": [
+          "rmtEid"
+        ],
+        "writes": [
+          "w"
+        ]
+      },
+      {
+        "line": 3205,
+        "kind": "statement",
+        "explanation": "按表达式 `w[7] = rmtEid[3];` 更新 `w`；右侧读取 `rmtEid`。",
+        "reads": [
+          "rmtEid"
+        ],
+        "writes": [
+          "w"
+        ]
+      },
+      {
+        "line": 3206,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v2` 的 L3206 分隔 `w[7] = rmtEid[3];` 与 `// Word 8: rmtTokenValue` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3207,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 8: rmtTokenValue`，说明 `simt_write_wqe_v2` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3208,
+        "kind": "statement",
+        "explanation": "按表达式 `w[8] = 0;` 更新 `w`；右侧读取 `字面量`。",
+        "reads": [],
+        "writes": [
+          "w"
+        ]
+      },
+      {
+        "line": 3209,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v2` 的 L3209 分隔 `w[8] = 0;` 与 `// Word 9: udfType[7:0] | reduceDataType[11:8] | reduceOpcode[15:12] | …` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3210,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 9: udfType[7:0] | reduceDataType[11:8] | reduceOpcode[15:12] | rsv3[31:16]`，说明 `simt_write_wqe_v2` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3211,
+        "kind": "statement",
+        "explanation": "按表达式 `w[9] = 0;` 更新 `w`；右侧读取 `字面量`。",
+        "reads": [],
+        "writes": [
+          "w"
+        ]
+      },
+      {
+        "line": 3212,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v2` 的 L3212 分隔 `w[9] = 0;` 与 `// Word 10: rmtAddrLOrTokenId` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3213,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 10: rmtAddrLOrTokenId`，说明 `simt_write_wqe_v2` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3214,
+        "kind": "statement",
+        "explanation": "按表达式 `w[10] = remoteAddr & 0xFFFFFFFF;` 更新 `w`；右侧读取 `remoteAddr`。",
+        "reads": [
+          "remoteAddr"
+        ],
+        "writes": [
+          "w"
+        ]
+      },
+      {
+        "line": 3215,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v2` 的 L3215 分隔 `w[10] = remoteAddr & 0xFFFFFFFF;` 与 `// Word 11: rmtAddrHOrTokenValue` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3216,
+        "kind": "comment",
+        "explanation": "注释记录 `Word 11: rmtAddrHOrTokenValue`，说明 `simt_write_wqe_v2` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3217,
+        "kind": "statement",
+        "explanation": "按表达式 `w[11] = remoteAddr >> 32;` 更新 `w`；右侧读取 `remoteAddr`。",
+        "reads": [
+          "remoteAddr"
+        ],
+        "writes": [
+          "w"
+        ]
+      },
+      {
+        "line": 3218,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v2` 的 L3218 分隔 `w[11] = remoteAddr >> 32;` 与 `// SGE` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3219,
+        "kind": "comment",
+        "explanation": "注释记录 `SGE`，说明 `simt_write_wqe_v2` 在此处的实现意图或约束。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3220,
+        "kind": "statement",
+        "explanation": "按表达式 `w[12] = messageLen;` 更新 `w`；右侧读取 `messageLen`。",
+        "reads": [
+          "messageLen"
+        ],
+        "writes": [
+          "w"
+        ]
+      },
+      {
+        "line": 3221,
+        "kind": "statement",
+        "explanation": "按表达式 `w[13] = 0;` 更新 `w`；右侧读取 `字面量`。",
+        "reads": [],
+        "writes": [
+          "w"
+        ]
+      },
+      {
+        "line": 3222,
+        "kind": "statement",
+        "explanation": "按表达式 `w[14] = (uint32_t)(localAddr & 0xFFFFFFFF);` 更新 `w`；右侧读取 `localAddr`。",
+        "reads": [
+          "localAddr"
+        ],
+        "writes": [
+          "w"
+        ]
+      },
+      {
+        "line": 3223,
+        "kind": "statement",
+        "explanation": "按表达式 `w[15] = (uint32_t)(localAddr >> 32);` 更新 `w`；右侧读取 `localAddr`。",
+        "reads": [
+          "localAddr"
+        ],
+        "writes": [
+          "w"
+        ]
+      },
+      {
+        "line": 3224,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v2` 的 L3224 分隔 `w[15] = (uint32_t)(localAddr >> 32);` 与 `#pragma unroll` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3225,
+        "kind": "preprocessor",
+        "explanation": "应用预处理指令 `#pragma unroll`，改变 `simt_write_wqe_v2` 所在编译单元的构建内容。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3226,
+        "kind": "loop",
+        "explanation": "启动或推进 `for` 循环 `for(int i = 0; i < 16; i ++){`；迭代式涉及 `i`。",
+        "reads": [],
+        "writes": [
+          "i"
+        ]
+      },
+      {
+        "line": 3227,
+        "kind": "comment",
+        "explanation": "保留被注释的调试或历史代码 `asc_stwt(&wqeWords[i], w[i]);`；该内容当前不参与 `simt_write_wqe_v2` 执行。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3228,
+        "kind": "declaration",
+        "explanation": "声明 `s`；源码初始化式 `wqeWords[i] = w[i];`读取 `i、w`。",
+        "reads": [
+          "i",
+          "w"
+        ],
+        "writes": [
+          "wqeWords"
+        ]
+      },
+      {
+        "line": 3229,
+        "kind": "brace",
+        "explanation": "在 `simt_write_wqe_v2` 的 L3229 结束 for 循环 `for(int i = 0; i < 16; i ++){` 作用域。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3230,
+        "kind": "blank",
+        "explanation": "空行在 `simt_write_wqe_v2` 的 L3230 分隔 `}` 与 `}` 两段源码。",
+        "reads": [],
+        "writes": []
+      },
+      {
+        "line": 3231,
+        "kind": "brace",
+        "explanation": "在 `simt_write_wqe_v2` 的 L3231 结束 代码块 `__simt_callee__ inline void simt_write_wqe_v2(JETTY_POS HcclAiRMAWQ *sq, uint32_t myHead, uint6…` 作用域。",
+        "reads": [],
+        "writes": []
+      }
+    ],
+      "segments": [
+        {
+          "id": "wqe-v2-fixed-slot-contract",
+          "start": 3160,
+          "end": 3173,
+          "title": "用固定 64B/16K depth 定位旧版 WQE 槽",
+          "detail": "v2 不读取 sq runtime size/depth，固定 shift=14、wqeSize=64，并把目标视为 uint32_t*。",
+          "kind": "input",
+          "input_state": [
+            "sq->sqVA、myHead 与 payload 字段"
+          ],
+          "mechanism": "qpDepth=1<<14；wqeWords=sqVA+64*(myHead%qpDepth)；准备 w[16]。",
+          "output_state": [
+            "目标固定 WQE 槽与 16-word 工作数组"
+          ],
+          "why": "该假设不适配任意 runtime context，是 v2 未接入的主要格式差异。",
+          "calls": []
+        },
+        {
+          "id": "wqe-v2-sixteen-word-encoding",
+          "start": 3174,
+          "end": 3224,
+          "title": "以 16 个 uint32 word 手工编码旧 WQE",
+          "detail": "w0/1 分开编码控制与硬编码 OP_WRITE，w2/3 编 TP/object，w4..7 EID，w10/11 手拆 remoteAddr，w12/14/15 编 SGE。",
+          "kind": "compute",
+          "input_state": [
+            "sq IDs/EID、remoteAddr/messageLen/localAddr"
+          ],
+          "mechanism": "64 位字段显式按低/高 32 位拆分；opcode 实参和 tokenId 均未进入最终 word。",
+          "output_state": [
+            "w[16]：旧版 64B WQE"
+          ],
+          "why": "相比 v4 的 8×uint64 位图，这种表示更直观但 store 多、硬编码更多。",
+          "calls": []
+        },
+        {
+          "id": "wqe-v2-unrolled-32bit-stores",
+          "start": 3225,
+          "end": 3231,
+          "title": "展开循环逐 32 位写入旧版 WQE",
+          "detail": "16 次 wqeWords[i]=w[i]；注释保留 asc_stwt 候选。",
+          "kind": "output",
+          "input_state": [
+            "w[16]"
+          ],
+          "mechanism": "#pragma unroll 展开 16 次 uint32 GM store。",
+          "output_state": [
+            "固定 WQE 槽：64B 旧格式写完"
+          ],
+          "why": "当前 v4 用两次 256-bit store 替代这条高指令数路径。",
+          "calls": []
+        }
+      ]
+    }
+  ]
+}

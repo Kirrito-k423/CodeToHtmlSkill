@@ -1,0 +1,4761 @@
+{
+  "source": {
+    "sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc"
+  },
+  "functions": [
+    {
+      "id": "m-moedistributedispatchv2fullmesh-setvalidexpertinfo-6b263412eb",
+      "module_id": "receive-format",
+      "name": "SetValidExpertInfo",
+      "start": 1894,
+      "end": 1919,
+      "inactive": false,
+      "summary": "从当前 AIV 对应的 recvCntWorkspaceGM_ cumsum 行取出接收前缀和，将相邻项作差得到每个源 expert/rank 数据块的待收 token 数，只把非零数据块压缩到 expertMapTensor_ 与 expertLeftNumTensor_。",
+      "inputs": [
+        "expInfoSize",
+        "validNum",
+        "recvCntWorkspaceGM_",
+        "aivId_",
+        "rscvStatusNum_",
+        "startId_",
+        "endId_"
+      ],
+      "outputs": [
+        "sendCntTensor_",
+        "expertFinishNumTensor_",
+        "expertMapTensor_",
+        "expertLeftNumTensor_",
+        "validNum"
+      ],
+      "side_effects": [
+        "从 GM workspace 搬入 rscvStatusNum_ 个 cumsum 到 sendCntTensor_",
+        "清零 expertFinishNumTensor_，并把非零相邻差压缩写入 expertMapTensor_/expertLeftNumTensor_",
+        "MTE2_S 同步保证标量读取 sendCntTensor_ 前 GM→UB 搬运完成"
+      ],
+      "review": {
+        "status": "PASS",
+        "reviewer": "e2e-architecture-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "line_range": [
+          1894,
+          1919
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 1894,
+        "reviewed_end": 1919,
+        "expected_line_count": 26,
+        "covered_line_count": 26,
+        "covered_ranges": [
+          [
+            1894,
+            1904
+          ],
+          [
+            1905,
+            1918
+          ],
+          [
+            1919,
+            1919
+          ]
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {
+          "line": 1894,
+          "kind": "signature",
+          "explanation": "构成函数 `SetValidExpertInfo` 的签名片段 `template <TemplateMC2TypeFullmeshClass>`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1895,
+          "kind": "signature",
+          "explanation": "构成函数 `SetValidExpertInfo` 的签名片段 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::SetValidExpertInfo(uint32_t expInfoSize, uint32_t &validNum)`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1896,
+          "kind": "brace",
+          "explanation": "开始从 cumsum 构造有效源数据块信息。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1897,
+          "kind": "comment",
+          "explanation": "注释记录 `获取cumSum`，说明 `SetValidExpertInfo` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1898,
+          "kind": "declaration",
+          "explanation": "声明/初始化 workspaceGlobal；源码表达式 `GlobalTensor<int32_t> workspaceGlobal;`。",
+          "reads": [],
+          "writes": [
+            "workspaceGlobal"
+          ]
+        },
+        {
+          "line": 1899,
+          "kind": "call",
+          "explanation": "把 workspaceGlobal 绑定到 recvCntWorkspaceGM_ 的 int32_t cumsum 矩阵基址。",
+          "reads": [
+            "recvCntWorkspaceGM_"
+          ],
+          "writes": [
+            "workspaceGlobal"
+          ]
+        },
+        {
+          "line": 1900,
+          "kind": "declaration",
+          "explanation": "声明/初始化 scalesCopyInParams；源码表达式 `DataCopyExtParams scalesCopyInParams{1U, static_cast<uint32_t>(rscvStatusNum_ * sizeof(int32_t)), 0U, 0U, 0U};` 读取 DataCopyExtParams、U、rscvStatusNum_。",
+          "reads": [
+            "DataCopyExtParams",
+            "rscvStatusNum_"
+          ],
+          "writes": [
+            "scalesCopyInParams"
+          ]
+        },
+        {
+          "line": 1901,
+          "kind": "declaration",
+          "explanation": "声明/初始化 copyPadExtParams；源码表达式 `DataCopyPadExtParams<int32_t> copyPadExtParams{false, 0U, 0U, 0U};` 读取 DataCopyPadExtParams、U。",
+          "reads": [
+            "DataCopyPadExtParams"
+          ],
+          "writes": [
+            "copyPadExtParams"
+          ]
+        },
+        {
+          "line": 1902,
+          "kind": "call",
+          "explanation": "从 aivId_ * rscvStatusNum_ 行偏移搬入当前 AIV 的完整 cumsum 到 sendCntTensor_。",
+          "reads": [
+            "workspaceGlobal",
+            "aivId_",
+            "rscvStatusNum_",
+            "scalesCopyInParams",
+            "copyPadExtParams"
+          ],
+          "writes": [
+            "sendCntTensor_"
+          ]
+        },
+        {
+          "line": 1903,
+          "kind": "sync",
+          "explanation": "PIPE_ALL 等待当前 cumsum GM→UB 搬运进入完成阶段。",
+          "reads": [
+            "PIPE_ALL"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1904,
+          "kind": "sync",
+          "explanation": "MTE2_S 使 sendCntTensor_ 可被后续标量下标读取。",
+          "reads": [
+            "MTE2_S"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1905,
+          "kind": "blank",
+          "explanation": "空行在 `SetValidExpertInfo` 的 L1905 分隔 `SyncFunc<AscendC::HardEvent::MTE2_S>();` 与 `Duplicate<uint32_t>(expertFinishNumTensor_, 0, expInfoSize / sizeof(uin…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1906,
+          "kind": "call",
+          "explanation": "按 expInfoSize 清零 expertFinishNumTensor_，所有有效源块的已消费 token 游标从 0 开始。",
+          "reads": [
+            "expInfoSize"
+          ],
+          "writes": [
+            "expertFinishNumTensor_"
+          ]
+        },
+        {
+          "line": 1907,
+          "kind": "loop",
+          "explanation": "遍历 SplitToCore 分给当前 AIV 的源状态半开区间 [startId_, endId_)。",
+          "reads": [
+            "index",
+            "startId_",
+            "endId_"
+          ],
+          "writes": [
+            "index"
+          ]
+        },
+        {
+          "line": 1908,
+          "kind": "call",
+          "explanation": "先把原始源状态 index 写入当前压缩槽 expertMapTensor_(validNum)；零计数时下一轮会覆盖。",
+          "reads": [
+            "validNum",
+            "index"
+          ],
+          "writes": [
+            "expertMapTensor_"
+          ]
+        },
+        {
+          "line": 1909,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (index == 0) {` 选择 `SetValidExpertInfo` 的后续路径；判定涉及 `index`。",
+          "reads": [
+            "index"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1910,
+          "kind": "call",
+          "explanation": "第 0 个源状态的独立 token 数等于首个 cumsum 值 sendCntTensor_(0)。",
+          "reads": [
+            "validNum",
+            "index"
+          ],
+          "writes": [
+            "expertLeftNumTensor_"
+          ]
+        },
+        {
+          "line": 1911,
+          "kind": "branch",
+          "explanation": "第 0 个 cumsum 项处理完毕，切换到相邻前缀和作差分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1912,
+          "kind": "call",
+          "explanation": "其余源状态 token 数等于当前 cumsum 减前一项 cumsum。",
+          "reads": [
+            "validNum",
+            "index"
+          ],
+          "writes": [
+            "expertLeftNumTensor_"
+          ]
+        },
+        {
+          "line": 1913,
+          "kind": "brace",
+          "explanation": "结束相邻 cumsum 作差分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1914,
+          "kind": "branch",
+          "explanation": "只在当前 expertLeftNumTensor_ 非零时保留该压缩槽。",
+          "reads": [
+            "validNum"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1915,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm] expertLeftNumTensor_ aivId_ %d validNum-1 %d, expertLeftNumTensor_(validNum-1) %d\\n\", aivId_, validNum, ex…`；该内容当前不参与 `SetValidExpertInfo` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1916,
+          "kind": "declaration",
+          "explanation": "非零源块令 validNum 加一，推进 expertMap/left/finish 三组压缩输出游标。",
+          "reads": [
+            "validNum"
+          ],
+          "writes": [
+            "validNum"
+          ]
+        },
+        {
+          "line": 1917,
+          "kind": "brace",
+          "explanation": "结束非零 expertLeftNumTensor_ 的压缩游标推进分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1918,
+          "kind": "brace",
+          "explanation": "结束 [startId_, endId_) 源状态遍历。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1919,
+          "kind": "brace",
+          "explanation": "结束 SetValidExpertInfo。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments": [
+        {
+          "id": "valid-expert-load-cumsum-row",
+          "start": 1894,
+          "end": 1904,
+          "title": "搬入当前 AIV 的接收 cumsum 行并等待标量可见",
+          "detail": "workspaceGlobal 绑定 recvCntWorkspaceGM_，DataCopyPad 从 aivId_*rscvStatusNum_ 起点搬入完整前缀和行到 sendCntTensor_；PIPE_ALL 与 MTE2_S 后标量循环才能读取。",
+          "kind": "input",
+          "input_state": [
+            "recvCntWorkspaceGM_：CalCumSum 生成的 per-AIV 接收前缀和矩阵",
+            "aivId_/rscvStatusNum_：当前行与长度"
+          ],
+          "mechanism": "GM 起点为 recvCntWorkspaceGM_ + aivId_*rscvStatusNum_*sizeof(int32_t)，按 DataCopyExtParams 搬入 rscvStatusNum_ 个 int32_t。",
+          "output_state": [
+            "sendCntTensor_：当前 AIV 可标量读取的接收 token cumsum"
+          ],
+          "why": "后续需用相邻前缀和之差恢复每个源 expert/rank 数据块的独立 token 数。",
+          "calls": [
+            {
+              "name": "SetGlobalBuffer",
+              "line": 1899,
+              "type": "external"
+            },
+            {
+              "name": "DataCopyPad",
+              "line": 1902,
+              "type": "external"
+            },
+            {
+              "name": "PipeBarrier",
+              "line": 1903,
+              "type": "external"
+            },
+            {
+              "name": "SyncFunc",
+              "line": 1904,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "valid-expert-difference-and-compact",
+          "start": 1905,
+          "end": 1918,
+          "title": "相邻 cumsum 作差并压缩非零源数据块",
+          "detail": "先按 expInfoSize 清零 expertFinishNumTensor_。遍历 SplitToCore 给当前 AIV 的 [startId_,endId_)；expertMapTensor_(validNum) 暂存原始数据块 index，第 0 项直接取 sendCntTensor_(0)，其余取当前前缀减前一项。仅差值非零时 validNum++，从而原地压缩有效块。",
+          "kind": "loop",
+          "input_state": [
+            "sendCntTensor_：接收前缀和",
+            "startId_/endId_：当前 AIV 的源数据块范围",
+            "validNum：压缩输出游标，调用前为 0"
+          ],
+          "mechanism": "left(0)=cumsum(0)，left(i)=cumsum(i)-cumsum(i-1)；先写 validNum 槽，差值为零时不推进游标，下一 index 覆盖该槽。",
+          "output_state": [
+            "expertMapTensor_[0:validNum]：非零源数据块原始索引",
+            "expertLeftNumTensor_[0:validNum]：各块待收 token 数",
+            "expertFinishNumTensor_：全部从 0 开始"
+          ],
+          "why": "轮询状态机只需访问确实会收到 token 的源块；压缩零项可避免无效轮询。",
+          "calls": [
+            {
+              "name": "Duplicate",
+              "line": 1906,
+              "type": "external"
+            },
+            {
+              "name": "expertMapTensor_",
+              "line": 1908,
+              "type": "external"
+            },
+            {
+              "name": "expertLeftNumTensor_",
+              "line": 1910,
+              "type": "external"
+            },
+            {
+              "name": "sendCntTensor_",
+              "line": 1910,
+              "type": "external"
+            },
+            {
+              "name": "expertLeftNumTensor_",
+              "line": 1912,
+              "type": "external"
+            },
+            {
+              "name": "sendCntTensor_",
+              "line": 1912,
+              "type": "external"
+            },
+            {
+              "name": "expertLeftNumTensor_",
+              "line": 1914,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "valid-expert-finish",
+          "start": 1919,
+          "end": 1919,
+          "title": "结束有效源数据块索引构建",
+          "detail": "右花括号结束 SetValidExpertInfo，validNum 与三组 expert tensor 留给 WaitAndFormatOutput。",
+          "kind": "output",
+          "input_state": [
+            "validNum：非零数据块计数"
+          ],
+          "mechanism": "关闭函数作用域，不再改写 validNum、expertMapTensor_、expertLeftNumTensor_ 与 expertFinishNumTensor_，把已压缩的有效块状态交给后续轮询阶段。",
+          "output_state": [
+            "调用者获得压缩后的有效源块数量与状态数组"
+          ],
+          "why": "LocalWindowCopy 随后据 validNum 决定是否进入到达轮询。",
+          "calls": []
+        }
+      ]
+    },
+    {
+      "id": "m-moedistributedispatchv2fullmesh-checkdataarrivewithflag-99021413c7",
+      "module_id": "receive-format",
+      "name": "CheckDataArriveWithFlag",
+      "start": 1921,
+      "end": 2049,
+      "inactive": false,
+      "summary": "从指定源 expert 数据块的 beginIdx 起检查 copyCnt 个 token：每 token 含 blockCntPerToken_ 个 512B block，每块在 480B payload 后有一个值为 1 的到达 flag；函数抽取这些 flag、比较并寻找首个 0，只返回从起点连续完整到达的 token 数。",
+      "inputs": [
+        "srcExpDataIdx",
+        "beginIdx",
+        "copyCnt",
+        "blockCntPerToken_",
+        "windowGM_",
+        "expertPerSizeOnWin_",
+        "hCommuSize_",
+        "flagRecvTensor_",
+        "flagRecvGatherMask_"
+      ],
+      "outputs": [
+        "flagRecvTensor_",
+        "flagGatherOutTensor_",
+        "flagCompResultU8_",
+        "arriveFlagNum"
+      ],
+      "side_effects": [
+        "MTE2 从远端/本地 window 抽取每个 512B block 位于 SPLIT_BLOCK_DATA_SIZE=480B 后的 32B flag 区到 UB",
+        "GatherMask 选出每块第一个 float flag，CompareScalar 生成等于 1 的 bit mask",
+        "MTE2_V、PIPE_V、V_S 建立 GM 搬入、向量 gather/compare 与标量扫描顺序",
+        "第 1951–2007 行为注释掉的 cache invalid、范围校验及替代搬运实现，不参与当前路径"
+      ],
+      "review": {
+        "status": "PASS",
+        "reviewer": "e2e-architecture-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "line_range": [
+          1921,
+          2049
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 1921,
+        "reviewed_end": 2049,
+        "expected_line_count": 129,
+        "covered_line_count": 129,
+        "covered_ranges": [
+          [
+            1921,
+            1931
+          ],
+          [
+            1932,
+            1949
+          ],
+          [
+            1950,
+            1972
+          ],
+          [
+            1973,
+            1987
+          ],
+          [
+            1988,
+            2007
+          ],
+          [
+            2008,
+            2020
+          ],
+          [
+            2021,
+            2028
+          ],
+          [
+            2029,
+            2041
+          ],
+          [
+            2042,
+            2049
+          ]
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {
+          "line": 1921,
+          "kind": "signature",
+          "explanation": "构成函数 `CheckDataArriveWithFlag` 的签名片段 `template <TemplateMC2TypeFullmeshClass>`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1922,
+          "kind": "signature",
+          "explanation": "构成函数 `CheckDataArriveWithFlag` 的签名片段 `__aicore__ inline uint32_t MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::CheckDataArriveWithFlag(uint32_t srcExpDataIdx,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1923,
+          "kind": "signature",
+          "explanation": "构成函数 `CheckDataArriveWithFlag` 的签名片段 `int32_t beginIdx, int32_t copyCnt)`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1924,
+          "kind": "brace",
+          "explanation": "开始检查候选 token 的 512B block 到达 flag。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1925,
+          "kind": "declaration",
+          "explanation": "声明/初始化 rsvdCnt；源码表达式 `uint64_t rsvdCnt = 0;`。",
+          "reads": [],
+          "writes": [
+            "rsvdCnt"
+          ]
+        },
+        {
+          "line": 1926,
+          "kind": "declaration",
+          "explanation": "声明/初始化 arriveFlagNum；源码表达式 `uint32_t arriveFlagNum = 0;`。",
+          "reads": [],
+          "writes": [
+            "arriveFlagNum"
+          ]
+        },
+        {
+          "line": 1927,
+          "kind": "call",
+          "explanation": "每个 token 有 blockCntPerToken_ 个 512B block，因此候选 flag 总数为 blocks * copyCnt。",
+          "reads": [
+            "blockCntPerToken_",
+            "copyCnt"
+          ],
+          "writes": [
+            "flagNum"
+          ]
+        },
+        {
+          "line": 1928,
+          "kind": "call",
+          "explanation": "把 flagNum 上取整到 COMPARE_COUNT_PER_BLOCK=64，满足 256B CompareScalar 比较粒度。",
+          "reads": [
+            "flagNum",
+            "COMPARE_COUNT_PER_BLOCK"
+          ],
+          "writes": [
+            "compareCount"
+          ]
+        },
+        {
+          "line": 1929,
+          "kind": "call",
+          "explanation": "按 64 个比较 bit 一个 uint64_t 计算标量扫描 word 数 compResultU64Num。",
+          "reads": [
+            "flagNum"
+          ],
+          "writes": [
+            "compResultU64Num"
+          ]
+        },
+        {
+          "line": 1930,
+          "kind": "statement",
+          "explanation": "开始构造未使用的 expFlagCopyParams：blockCount 是 flagNum，每次仅搬一个 float flag。",
+          "reads": [
+            "DataCopyExtParams",
+            "flagNum"
+          ],
+          "writes": [
+            "expFlagCopyParams"
+          ]
+        },
+        {
+          "line": 1931,
+          "kind": "declaration",
+          "explanation": "未使用参数把源 stride 设为 512B-4B，使相邻单 float 搬运落到下一 block flag。",
+          "reads": [
+            "SPLIT_BLOCK_SIZE"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1932,
+          "kind": "blank",
+          "explanation": "空行在 `CheckDataArriveWithFlag` 的 L1932 分隔 `static_cast<uint32_t>(SPLIT_BLOCK_SIZE - sizeof(float)), 0, 0};` 与 `DataCopyExtParams oneTokenFlagCopyParams{` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1933,
+          "kind": "statement",
+          "explanation": "开始构造未使用的 oneTokenFlagCopyParams，用于一次 token 内按 block 抽取 32B flag 段。",
+          "reads": [
+            "DataCopyExtParams"
+          ],
+          "writes": [
+            "oneTokenFlagCopyParams"
+          ]
+        },
+        {
+          "line": 1934,
+          "kind": "statement",
+          "explanation": "oneTokenFlagCopyParams 的 blockCount 等于 blockCntPerToken_。",
+          "reads": [
+            "blockCntPerToken_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1935,
+          "kind": "statement",
+          "explanation": "每个 blockLen 是 UB_ALIGN=32B，从 flag 起点搬整个对齐段。",
+          "reads": [
+            "UB_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1936,
+          "kind": "statement",
+          "explanation": "源 stride 是 512B-32B=480B，与 payload 长度一致。",
+          "reads": [
+            "SPLIT_BLOCK_SIZE",
+            "UB_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1937,
+          "kind": "statement",
+          "explanation": "执行 `0U,`；读取 U。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1938,
+          "kind": "statement",
+          "explanation": "执行 `0U`；读取 U。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1939,
+          "kind": "brace",
+          "explanation": "在 `CheckDataArriveWithFlag` 的 L1939 结束 代码块 `DataCopyExtParams oneTokenFlagCopyParams{` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1940,
+          "kind": "blank",
+          "explanation": "空行在 `CheckDataArriveWithFlag` 的 L1940 分隔 `};` 与 `const uint32_t tokenStride = hCommuSize_ / sizeof(float);` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1941,
+          "kind": "declaration",
+          "explanation": "把 hCommuSize_ 除以 sizeof(float)，得到相邻 token flag 起点的 float 步长 tokenStride。",
+          "reads": [
+            "hCommuSize_"
+          ],
+          "writes": [
+            "tokenStride"
+          ]
+        },
+        {
+          "line": 1942,
+          "kind": "blank",
+          "explanation": "空行在 `CheckDataArriveWithFlag` 的 L1942 分隔 `const uint32_t tokenStride = hCommuSize_ / sizeof(float);` 与 `DataCopyPadExtParams<float> expFlagPadParams{false, 0U, 0U, 0U};` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1943,
+          "kind": "declaration",
+          "explanation": "声明/初始化 expFlagPadParams；源码表达式 `DataCopyPadExtParams<float> expFlagPadParams{false, 0U, 0U, 0U};` 读取 DataCopyPadExtParams、U。",
+          "reads": [
+            "DataCopyPadExtParams"
+          ],
+          "writes": [
+            "expFlagPadParams"
+          ]
+        },
+        {
+          "line": 1944,
+          "kind": "declaration",
+          "explanation": "声明/初始化 dataFlagGlobal；源码表达式 `GlobalTensor<float> dataFlagGlobal;`。",
+          "reads": [],
+          "writes": [
+            "dataFlagGlobal"
+          ]
+        },
+        {
+          "line": 1945,
+          "kind": "statement",
+          "explanation": "从 windowGM_ 加 srcExpDataIdx * expertPerSizeOnWin_ 定位源 expert 数据块；地址表达式在下一行继续。",
+          "reads": [
+            "GM_ADDR",
+            "windowGM_",
+            "srcExpDataIdx",
+            "expertPerSizeOnWin_"
+          ],
+          "writes": [
+            "wAddr"
+          ]
+        },
+        {
+          "line": 1946,
+          "kind": "declaration",
+          "explanation": "在源块内跳到 beginIdx token，再加 480B 到该 token 第一个 512B block 的 flag 起点。",
+          "reads": [
+            "beginIdx",
+            "hCommuSize_",
+            "SPLIT_BLOCK_DATA_SIZE"
+          ],
+          "writes": []
+        },
+        {
+          "line": 1947,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm] aivId %d srcExpDataIdx %d beginIdx %d wAddr %p\\n\", aivId_, srcExpDataIdx, beginIdx, wAddr);`；该内容当前不参与 `CheckDataArriveWithFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1948,
+          "kind": "call",
+          "explanation": "把 dataFlagGlobal 绑定到计算出的首 flag 地址 wAddr。",
+          "reads": [
+            "wAddr"
+          ],
+          "writes": [
+            "dataFlagGlobal"
+          ]
+        },
+        {
+          "line": 1949,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm121] aivId %d dataFlagGlobal %f\\n\", aivId_, dataFlagGlobal.GetValue(0));`；该内容当前不参与 `CheckDataArriveWithFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1950,
+          "kind": "blank",
+          "explanation": "空行在 `CheckDataArriveWithFlag` 的 L1950 分隔 `// AscendC::printf(\"[kfm121] aivId %d dataFlagGlobal %f\\n\", aivId_, dat…` 与 `// for (uint32_t i = 0; i < flagNum; ++i) {` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1951,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `for (uint32_t i = 0; i < flagNum; ++i) {`；该内容当前不参与 `CheckDataArriveWithFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1952,
+          "kind": "comment",
+          "explanation": "注释记录 `AscendC::DataCacheCleanAndInvalid<float,`，说明 `CheckDataArriveWithFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1953,
+          "kind": "comment",
+          "explanation": "注释记录 `AscendC::CacheLine::SINGLE_CACHE_LINE,`，说明 `CheckDataArriveWithFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1954,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::DcciDst::CACHELINE_ALL>(dataFlagGlobal[i * SPLIT_BLOCK_COUNT]);`；该内容当前不参与 `CheckDataArriveWithFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1955,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `CheckDataArriveWithFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1956,
+          "kind": "blank",
+          "explanation": "空行在 `CheckDataArriveWithFlag` 的 L1956 分隔 `// }` 与 `// SyncFunc<AscendC::HardEvent::S_MTE2>();` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1957,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `SyncFunc<AscendC::HardEvent::S_MTE2>();`；该内容当前不参与 `CheckDataArriveWithFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1958,
+          "kind": "blank",
+          "explanation": "空行在 `CheckDataArriveWithFlag` 的 L1958 分隔 `// SyncFunc<AscendC::HardEvent::S_MTE2>();` 与 `// uint32_t localExpertNum =` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1959,
+          "kind": "comment",
+          "explanation": "注释记录 `uint32_t localExpertNum =`，说明 `CheckDataArriveWithFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1960,
+          "kind": "comment",
+          "explanation": "注释记录 `isShareExpertRankFlag_ ? 1U :`，说明 `CheckDataArriveWithFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1961,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `moeExpertNumPerRank_;`；该内容当前不参与 `CheckDataArriveWithFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1962,
+          "kind": "blank",
+          "explanation": "空行在 `CheckDataArriveWithFlag` 的 L1962 分隔 `// moeExpertNumPerRank_;` 与 `// uint32_t maxDataBlock = epWorldSize_ * localExpertNum;` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1963,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `uint32_t maxDataBlock = epWorldSize_ * localExpertNum;`；该内容当前不参与 `CheckDataArriveWithFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1964,
+          "kind": "blank",
+          "explanation": "空行在 `CheckDataArriveWithFlag` 的 L1964 分隔 `// uint32_t maxDataBlock = epWorldSize_ * localExpertNum;` 与 `// bool invalid =` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1965,
+          "kind": "comment",
+          "explanation": "注释记录 `bool invalid =`，说明 `CheckDataArriveWithFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1966,
+          "kind": "comment",
+          "explanation": "注释记录 `srcExpDataIdx >= maxDataBlock ||`，说明 `CheckDataArriveWithFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1967,
+          "kind": "comment",
+          "explanation": "注释记录 `beginIdx < 0 ||`，说明 `CheckDataArriveWithFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1968,
+          "kind": "comment",
+          "explanation": "注释记录 `copyCnt <= 0 ||`，说明 `CheckDataArriveWithFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1969,
+          "kind": "comment",
+          "explanation": "注释记录 `static_cast<uint32_t>(beginIdx) >= axisMaxBS_ ||`，说明 `CheckDataArriveWithFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1970,
+          "kind": "comment",
+          "explanation": "注释记录 `static_cast<uint32_t>(beginIdx) +`，说明 `CheckDataArriveWithFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1971,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `static_cast<uint32_t>(copyCnt) > axisMaxBS_;`；该内容当前不参与 `CheckDataArriveWithFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1972,
+          "kind": "blank",
+          "explanation": "空行在 `CheckDataArriveWithFlag` 的 L1972 分隔 `// static_cast<uint32_t>(copyCnt) > axisMaxBS_;` 与 `// if (invalid) {` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1973,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `if (invalid) {`；该内容当前不参与 `CheckDataArriveWithFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1974,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(`；该内容当前不参与 `CheckDataArriveWithFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1975,
+          "kind": "comment",
+          "explanation": "注释记录 `\"[FLAG_RANGE_ERROR] rank %d aiv %d \"`，说明 `CheckDataArriveWithFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1976,
+          "kind": "comment",
+          "explanation": "注释记录 `\"srcBlock %u maxBlock %u begin %d copy %d \"`，说明 `CheckDataArriveWithFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1977,
+          "kind": "comment",
+          "explanation": "注释记录 `\"axisMaxBS %u hCommu %u\\n\",`，说明 `CheckDataArriveWithFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1978,
+          "kind": "comment",
+          "explanation": "注释记录 `epRankId_,`，说明 `CheckDataArriveWithFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1979,
+          "kind": "comment",
+          "explanation": "注释记录 `aivId_,`，说明 `CheckDataArriveWithFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1980,
+          "kind": "comment",
+          "explanation": "注释记录 `srcExpDataIdx,`，说明 `CheckDataArriveWithFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1981,
+          "kind": "comment",
+          "explanation": "注释记录 `maxDataBlock,`，说明 `CheckDataArriveWithFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1982,
+          "kind": "comment",
+          "explanation": "注释记录 `beginIdx,`，说明 `CheckDataArriveWithFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1983,
+          "kind": "comment",
+          "explanation": "注释记录 `copyCnt,`，说明 `CheckDataArriveWithFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1984,
+          "kind": "comment",
+          "explanation": "注释记录 `axisMaxBS_,`，说明 `CheckDataArriveWithFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1985,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `hCommuSize_);`；该内容当前不参与 `CheckDataArriveWithFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1986,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `return 0;`；该内容当前不参与 `CheckDataArriveWithFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1987,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `CheckDataArriveWithFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1988,
+          "kind": "blank",
+          "explanation": "空行在 `CheckDataArriveWithFlag` 的 L1988 分隔 `// }` 与 `// for (uint32_t token = 0; token < static_cast<uint32_t>(copyCnt); ++t…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1989,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `for (uint32_t token = 0; token < static_cast<uint32_t>(copyCnt); ++token) {`；该内容当前不参与 `CheckDataArriveWithFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1990,
+          "kind": "comment",
+          "explanation": "注释记录 `DataCopyPad(`，说明 `CheckDataArriveWithFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1991,
+          "kind": "comment",
+          "explanation": "注释记录 `flagRecvTensor_[token * blockCntPerToken_ * UB_ALIGN_DATA_COUNT],`，说明 `CheckDataArriveWithFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1992,
+          "kind": "comment",
+          "explanation": "注释记录 `dataFlagGlobal[token * tokenStride],`，说明 `CheckDataArriveWithFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1993,
+          "kind": "comment",
+          "explanation": "注释记录 `oneTokenFlagCopyParams,`，说明 `CheckDataArriveWithFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1994,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `expFlagPadParams);`；该内容当前不参与 `CheckDataArriveWithFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1995,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `CheckDataArriveWithFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1996,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `return uint32_t(copyCnt);`；该内容当前不参与 `CheckDataArriveWithFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1997,
+          "kind": "blank",
+          "explanation": "空行在 `CheckDataArriveWithFlag` 的 L1997 分隔 `// return uint32_t(copyCnt);` 与 `// DataCopyPad(flagRecvTensor_, dataFlagGlobal, expFlagCopyParams, expF…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1998,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `DataCopyPad(flagRecvTensor_, dataFlagGlobal, expFlagCopyParams, expFlagPadParams);`；该内容当前不参与 `CheckDataArriveWithFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 1999,
+          "kind": "blank",
+          "explanation": "空行在 `CheckDataArriveWithFlag` 的 L1999 分隔 `// DataCopyPad(flagRecvTensor_, dataFlagGlobal, expFlagCopyParams, expF…` 与 `// DataCopyParams flagCopyParams{` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2000,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `DataCopyParams flagCopyParams{`；该内容当前不参与 `CheckDataArriveWithFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2001,
+          "kind": "comment",
+          "explanation": "注释记录 `static_cast<uint16_t>(flagNum),`，说明 `CheckDataArriveWithFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2002,
+          "kind": "comment",
+          "explanation": "注释记录 `1U,`，说明 `CheckDataArriveWithFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2003,
+          "kind": "comment",
+          "explanation": "注释记录 `static_cast<uint16_t>(SPLIT_BLOCK_DATA_SIZE / UB_ALIGN),`，说明 `CheckDataArriveWithFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2004,
+          "kind": "comment",
+          "explanation": "注释记录 `0U`，说明 `CheckDataArriveWithFlag` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2005,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `};`；该内容当前不参与 `CheckDataArriveWithFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2006,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `DataCopy(flagRecvTensor_, dataFlagGlobal, flagCopyParams);`；该内容当前不参与 `CheckDataArriveWithFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2007,
+          "kind": "blank",
+          "explanation": "空行在 `CheckDataArriveWithFlag` 的 L2007 分隔 `// DataCopy(flagRecvTensor_, dataFlagGlobal, flagCopyParams);` 与 `DataCopyParams flagCopyParams{` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2008,
+          "kind": "statement",
+          "explanation": "定义当前有效 flagCopyParams，准备每个 token 一次 strided DataCopy。",
+          "reads": [
+            "DataCopyParams"
+          ],
+          "writes": [
+            "flagCopyParams"
+          ]
+        },
+        {
+          "line": 2009,
+          "kind": "statement",
+          "explanation": "每 token 搬运 blockCntPerToken_ 个 block flag 段。",
+          "reads": [
+            "blockCntPerToken_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2010,
+          "kind": "statement",
+          "explanation": "每个搬运 blockLen 为一个 32B UB block。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2011,
+          "kind": "statement",
+          "explanation": "源 stride 为 480B/32B=15 个 block；加上已搬 32B 后相邻起点正好相隔 512B。",
+          "reads": [
+            "SPLIT_BLOCK_DATA_SIZE",
+            "UB_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2012,
+          "kind": "statement",
+          "explanation": "执行 `0U`；读取 U。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2013,
+          "kind": "brace",
+          "explanation": "在 `CheckDataArriveWithFlag` 的 L2013 结束 代码块 `DataCopyParams flagCopyParams{` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2014,
+          "kind": "loop",
+          "explanation": "遍历 copyCnt 个候选 token，分别抽取其全部 block flag。",
+          "reads": [
+            "copyCnt"
+          ],
+          "writes": [
+            "token"
+          ]
+        },
+        {
+          "line": 2015,
+          "kind": "call",
+          "explanation": "启动当前 token 的 DataCopy；目的、源与参数在后续三行给出。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2016,
+          "kind": "statement",
+          "explanation": "目的 offset 为 token * blockCntPerToken_ * 8 floats，使每个 32B flag 段在 UB 连续排列。",
+          "reads": [
+            "token",
+            "blockCntPerToken_",
+            "UB_ALIGN_DATA_COUNT"
+          ],
+          "writes": [
+            "flagRecvTensor_"
+          ]
+        },
+        {
+          "line": 2017,
+          "kind": "statement",
+          "explanation": "源 offset 为 token * tokenStride，跳到相邻通信 token 的首 flag。",
+          "reads": [
+            "dataFlagGlobal",
+            "token",
+            "tokenStride"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2018,
+          "kind": "declaration",
+          "explanation": "声明/初始化 本行局部对象；源码表达式 `flagCopyParams);` 读取 flagCopyParams。",
+          "reads": [
+            "flagCopyParams"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2019,
+          "kind": "brace",
+          "explanation": "结束逐 token flag 区搬运循环。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2020,
+          "kind": "blank",
+          "explanation": "空行在 `CheckDataArriveWithFlag` 的 L2020 分隔 `}` 与 `SyncFunc<AscendC::HardEvent::MTE2_V>();` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2021,
+          "kind": "sync",
+          "explanation": "MTE2_V 等待所有 flag 32B 段搬入 UB 后再执行向量 gather。",
+          "reads": [
+            "MTE2_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2022,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm122] aivId %d\\n\", aivId_);`；该内容当前不参与 `CheckDataArriveWithFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2023,
+          "kind": "call",
+          "explanation": "GatherMask 把 flagRecvTensor_ 中每个 32B 段的首 float 收集到 flagGatherOutTensor_。",
+          "reads": [
+            "flagRecvTensor_",
+            "flagRecvGatherMask_"
+          ],
+          "writes": [
+            "flagGatherOutTensor_"
+          ]
+        },
+        {
+          "line": 2024,
+          "kind": "statement",
+          "explanation": "完成 GatherMask 参数：对 flagNum 个段重复选择首元素，并通过 rsvdCnt 接收保留计数。",
+          "reads": [
+            "flagNum"
+          ],
+          "writes": [
+            "rsvdCnt"
+          ]
+        },
+        {
+          "line": 2025,
+          "kind": "sync",
+          "explanation": "PIPE_V 等待 GatherMask 输出完成。",
+          "reads": [
+            "PIPE_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2026,
+          "kind": "call",
+          "explanation": "CompareScalar 将收集的 flag 与 float(1) 比较，写 flagCompResultU8_ bit mask。",
+          "reads": [
+            "flagGatherOutTensor_",
+            "CMPMODE",
+            "EQ",
+            "compareCount"
+          ],
+          "writes": [
+            "flagCompResultU8_"
+          ]
+        },
+        {
+          "line": 2027,
+          "kind": "sync",
+          "explanation": "V_S 使比较 bit mask 可由标量侧的 uint64_t 别名读取。",
+          "reads": [
+            "V_S"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2028,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm123] aivId %d\\n\", aivId_);`；该内容当前不参与 `CheckDataArriveWithFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2029,
+          "kind": "loop",
+          "explanation": "按 compResultU64Num 个 64-bit word 扫描到达比较结果。",
+          "reads": [
+            "i",
+            "compResultU64Num"
+          ],
+          "writes": [
+            "i"
+          ]
+        },
+        {
+          "line": 2030,
+          "kind": "call",
+          "explanation": "读取第 i 个 flagCompResultLtU64_ word 到 flagCompMask。",
+          "reads": [
+            "i"
+          ],
+          "writes": [
+            "flagCompMask"
+          ]
+        },
+        {
+          "line": 2031,
+          "kind": "call",
+          "explanation": "ScalarGetSFFValue<0> 查找 flagCompMask 的第一个 0；-1 表示 64 个 flag 全到达。",
+          "reads": [
+            "flagCompMask"
+          ],
+          "writes": [
+            "firstValidIdx"
+          ]
+        },
+        {
+          "line": 2032,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm124] aivId %d\\n\", aivId_);`；该内容当前不参与 `CheckDataArriveWithFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2033,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (firstValidIdx == -1) {` 选择 `CheckDataArriveWithFlag` 的后续路径；判定涉及 `firstValidIdx`。",
+          "reads": [
+            "firstValidIdx"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2034,
+          "kind": "declaration",
+          "explanation": "当前 64-bit word 全为 1 时，连续到达 block 数增加 64。",
+          "reads": [
+            "arriveFlagNum"
+          ],
+          "writes": [
+            "arriveFlagNum"
+          ]
+        },
+        {
+          "line": 2035,
+          "kind": "comment",
+          "explanation": "结束当前 64-bit word 全 1 的累计分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2036,
+          "kind": "branch",
+          "explanation": "按分支表达式 `} else {` 选择 `CheckDataArriveWithFlag` 的后续路径；判定涉及 `编译期/字面量条件`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2037,
+          "kind": "call",
+          "explanation": "遇到首个 0 时，只增加该 0 之前的 firstValidIdx 个连续到达 flag。",
+          "reads": [
+            "arriveFlagNum",
+            "firstValidIdx"
+          ],
+          "writes": [
+            "arriveFlagNum"
+          ]
+        },
+        {
+          "line": 2038,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm126] aivId %d\\n\", aivId_);`；该内容当前不参与 `CheckDataArriveWithFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2039,
+          "kind": "declaration",
+          "explanation": "找到首个未到达 block 后立即停止，后续 flag 即使为 1 也不能形成连续 token 前缀。",
+          "reads": [
+            "break"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2040,
+          "kind": "brace",
+          "explanation": "结束遇到首个 0 后停止扫描的分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2041,
+          "kind": "brace",
+          "explanation": "结束 flagCompResultLtU64_ word 扫描循环。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2042,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm127] aivId %d\\n\", aivId_);`；该内容当前不参与 `CheckDataArriveWithFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2043,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm] aivId %d arriveFlagNum %d\\n\", aivId_, arriveFlagNum);`；该内容当前不参与 `CheckDataArriveWithFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2044,
+          "kind": "branch",
+          "explanation": "若对齐后的比较 padding 使 arriveFlagNum 超过真实 flagNum，则进入裁剪分支。",
+          "reads": [
+            "arriveFlagNum",
+            "flagNum"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2045,
+          "kind": "declaration",
+          "explanation": "把 arriveFlagNum 限制到真实候选 flagNum。",
+          "reads": [
+            "flagNum"
+          ],
+          "writes": [
+            "arriveFlagNum"
+          ]
+        },
+        {
+          "line": 2046,
+          "kind": "brace",
+          "explanation": "结束 compare padding 裁剪分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2047,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm] aivId %d arriveFlagNum %d\\n\", aivId_, arriveFlagNum);`；该内容当前不参与 `CheckDataArriveWithFlag` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2048,
+          "kind": "statement",
+          "explanation": "用 arriveFlagNum / blockCntPerToken_ 只返回所有 block 均到达的完整 token 数。",
+          "reads": [
+            "arriveFlagNum",
+            "blockCntPerToken_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2049,
+          "kind": "brace",
+          "explanation": "结束 CheckDataArriveWithFlag。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments": [
+        {
+          "id": "flag-shape-and-compare-capacity",
+          "start": 1921,
+          "end": 1931,
+          "title": "把候选 token 数换算为 block flag 数与比较位图容量",
+          "detail": "flagNum=blockCntPerToken_*copyCnt；compareCount 向上对齐到 CompareScalar 每个 256B/64 int32 的处理粒度，compResultU64Num 按 64 个 flag bit 分组。expFlagCopyParams 描述逐 float 跨 512B 取 flag 的旧扩展搬运参数，但当前有效路径未使用它。",
+          "kind": "compute",
+          "input_state": [
+            "copyCnt：本次候选 token 数",
+            "blockCntPerToken_：每 token 的 512B block 数"
+          ],
+          "mechanism": "flagNum=blocks*copyCnt；compareCount=Ceil(flagNum,64)*64；compResultU64Num=Ceil(flagNum,64)。",
+          "output_state": [
+            "flagNum：必须连续为 1 的 block flag 总数",
+            "compareCount/compResultU64Num：向量比较与标量 64-bit 扫描边界"
+          ],
+          "why": "一个 token 只有所有 block flag 都到达才完整；bit mask 又必须按 CompareScalar 与 ScalarGetSFFValue 的粒度对齐。",
+          "calls": [
+            {
+              "name": "Ceil",
+              "line": 1928,
+              "type": "external"
+            },
+            {
+              "name": "Ceil",
+              "line": 1929,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "flag-address-and-unused-one-token-params",
+          "start": 1932,
+          "end": 1949,
+          "title": "定位首个 480B payload 后的 flag 并保留未用搬运参数",
+          "detail": "oneTokenFlagCopyParams 描述每 token 按 blockCntPerToken_ 次、每次 32B、跨过 480B payload 的搬运，但当前未调用。tokenStride=hCommuSize_/sizeof(float)。wAddr 选择 srcExpDataIdx 数据块、beginIdx token，并加 SPLIT_BLOCK_DATA_SIZE 到第一个 512B block 的 flag 起点，dataFlagGlobal 绑定该地址。",
+          "kind": "input",
+          "input_state": [
+            "windowGM_/expertPerSizeOnWin_：源数据块布局",
+            "srcExpDataIdx/beginIdx：数据块与起始 token",
+            "SPLIT_BLOCK_DATA_SIZE：480B payload 长度"
+          ],
+          "mechanism": "wAddr=windowGM_+srcExpDataIdx*expertPerSizeOnWin_+beginIdx*hCommuSize_+480；tokenStride=hCommuSize_/4。",
+          "output_state": [
+            "dataFlagGlobal：指向 beginIdx token 第一个 block 的 flag/padding 区",
+            "tokenStride：相邻 token flag 起点的 float 步长"
+          ],
+          "why": "发送格式把每个 480B 数据段扩成 512B，flag 固定在偏移 480B，不能把 payload 当作完成信号。",
+          "calls": [
+            {
+              "name": "SetGlobalBuffer",
+              "line": 1948,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "flag-disabled-cache-and-range-setup",
+          "start": 1950,
+          "end": 1972,
+          "title": "禁用的逐 flag cache 刷新与接收范围校验准备",
+          "detail": "整段注释曾逐 flag 执行 DataCacheCleanAndInvalid，并计算 localExpertNum/maxDataBlock 与 invalid 条件，检查数据块、beginIdx、copyCnt 和 axisMaxBS_ 边界；当前全部不编译。",
+          "kind": "debug",
+          "input_state": [
+            "dataFlagGlobal/srcExpDataIdx/beginIdx/copyCnt：仅出现在注释方案"
+          ],
+          "mechanism": "第 1951–1972 行均由 // 禁用，不产生 cache 或范围检查动作。",
+          "output_state": [
+            "运行时状态不变；当前函数信任调用者 WaitAndFormatOutput 的范围计算"
+          ],
+          "why": "保留代码记录了调试期安全检查与 cache 可见性实验，但不能把它误解为当前主路径保证。",
+          "calls": []
+        },
+        {
+          "id": "flag-disabled-range-error-report",
+          "start": 1973,
+          "end": 1987,
+          "title": "禁用的越界诊断打印与零返回",
+          "detail": "注释中的 invalid 分支会打印 Rank/AIV/数据块/BS 边界并 return 0；当前没有执行这一保护。",
+          "kind": "debug",
+          "input_state": [
+            "invalid 及诊断字段：仅存在于注释"
+          ],
+          "mechanism": "所有 printf 参数与 return 0 都被 // 禁用。",
+          "output_state": [
+            "当前执行不会因该历史 invalid 条件提前返回"
+          ],
+          "why": "页面必须明确这不是有效错误处理路径。",
+          "calls": []
+        },
+        {
+          "id": "flag-disabled-copy-alternatives",
+          "start": 1988,
+          "end": 2007,
+          "title": "禁用的 DataCopyPad 与一次性 strided DataCopy 替代方案",
+          "detail": "第一种注释方案逐 token 用 oneTokenFlagCopyParams 搬 flag 并直接返回 copyCnt；第二、三种尝试用 DataCopyPad/多 block DataCopy 一次抽取所有 flag。它们均未执行。",
+          "kind": "debug",
+          "input_state": [
+            "flagRecvTensor_/dataFlagGlobal：历史搬运实验对象"
+          ],
+          "mechanism": "第 1989–2007 行都是注释，当前路径从第 2008 行重新定义 flagCopyParams。",
+          "output_state": [
+            "运行时仅使用后续逐 token DataCopy 实现"
+          ],
+          "why": "禁用实现包含无条件 return copyCnt，若误当主路径会完全错误地理解到达判定。",
+          "calls": []
+        },
+        {
+          "id": "flag-copy-first-32b-of-each-512b-block",
+          "start": 2008,
+          "end": 2020,
+          "title": "逐 token 抽取每个 512B block 的 32B flag 区",
+          "detail": "flagCopyParams 每 token 搬 blockCntPerToken_ 个 block，每个 blockLen=1 个 UB_ALIGN(32B)，源 stride=SPLIT_BLOCK_DATA_SIZE/UB_ALIGN=15 个 32B，因此相邻搬运起点相隔 32B+480B=512B。目的偏移为 token*blocks*UB_ALIGN_DATA_COUNT。",
+          "kind": "loop",
+          "input_state": [
+            "dataFlagGlobal：首个 flag 地址",
+            "copyCnt/tokenStride：token 批次",
+            "blockCntPerToken_：每 token block 数"
+          ],
+          "mechanism": "对每 token 执行 DataCopy，目的连续存每块 32B flag/padding，源在 block 之间跨过 480B payload。",
+          "output_state": [
+            "flagRecvTensor_：按 token、block 连续排列的 32B flag 区"
+          ],
+          "why": "32B 对齐搬运满足 MTE 约束；随后 GatherMask 只抽取每段首个 float flag。",
+          "calls": [
+            {
+              "name": "DataCopy",
+              "line": 2015,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "flag-gather-first-float-and-compare-one",
+          "start": 2021,
+          "end": 2028,
+          "title": "Gather 每块首 float 并生成“等于 1”到达 bit mask",
+          "detail": "MTE2_V 后，GatherMask 使用 flagRecvGatherMask_ 选出 flagRecvTensor_ 每个 32B 段的第一个元素到 flagGatherOutTensor_；PIPE_V 后 CompareScalar 与 1 比较写 flagCompResultU8_，V_S 后可标量扫描。",
+          "kind": "sync",
+          "input_state": [
+            "flagRecvTensor_：连续 32B flag 段",
+            "flagRecvGatherMask_：仅首元素置 1 的 gather mask",
+            "flagNum：有效 flag 数"
+          ],
+          "mechanism": "MTE2_V→GatherMask→PIPE_V→CompareScalar(EQ,1,compareCount)→V_S。",
+          "output_state": [
+            "flagCompResultLtU64_ 别名视图：每 bit 表示对应 block flag 是否为 1"
+          ],
+          "why": "必须先压缩 32B 对齐搬运中的 padding，再按 bit 快速找到连续到达前缀。",
+          "calls": [
+            {
+              "name": "SyncFunc",
+              "line": 2021,
+              "type": "external"
+            },
+            {
+              "name": "GatherMask",
+              "line": 2023,
+              "type": "external"
+            },
+            {
+              "name": "PipeBarrier",
+              "line": 2025,
+              "type": "external"
+            },
+            {
+              "name": "CompareScalar",
+              "line": 2026,
+              "type": "external"
+            },
+            {
+              "name": "SyncFunc",
+              "line": 2027,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "flag-count-contiguous-ones-until-first-zero",
+          "start": 2029,
+          "end": 2041,
+          "title": "按 64-bit mask 找首个未到达 block 并累计连续前缀",
+          "detail": "逐 flagCompResultLtU64_ word 调用 ScalarGetSFFValue<0> 找首个 0。返回 -1 表示该 64 bits 全 1，arriveFlagNum 加 64；否则加 firstValidIdx 并 break，后续即使到达也不计入连续前缀。",
+          "kind": "loop",
+          "input_state": [
+            "flagCompResultLtU64_：到达 bit mask",
+            "compResultU64Num：word 数",
+            "arriveFlagNum：累计前缀"
+          ],
+          "mechanism": "每个全 1 word 累计 64；首个含 0 word 只累计其前导 1 数并停止。",
+          "output_state": [
+            "arriveFlagNum：从 beginIdx 起连续值为 1 的 block flag 数"
+          ],
+          "why": "输出只能消费连续完整 token；越过第一个未到达 block 会在输出中制造空洞。",
+          "calls": [
+            {
+              "name": "flagCompResultLtU64_",
+              "line": 2030,
+              "type": "external"
+            },
+            {
+              "name": "ScalarGetSFFValue",
+              "line": 2031,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "flag-clamp-padding-and-return-complete-tokens",
+          "start": 2042,
+          "end": 2049,
+          "title": "裁掉 compare padding 并只返回完整 token 数",
+          "detail": "compareCount 对齐产生的尾部 bit 可能让累计超过 flagNum，因此先 clamp；再整除 blockCntPerToken_，只把所有 block flag 都连续到达的 token 计入返回值。",
+          "kind": "output",
+          "input_state": [
+            "arriveFlagNum：连续到达 block 数",
+            "flagNum：真实候选 block 数",
+            "blockCntPerToken_：每 token 完整性门槛"
+          ],
+          "mechanism": "arriveFlagNum=min(arriveFlagNum,flagNum)；return arriveFlagNum/blockCntPerToken_。",
+          "output_state": [
+            "uint32_t 返回值：beginIdx 起连续完整到达的 token 数"
+          ],
+          "why": "最后一个 token 只到达部分 512B block 时不能提前搬入；整数除法自然丢弃该不完整 token。",
+          "calls": []
+        }
+      ]
+    },
+    {
+      "id": "m-moedistributedispatchv2fullmesh-copyinandout-da9b81eb3f",
+      "module_id": "receive-format",
+      "name": "CopyInAndOut",
+      "start": 2051,
+      "end": 2098,
+      "inactive": false,
+      "summary": "把已确认到达的通信 token 从 512B block 格式中剥离每块 32B flag/padding，压紧为 480B payload；连续写 expandXOut/scale，并根据携带的完整 top-k expert ID 把 staging 时固定为 0 的 topKIndex 修正后写 expandIdxGMTensor_。",
+      "inputs": [
+        "xOutInt32Tensor",
+        "wAddr",
+        "index",
+        "dstPosition",
+        "arriveCount",
+        "dstExpertId",
+        "expertFinishNumTensor_",
+        "blockCntPerToken_"
+      ],
+      "outputs": [
+        "xTmpTensor_",
+        "expandXOutGlobal",
+        "expandIdxGMTensor_",
+        "xOutInt32Tensor"
+      ],
+      "side_effects": [
+        "MTE2 将 arriveCount 个通信 token 的 480B payload 段压紧到 xTmpTensor_，跳过每块 32B flag",
+        "quantInst_.CopyScalesToOut 与 DataCopyPad 按同一 dstPosition 连续写 scale 和 expandXOutGM_",
+        "标量循环修改 xOutInt32Tensor triple 的 topKIndex 字段，再经 S_MTE3 写 expandIdxGMTensor_",
+        "MTE2_MTE3、MTE2_S、S_MTE3、PIPE_MTE3 建立搬入、标量修正和输出写回顺序"
+      ],
+      "review": {
+        "status": "PASS",
+        "reviewer": "e2e-architecture-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "line_range": [
+          2051,
+          2098
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 2051,
+        "reviewed_end": 2098,
+        "expected_line_count": 48,
+        "covered_line_count": 48,
+        "covered_ranges": [
+          [
+            2051,
+            2068
+          ],
+          [
+            2069,
+            2075
+          ],
+          [
+            2076,
+            2093
+          ],
+          [
+            2094,
+            2098
+          ]
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {
+          "line": 2051,
+          "kind": "signature",
+          "explanation": "构成函数 `CopyInAndOut` 的签名片段 `template <TemplateMC2TypeFullmeshClass>`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2052,
+          "kind": "signature",
+          "explanation": "构成函数 `CopyInAndOut` 的签名片段 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::CopyInAndOut(`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2053,
+          "kind": "signature",
+          "explanation": "构成函数 `CopyInAndOut` 的签名片段 `LocalTensor<int32_t> xOutInt32Tensor, GM_ADDR wAddr, uint32_t index, uint32_t dstPosition, uint32_t arriveCount, uint32_t dstExpertId)`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2054,
+          "kind": "brace",
+          "explanation": "开始将通信 token 压紧并写连续输出。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2055,
+          "kind": "declaration",
+          "explanation": "将每 token 紧凑输出字节 hOutSize_ 换算为 XOutType 元素数 hOutElemCount。",
+          "reads": [
+            "hOutSize_"
+          ],
+          "writes": [
+            "hOutElemCount"
+          ]
+        },
+        {
+          "line": 2056,
+          "kind": "declaration",
+          "explanation": "声明/初始化 dataFlagGlobal、expandXOutGlobal；源码表达式 `GlobalTensor<XOutType> dataFlagGlobal, expandXOutGlobal;`。",
+          "reads": [],
+          "writes": [
+            "dataFlagGlobal",
+            "expandXOutGlobal"
+          ]
+        },
+        {
+          "line": 2057,
+          "kind": "call",
+          "explanation": "dataFlagGlobal 绑定当前源 expert 数据块基址 wAddr。",
+          "reads": [
+            "wAddr"
+          ],
+          "writes": [
+            "dataFlagGlobal"
+          ]
+        },
+        {
+          "line": 2058,
+          "kind": "call",
+          "explanation": "expandXOutGlobal 绑定 expandXOutGM_ 的 dstPosition * hOutElemCount 连续输出位置。",
+          "reads": [
+            "expandXOutGM_",
+            "dstPosition",
+            "hOutElemCount"
+          ],
+          "writes": [
+            "expandXOutGlobal"
+          ]
+        },
+        {
+          "line": 2059,
+          "kind": "statement",
+          "explanation": "构造 srcTokenCopyParams：blockCount 为 blockCntPerToken_ * arriveCount 个 480B payload block。",
+          "reads": [
+            "DataCopyParams",
+            "blockCntPerToken_",
+            "arriveCount"
+          ],
+          "writes": [
+            "srcTokenCopyParams"
+          ]
+        },
+        {
+          "line": 2060,
+          "kind": "declaration",
+          "explanation": "每块搬 480B，源 stride=32B，因而自动剥离每个 512B block 尾部 flag/padding。",
+          "reads": [
+            "SPLIT_BLOCK_DATA_SIZE",
+            "UB_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2061,
+          "kind": "call",
+          "explanation": "构造按 arriveCount 个 token 抽取 scale 的 scalesCopyParams。",
+          "reads": [
+            "DataCopyExtParams",
+            "arriveCount",
+            "scaleOutBytes_"
+          ],
+          "writes": [
+            "scalesCopyParams"
+          ]
+        },
+        {
+          "line": 2062,
+          "kind": "declaration",
+          "explanation": "scale 源 stride 跳过每 token payload 中除 scaleOutBytes_ 外的部分。",
+          "reads": [
+            "blockCntPerToken_",
+            "SPLIT_BLOCK_DATA_SIZE",
+            "scaleOutBytes_",
+            "UB_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2063,
+          "kind": "call",
+          "explanation": "构造按 arriveCount 个 token 写 hOutSize_ 数据的 tokenCopyParams。",
+          "reads": [
+            "DataCopyExtParams",
+            "arriveCount",
+            "hOutSize_"
+          ],
+          "writes": [
+            "tokenCopyParams"
+          ]
+        },
+        {
+          "line": 2064,
+          "kind": "declaration",
+          "explanation": "X 源 stride跳过每 token 紧凑通信 payload中不属于 hOutSize_ 的部分。",
+          "reads": [
+            "blockCntPerToken_",
+            "SPLIT_BLOCK_DATA_SIZE",
+            "hOutSize_",
+            "UB_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2065,
+          "kind": "call",
+          "explanation": "构造每 token 抽取 EXPAND_IDX_INFO=3 个 int32 triple 的 expandIdxCopyParams。",
+          "reads": [
+            "DataCopyExtParams",
+            "arriveCount",
+            "EXPAND_IDX_INFO"
+          ],
+          "writes": [
+            "expandIdxCopyParams"
+          ]
+        },
+        {
+          "line": 2066,
+          "kind": "declaration",
+          "explanation": "triple 源 stride 跨过余下的整个紧凑通信 token。",
+          "reads": [
+            "blockCntPerToken_",
+            "SPLIT_BLOCK_DATA_SIZE",
+            "UB_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2067,
+          "kind": "declaration",
+          "explanation": "声明/初始化 srcTokenPadParams；源码表达式 `DataCopyPadParams srcTokenPadParams{false, 0U, 0U, 0U};` 读取 DataCopyPadParams、U。",
+          "reads": [
+            "DataCopyPadParams"
+          ],
+          "writes": [
+            "srcTokenPadParams"
+          ]
+        },
+        {
+          "line": 2068,
+          "kind": "blank",
+          "explanation": "空行在 `CopyInAndOut` 的 L2068 分隔 `DataCopyPadParams srcTokenPadParams{false, 0U, 0U, 0U};` 与 `DataCopyPad(xTmpTensor_, dataFlagGlobal[expertFinishNumTensor_(index) *…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2069,
+          "kind": "call",
+          "explanation": "从 expertFinishNumTensor_(index) 对应 token 起点，把 arriveCount 个 token 的 480B payload blocks 压紧到 xTmpTensor_。",
+          "reads": [
+            "dataFlagGlobal",
+            "index",
+            "hCommuSize_"
+          ],
+          "writes": [
+            "xTmpTensor_"
+          ]
+        },
+        {
+          "line": 2070,
+          "kind": "declaration",
+          "explanation": "声明/初始化 本行局部对象；源码表达式 `srcTokenCopyParams, srcTokenPadParams);` 读取 srcTokenCopyParams、srcTokenPadParams。",
+          "reads": [
+            "srcTokenCopyParams",
+            "srcTokenPadParams"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2071,
+          "kind": "sync",
+          "explanation": "MTE2_MTE3 允许已搬入 xTmpTensor_ 的内容直接供后续输出 MTE3 使用。",
+          "reads": [
+            "MTE2_MTE3"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2072,
+          "kind": "call",
+          "explanation": "quantInst_.CopyScalesToOut 按 dstPosition 把当前批次 scale 连续写到量化输出。",
+          "reads": [
+            "quantInst_",
+            "dstPosition",
+            "scaleOutBytes_",
+            "xTmpTensor_",
+            "scalesCopyParams"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2073,
+          "kind": "call",
+          "explanation": "按 tokenCopyParams 把 xTmpTensor_ 中的 X payload 连续写到 expandXOutGlobal。",
+          "reads": [
+            "xTmpTensor_",
+            "tokenCopyParams"
+          ],
+          "writes": [
+            "expandXOutGlobal"
+          ]
+        },
+        {
+          "line": 2074,
+          "kind": "sync",
+          "explanation": "MTE2_S 使 xTmpTensor_ 可由下面的标量 top-k 修正循环读取。",
+          "reads": [
+            "MTE2_S"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2075,
+          "kind": "blank",
+          "explanation": "空行在 `CopyInAndOut` 的 L2075 分隔 `SyncFunc<AscendC::HardEvent::MTE2_S>();` 与 `// hzy: URMA 二次转发后，原始 fill 的 topKIndex 固定为 0，需要根据携带的 top-k expert id 修正。` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2076,
+          "kind": "comment",
+          "explanation": "注释说明 URMA 二次转发后 staging triple 的 topKIndex 固定为 0，必须按携带的完整 top-k 修正。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2077,
+          "kind": "declaration",
+          "explanation": "每个压紧通信 token 含 blockCntPerToken_ * 480B，换算为 int32 数 tokenCommCnt。",
+          "reads": [
+            "blockCntPerToken_",
+            "SPLIT_BLOCK_DATA_SIZE"
+          ],
+          "writes": [
+            "tokenCommCnt"
+          ]
+        },
+        {
+          "line": 2078,
+          "kind": "loop",
+          "explanation": "逐个处理本批 arriveCount 个 token 的 triple 与完整 top-k 列表。",
+          "reads": [
+            "i",
+            "arriveCount"
+          ],
+          "writes": [
+            "i"
+          ]
+        },
+        {
+          "line": 2079,
+          "kind": "declaration",
+          "explanation": "完整 top-k 起点位于 token 起点 + tokenQuantAlign_ + UB_ALIGN_DATA_COUNT。",
+          "reads": [
+            "i",
+            "tokenCommCnt",
+            "tokenQuantAlign_",
+            "UB_ALIGN_DATA_COUNT"
+          ],
+          "writes": [
+            "topKInfoOffset"
+          ]
+        },
+        {
+          "line": 2080,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm] CopyInAndOut: aivId_ %d arriveCount %d i %d x(0) %d triple %d %d %d\\n\",`；该内容当前不参与 `CopyInAndOut` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2081,
+          "kind": "comment",
+          "explanation": "注释记录 `aivId_, arriveCount, i, xOutInt32Tensor(i * tokenCommCnt), xOutInt32Tensor(i * tokenCommCnt + tokenQuantAlign_),`，说明 `CopyInAndOut` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2082,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `xOutInt32Tensor(i * tokenCommCnt + tokenQuantAlign_ + 1), xOutInt32Tensor(i * tokenCommCnt + tokenQuantAlign_ + 2));`；该内容当前不参与 `CopyInAndOut` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2083,
+          "kind": "loop",
+          "explanation": "遍历当前 token 携带的 axisK_ 个 expert ID，寻找目标专家所在槽。",
+          "reads": [
+            "j",
+            "axisK_"
+          ],
+          "writes": [
+            "j"
+          ]
+        },
+        {
+          "line": 2084,
+          "kind": "call",
+          "explanation": "读取 topKInfoOffset + j 处的 curExpertId。",
+          "reads": [
+            "topKInfoOffset",
+            "j"
+          ],
+          "writes": [
+            "curExpertId"
+          ]
+        },
+        {
+          "line": 2085,
+          "kind": "branch",
+          "explanation": "比较 curExpertId 与本输出数据块对应的 dstExpertId。",
+          "reads": [
+            "dstExpertId",
+            "curExpertId"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2086,
+          "kind": "call",
+          "explanation": "命中后把 triple 第三个 int32 的 topKIndex 字段改为 j。",
+          "reads": [
+            "tokenQuantAlign_",
+            "i",
+            "tokenCommCnt",
+            "j"
+          ],
+          "writes": [
+            "xOutInt32Tensor"
+          ]
+        },
+        {
+          "line": 2087,
+          "kind": "declaration",
+          "explanation": "首个匹配已确定真实 top-k 槽，立即退出 j 循环。",
+          "reads": [
+            "break"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2088,
+          "kind": "brace",
+          "explanation": "结束 dstExpertId 命中后的 topKIndex 修正分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2089,
+          "kind": "brace",
+          "explanation": "结束当前 token 的 axisK_ expert ID 搜索。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2090,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm] CopyInAndOut final: aivId_ %d arriveCount %d i %d x(0) %d triple %d %d %d\\n\",`；该内容当前不参与 `CopyInAndOut` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2091,
+          "kind": "comment",
+          "explanation": "注释记录 `aivId_, arriveCount, i, xOutInt32Tensor(i * tokenCommCnt), xOutInt32Tensor(i * tokenCommCnt + tokenQuantAlign_),`，说明 `CopyInAndOut` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2092,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `xOutInt32Tensor(i * tokenCommCnt + tokenQuantAlign_ + 1), xOutInt32Tensor(i * tokenCommCnt + tokenQuantAlign_ + 2));`；该内容当前不参与 `CopyInAndOut` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2093,
+          "kind": "brace",
+          "explanation": "结束 arriveCount 个 token 的 top-k 修正循环。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2094,
+          "kind": "sync",
+          "explanation": "S_MTE3 使标量写回的 topKIndex 对 MTE3 搬运可见。",
+          "reads": [
+            "S_MTE3"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2095,
+          "kind": "call",
+          "explanation": "从首 token 的 tokenQuantAlign_ 起，按 expandIdxCopyParams 把修正后的三元组写到 dstPosition 对应 expandIdxGMTensor_。",
+          "reads": [
+            "dstPosition",
+            "EXPAND_IDX_INFO",
+            "xOutInt32Tensor",
+            "tokenQuantAlign_"
+          ],
+          "writes": [
+            "expandIdxGMTensor_"
+          ]
+        },
+        {
+          "line": 2096,
+          "kind": "declaration",
+          "explanation": "声明/初始化 本行局部对象；源码表达式 `expandIdxCopyParams);` 读取 expandIdxCopyParams。",
+          "reads": [
+            "expandIdxCopyParams"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2097,
+          "kind": "sync",
+          "explanation": "PIPE_MTE3 等待 expandIdxGMTensor_ 写回完成。",
+          "reads": [
+            "PIPE_MTE3"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2098,
+          "kind": "brace",
+          "explanation": "结束 CopyInAndOut。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments": [
+        {
+          "id": "format-bind-contiguous-outputs-and-copy-shapes",
+          "start": 2051,
+          "end": 2068,
+          "title": "绑定连续输出位置并描述去 flag 后的 strided copy",
+          "detail": "expandXOutGlobal 从 expandXOutGM_ 的 dstPosition*hOutElemCount 开始。srcTokenCopyParams 把 blockCntPerToken_*arriveCount 个 480B payload block 搬到 UB，源 stride=UB_ALIGN 跳过每个 512B block 尾部 32B。其余参数分别按 token 抽取 scale、hOutSize_ 数据和 3 个 expandIdx int32。",
+          "kind": "input",
+          "input_state": [
+            "wAddr：当前源 expert 数据块起点",
+            "dstPosition：cumsum 决定的连续输出 token 位置",
+            "arriveCount：完整到达批次"
+          ],
+          "mechanism": "hOutElemCount=hOutSize_/sizeof(XOutType)；输出偏移=dstPosition*hOutElemCount；源 token blockLen=480B、srcStride=32B。",
+          "output_state": [
+            "dataFlagGlobal：源块基址",
+            "expandXOutGlobal：连续输出批次起点",
+            "四组 DataCopy 参数：payload/scale/X/idx 布局"
+          ],
+          "why": "远端通信格式为 512B 对齐块，模型输出必须移除 flag/padding 并恢复紧凑 tensor 布局。",
+          "calls": [
+            {
+              "name": "SetGlobalBuffer",
+              "line": 2057,
+              "type": "external"
+            },
+            {
+              "name": "SetGlobalBuffer",
+              "line": 2058,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "format-compact-payload-and-write-x-scale",
+          "start": 2069,
+          "end": 2075,
+          "title": "从已完成 token 游标搬入 payload 并连续写 X 与 scale",
+          "detail": "源偏移由 expertFinishNumTensor_(index)*hCommuSize_ 选择尚未输出的第一个 token。DataCopyPad 按 480B+32B stride 把 payload 压入 xTmpTensor_；MTE2_MTE3 后 CopyScalesToOut 与 expandXOutGlobal 写回，MTE2_S 保证随后标量读取 xTmpTensor_。",
+          "kind": "output",
+          "input_state": [
+            "expertFinishNumTensor_(index)：该源块已输出 token 数",
+            "arriveCount：本批 token 数",
+            "dstPosition：输出起点"
+          ],
+          "mechanism": "源 token 起点=finish*hCommuSize_；先去 flag 压紧，再按 tokenCopyParams 写 X、按 scalesCopyParams 写 scale。",
+          "output_state": [
+            "expandXOutGlobal：新增 arriveCount 个连续 token",
+            "dynamic scale 输出：由 quantInst_ 写到同一 dstPosition",
+            "xTmpTensor_：可供标量修正的紧凑通信 payload"
+          ],
+          "why": "X 与 scale 必须共享同一连续位置，才能保持每个输出 token 的数据和量化元数据对齐。",
+          "calls": [
+            {
+              "name": "DataCopyPad",
+              "line": 2069,
+              "type": "external"
+            },
+            {
+              "name": "SyncFunc",
+              "line": 2071,
+              "type": "external"
+            },
+            {
+              "name": "CopyScalesToOut",
+              "line": 2072,
+              "type": "external"
+            },
+            {
+              "name": "DataCopyPad",
+              "line": 2073,
+              "type": "external"
+            },
+            {
+              "name": "SyncFunc",
+              "line": 2074,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "format-recover-real-topk-slot",
+          "start": 2076,
+          "end": 2093,
+          "title": "用通信块携带的完整 expert IDs 修正 topKIndex",
+          "detail": "URMA 新路径 staging 时 fillExpertIdx 固定为 0，但 FillTriple 另存了 axisK_ 个 expert ID。对每个到达 token，在 tokenQuantAlign_+UB_ALIGN_DATA_COUNT 读取完整 top-k；找到等于 dstExpertId 的 j 后，把 triple 第 3 个 int32(topKIndex)改为 j。调试打印均注释。",
+          "kind": "loop",
+          "input_state": [
+            "xOutInt32Tensor：xTmpTensor_ 的 int32 别名",
+            "dstExpertId：当前输出所属真实专家",
+            "axisK_：top-k 长度"
+          ],
+          "mechanism": "tokenCommCnt=blocks*480/4；topKInfoOffset=i*tokenCommCnt+tokenQuantAlign_+8；线性查 j，命中后写 tokenQuantAlign_+2+i*tokenCommCnt。",
+          "output_state": [
+            "xOutInt32Tensor：每 token triple 的 topKIndex 从固定 0 修正为真实 j"
+          ],
+          "why": "一个本地 staging token 会被 URMA 二次转发到多个专家；接收端必须按目标专家恢复它原先位于 top-k 的哪个槽。",
+          "calls": [
+            {
+              "name": "xOutInt32Tensor",
+              "line": 2084,
+              "type": "external"
+            },
+            {
+              "name": "xOutInt32Tensor",
+              "line": 2086,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "format-publish-corrected-expand-index",
+          "start": 2094,
+          "end": 2098,
+          "title": "把修正后的三元组按 dstPosition 连续写 expandIdx",
+          "detail": "S_MTE3 使标量写 xOutInt32Tensor 的 topKIndex 可被 MTE3 看见；DataCopyPad 从第一个 token 的 tokenQuantAlign_ 起按 expandIdxCopyParams 为每 token 抽取 3 个 int32，写 expandIdxGMTensor_[dstPosition*EXPAND_IDX_INFO]，PIPE_MTE3 收口。",
+          "kind": "sync",
+          "input_state": [
+            "xOutInt32Tensor：topKIndex 已修正的 triple",
+            "dstPosition/arriveCount：连续输出批次"
+          ],
+          "mechanism": "S_MTE3→DataCopyPad(strided 3-int triple)→PIPE_MTE3。",
+          "output_state": [
+            "expandIdxGMTensor_：与 expandXOutGlobal 同位置的 epRankId/tokenIndex/真实 topKIndex"
+          ],
+          "why": "标量修正必须先于 MTE3 读取，且 X/scale/index 三类输出必须使用相同 dstPosition。",
+          "calls": [
+            {
+              "name": "SyncFunc",
+              "line": 2094,
+              "type": "external"
+            },
+            {
+              "name": "DataCopyPad",
+              "line": 2095,
+              "type": "external"
+            },
+            {
+              "name": "PipeBarrier",
+              "line": 2097,
+              "type": "external"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m-moedistributedispatchv2fullmesh-waitandformatoutput-71e0265973",
+      "module_id": "receive-format",
+      "name": "WaitAndFormatOutput",
+      "start": 2100,
+      "end": 2182,
+      "inactive": false,
+      "summary": "在 UB 容量允许的批次内轮询 validNum 个非零源 expert/rank 数据块；只有请求的 copyCnt token 全部到达才按 cumsum 位置连续写输出，更新 finish/left；某源块完成后清零其全部 512B block flag，直到 finishNum==validNum。",
+      "inputs": [
+        "tBuf",
+        "validNum",
+        "expertMapTensor_",
+        "expertLeftNumTensor_",
+        "expertFinishNumTensor_",
+        "sendCntTensor_",
+        "windowGM_"
+      ],
+      "outputs": [
+        "expandXOutGM_",
+        "expandIdxGMTensor_",
+        "expertFinishNumTensor_",
+        "expertLeftNumTensor_",
+        "cleanGlobal",
+        "finishNum"
+      ],
+      "side_effects": [
+        "把 tBuf 分区为 flagGatherOutTensor_、flagRecvTensor_ 与 xTmpTensor_",
+        "轮询 CheckDataArriveWithFlag；完整批次通过 CopyInAndOut 写连续 X/scale/index 输出",
+        "完成源块后用 cleanUpTensor_ 清零其所有 block flag 并 MTE3_S 等待写回",
+        "未全部到达时轮转 index；成功但尚有剩余时继续贪心处理同一源块"
+      ],
+      "review": {
+        "status": "PASS",
+        "reviewer": "e2e-architecture-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "line_range": [
+          2100,
+          2182
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 2100,
+        "reviewed_end": 2182,
+        "expected_line_count": 83,
+        "covered_line_count": 83,
+        "covered_ranges": [
+          [
+            2100,
+            2121
+          ],
+          [
+            2122,
+            2133
+          ],
+          [
+            2134,
+            2149
+          ],
+          [
+            2150,
+            2158
+          ],
+          [
+            2159,
+            2170
+          ],
+          [
+            2171,
+            2180
+          ],
+          [
+            2181,
+            2182
+          ]
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {
+          "line": 2100,
+          "kind": "signature",
+          "explanation": "构成函数 `WaitAndFormatOutput` 的签名片段 `template <TemplateMC2TypeFullmeshClass>`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2101,
+          "kind": "signature",
+          "explanation": "构成函数 `WaitAndFormatOutput` 的签名片段 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::WaitAndFormatOutput(TBuf<> tBuf, uint32_t validNum)`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2102,
+          "kind": "brace",
+          "explanation": "开始接收到达轮询与输出连续化状态机。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2103,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm10] aivId %d\\n\", aivId_);`；该内容当前不参与 `WaitAndFormatOutput` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2104,
+          "kind": "declaration",
+          "explanation": "声明/初始化 index；源码表达式 `uint32_t index = 0;`。",
+          "reads": [],
+          "writes": [
+            "index"
+          ]
+        },
+        {
+          "line": 2105,
+          "kind": "declaration",
+          "explanation": "声明/初始化 finishNum；源码表达式 `uint32_t finishNum = 0;`。",
+          "reads": [],
+          "writes": [
+            "finishNum"
+          ]
+        },
+        {
+          "line": 2106,
+          "kind": "call",
+          "explanation": "按 blockCntPerToken_ 个 uint32 gather 结果上取整到 256B，得到单 token gather 输出预算。",
+          "reads": [
+            "blockCntPerToken_",
+            "SIZE_ALIGN_256"
+          ],
+          "writes": [
+            "gatherOutSizePerToken"
+          ]
+        },
+        {
+          "line": 2107,
+          "kind": "declaration",
+          "explanation": "用 tBufRealSize_ 除以每 token 的 hCommuSize_ 加 gather 预算，得到 maxCopyTokenCnt。",
+          "reads": [
+            "tBufRealSize_",
+            "hCommuSize_",
+            "gatherOutSizePerToken"
+          ],
+          "writes": [
+            "maxCopyTokenCnt"
+          ]
+        },
+        {
+          "line": 2108,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm] aivId_ %d maxCopyTokenCnt %d\\n\", aivId_, maxCopyTokenCnt);`；该内容当前不参与 `WaitAndFormatOutput` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2109,
+          "kind": "declaration",
+          "explanation": "共享专家 Rank 只有一个本地专家块；普通 Rank 使用 moeExpertNumPerRank_ 个。",
+          "reads": [
+            "isShareExpertRankFlag_",
+            "moeExpertNumPerRank_"
+          ],
+          "writes": [
+            "localExpertNum"
+          ]
+        },
+        {
+          "line": 2110,
+          "kind": "declaration",
+          "explanation": "声明/初始化 srcExpRankId、dstPosition、arriveCount、copyCnt、srcDataBlockIdx；源码表达式 `uint32_t srcExpRankId, dstPosition, arriveCount, copyCnt, srcDataBlockIdx;`。",
+          "reads": [],
+          "writes": [
+            "srcExpRankId",
+            "dstPosition",
+            "arriveCount",
+            "copyCnt",
+            "srcDataBlockIdx"
+          ]
+        },
+        {
+          "line": 2111,
+          "kind": "declaration",
+          "explanation": "flagMaxRecvSize 为每批 token 的 blockCntPerToken_ * 32B flag 对齐段总容量。",
+          "reads": [
+            "blockCntPerToken_",
+            "maxCopyTokenCnt",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "flagMaxRecvSize"
+          ]
+        },
+        {
+          "line": 2112,
+          "kind": "declaration",
+          "explanation": "把 flagMaxRecvSize 换算为 float 个数供 GetWithOffset。",
+          "reads": [
+            "flagMaxRecvSize"
+          ],
+          "writes": [
+            "flagMaxRecvNum"
+          ]
+        },
+        {
+          "line": 2113,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm] aivId_ %d flagMaxRecvNum %d\\n\", aivId_, flagMaxRecvNum);`；该内容当前不参与 `WaitAndFormatOutput` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2114,
+          "kind": "call",
+          "explanation": "按 maxCopyTokenCnt 的全部 flag bit 结果上取整到 256B 得到 gatherOutSize。",
+          "reads": [
+            "blockCntPerToken_",
+            "maxCopyTokenCnt",
+            "SIZE_ALIGN_256"
+          ],
+          "writes": [
+            "gatherOutSize"
+          ]
+        },
+        {
+          "line": 2115,
+          "kind": "declaration",
+          "explanation": "xTmpSize 为全部候选 token 的 blockCntPerToken_ * 480B 紧凑 payload 容量。",
+          "reads": [
+            "blockCntPerToken_",
+            "maxCopyTokenCnt",
+            "SPLIT_BLOCK_DATA_SIZE"
+          ],
+          "writes": [
+            "xTmpSize"
+          ]
+        },
+        {
+          "line": 2116,
+          "kind": "declaration",
+          "explanation": "声明/初始化 cleanGlobal；源码表达式 `GlobalTensor<float> cleanGlobal;`。",
+          "reads": [],
+          "writes": [
+            "cleanGlobal"
+          ]
+        },
+        {
+          "line": 2117,
+          "kind": "call",
+          "explanation": "把 tBuf offset 0 绑定为 flagGatherOutTensor_。",
+          "reads": [
+            "tBuf",
+            "gatherOutSize"
+          ],
+          "writes": [
+            "flagGatherOutTensor_"
+          ]
+        },
+        {
+          "line": 2118,
+          "kind": "call",
+          "explanation": "在 gatherOutSize 后绑定 flagRecvTensor_。",
+          "reads": [
+            "tBuf",
+            "flagMaxRecvNum",
+            "gatherOutSize"
+          ],
+          "writes": [
+            "flagRecvTensor_"
+          ]
+        },
+        {
+          "line": 2119,
+          "kind": "call",
+          "explanation": "在 gather 与 flag 段之后绑定 xTmpTensor_，三段互不重叠。",
+          "reads": [
+            "tBuf",
+            "xTmpSize",
+            "gatherOutSize",
+            "flagMaxRecvSize"
+          ],
+          "writes": [
+            "xTmpTensor_"
+          ]
+        },
+        {
+          "line": 2120,
+          "kind": "call",
+          "explanation": "将 xTmpTensor_ 重解释为 int32_t，供 triple/top-k 标量修正。",
+          "reads": [
+            "xTmpTensor_",
+            "ReinterpretCast"
+          ],
+          "writes": [
+            "xOutInt32Tensor"
+          ]
+        },
+        {
+          "line": 2121,
+          "kind": "call",
+          "explanation": "cleanUpParams 每 token 写 blockCntPerToken_ 个 32B 零块，并以 480B 目的 stride 跳到下一 flag。",
+          "reads": [
+            "DataCopyParams",
+            "blockCntPerToken_",
+            "SPLIT_BLOCK_DATA_SIZE",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "cleanUpParams"
+          ]
+        },
+        {
+          "line": 2122,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm11] aivId %d\\n\", aivId_);`；该内容当前不参与 `WaitAndFormatOutput` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2123,
+          "kind": "blank",
+          "explanation": "空行在 `WaitAndFormatOutput` 的 L2123 分隔 `// AscendC::printf(\"[kfm11] aivId %d\\n\", aivId_);` 与 `while (true) {` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2124,
+          "kind": "blank",
+          "explanation": "空行在 `WaitAndFormatOutput` 的 L2124 分隔 `// AscendC::printf(\"[kfm11] aivId %d\\n\", aivId_);` 与 `while (true) {` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2125,
+          "kind": "loop",
+          "explanation": "进入轮询状态机，直到 validNum 个源数据块全部完成。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2126,
+          "kind": "branch",
+          "explanation": "若当前压缩槽 left 为 0，则无需检查该源块。",
+          "reads": [
+            "index"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2127,
+          "kind": "declaration",
+          "explanation": "按 (index + 1) % validNum 轮转到下一个有效源槽。",
+          "reads": [
+            "validNum"
+          ],
+          "writes": [
+            "index"
+          ]
+        },
+        {
+          "line": 2128,
+          "kind": "declaration",
+          "explanation": "零 left 槽立即 continue，不执行地址与 flag 检查。",
+          "reads": [
+            "continue"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2129,
+          "kind": "brace",
+          "explanation": "结束 left 为零时轮转 index 的快速路径。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2130,
+          "kind": "call",
+          "explanation": "从 expertMapTensor_(index) 恢复未压缩的 srcExpRankId。",
+          "reads": [
+            "index"
+          ],
+          "writes": [
+            "srcExpRankId"
+          ]
+        },
+        {
+          "line": 2131,
+          "kind": "call",
+          "explanation": "本轮 copyCnt 取剩余 token 与 UB maxCopyTokenCnt 的较小值。",
+          "reads": [
+            "index",
+            "maxCopyTokenCnt"
+          ],
+          "writes": [
+            "copyCnt"
+          ]
+        },
+        {
+          "line": 2132,
+          "kind": "declaration",
+          "explanation": "把 expert-major srcExpRankId 转换为窗口 rank-major srcDataBlockIdx。",
+          "reads": [
+            "srcExpRankId",
+            "epWorldSize_",
+            "localExpertNum"
+          ],
+          "writes": [
+            "srcDataBlockIdx"
+          ]
+        },
+        {
+          "line": 2133,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm12] aivId %d\\n\", aivId_);`；该内容当前不参与 `WaitAndFormatOutput` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2134,
+          "kind": "blank",
+          "explanation": "空行在 `WaitAndFormatOutput` 的 L2134 分隔 `// AscendC::printf(\"[kfm12] aivId %d\\n\", aivId_);` 与 `GM_ADDR wAddr = (__gm__ uint8_t*)(windowGM_) + srcDataBlockIdx * expert…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2135,
+          "kind": "declaration",
+          "explanation": "将 clean/copy 基址 wAddr 绑定到 srcDataBlockIdx 对应 expert window 起点。",
+          "reads": [
+            "GM_ADDR",
+            "windowGM_",
+            "srcDataBlockIdx",
+            "expertPerSizeOnWin_"
+          ],
+          "writes": [
+            "wAddr"
+          ]
+        },
+        {
+          "line": 2136,
+          "kind": "blank",
+          "explanation": "空行在 `WaitAndFormatOutput` 的 L2136 分隔 `GM_ADDR wAddr = (__gm__ uint8_t*)(windowGM_) + srcDataBlockIdx * expert…` 与 `// AscendC::printf(\"[kfm] CheckAddr aivId %d srcExpRankId %d srcRank %d…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2137,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm] CheckAddr aivId %d srcExpRankId %d srcRank %d localExpId %d srcDataBlockIdx %d wAddr %p expertPerSizeOnWin…`；该内容当前不参与 `WaitAndFormatOutput` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2138,
+          "kind": "comment",
+          "explanation": "注释记录 `aivId_, srcExpRankId, srcExpRankId % epWorldSize_, srcExpRankId / epWorldSize_, srcDataBlockIdx, wAddr, expertPerSizeOnWin_`，说明 `WaitAndFormatOutput` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2139,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `);`；该内容当前不参与 `WaitAndFormatOutput` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2140,
+          "kind": "blank",
+          "explanation": "空行在 `WaitAndFormatOutput` 的 L2140 分隔 `// );` 与 `// AscendC::printf(\"[recvAddr] rank %d aiv %d srcExpRankId %u block %u …` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2141,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[recvAddr] rank %d aiv %d srcExpRankId %u block %u windowGM %p wAddr %p left %u finish %u copyCnt %u\\n\",`；该内容当前不参与 `WaitAndFormatOutput` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2142,
+          "kind": "comment",
+          "explanation": "注释记录 `epRankId_, aivId_, srcExpRankId, srcDataBlockIdx, windowGM_, wAddr,`，说明 `WaitAndFormatOutput` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2143,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `expertLeftNumTensor_(index), expertFinishNumTensor_(index), copyCnt);`；该内容当前不参与 `WaitAndFormatOutput` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2144,
+          "kind": "blank",
+          "explanation": "空行在 `WaitAndFormatOutput` 的 L2144 分隔 `// expertLeftNumTensor_(index), expertFinishNumTensor_(index), copyCnt);` 与 `// AscendC::printf(\"[kfm] aivId %d index %d expertFinishNumTensor_(inde…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2145,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm] aivId %d index %d expertFinishNumTensor_(index) %d copyCnt %d\\n\", aivId_, index, expertFinishNumTensor_(in…`；该内容当前不参与 `WaitAndFormatOutput` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2146,
+          "kind": "call",
+          "explanation": "从 expertFinishNumTensor_(index) 游标起检查 copyCnt token，返回连续完整到达 arriveCount。",
+          "reads": [
+            "srcDataBlockIdx",
+            "index",
+            "copyCnt"
+          ],
+          "writes": [
+            "arriveCount"
+          ]
+        },
+        {
+          "line": 2147,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm13] aivId %d\\n\", aivId_);`；该内容当前不参与 `WaitAndFormatOutput` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2148,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm] aivId %d index %d arriveCount %d\\n\", aivId_, index, arriveCount);`；该内容当前不参与 `WaitAndFormatOutput` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2149,
+          "kind": "blank",
+          "explanation": "空行在 `WaitAndFormatOutput` 的 L2149 分隔 `// AscendC::printf(\"[kfm] aivId %d index %d arriveCount %d\\n\", aivId_, …` 与 `if (arriveCount == copyCnt) {` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2150,
+          "kind": "branch",
+          "explanation": "只有 arriveCount 等于请求的 copyCnt 时才消费该批次。",
+          "reads": [
+            "arriveCount",
+            "copyCnt"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2151,
+          "kind": "call",
+          "explanation": "dstPosition 先取当前 srcExpRankId 之前所有源块 token 的 cumsum；第 0 块从 0 开始。",
+          "reads": [
+            "srcExpRankId"
+          ],
+          "writes": [
+            "dstPosition"
+          ]
+        },
+        {
+          "line": 2152,
+          "kind": "call",
+          "explanation": "再加当前源块已完成 token 数，使本批接在其已有输出之后。",
+          "reads": [
+            "dstPosition",
+            "index"
+          ],
+          "writes": [
+            "dstPosition"
+          ]
+        },
+        {
+          "line": 2153,
+          "kind": "blank",
+          "explanation": "空行在 `WaitAndFormatOutput` 的 L2153 分隔 `dstPosition += expertFinishNumTensor_(index);` 与 `uint32_t dstExpertId = srcExpRankId / epWorldSize_ + epRankId_ * localE…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2154,
+          "kind": "declaration",
+          "explanation": "把 srcExpRankId 的本地专家号与当前 epRankId_ 组合为全局 dstExpertId。",
+          "reads": [
+            "srcExpRankId",
+            "epWorldSize_",
+            "epRankId_",
+            "localExpertNum"
+          ],
+          "writes": [
+            "dstExpertId"
+          ]
+        },
+        {
+          "line": 2155,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm14] aivId %d\\n\", aivId_);`；该内容当前不参与 `WaitAndFormatOutput` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2156,
+          "kind": "call",
+          "explanation": "CopyInAndOut 将整批 token 去 flag、修 top-k，并按 dstPosition 连续写 X/scale/index。",
+          "reads": [
+            "xOutInt32Tensor",
+            "wAddr",
+            "index",
+            "dstPosition",
+            "arriveCount",
+            "dstExpertId"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2157,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm15] aivId %d\\n\", aivId_);`；该内容当前不参与 `WaitAndFormatOutput` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2158,
+          "kind": "comment",
+          "explanation": "注释记录 `finish更新并clean`，说明 `WaitAndFormatOutput` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2159,
+          "kind": "call",
+          "explanation": "成功写出后把 expertFinishNumTensor_(index) 增加 arriveCount。",
+          "reads": [
+            "index",
+            "arriveCount"
+          ],
+          "writes": [
+            "expertFinishNumTensor_"
+          ]
+        },
+        {
+          "line": 2160,
+          "kind": "call",
+          "explanation": "同时把 expertLeftNumTensor_(index) 减少 arriveCount。",
+          "reads": [
+            "index",
+            "arriveCount"
+          ],
+          "writes": [
+            "expertLeftNumTensor_"
+          ]
+        },
+        {
+          "line": 2161,
+          "kind": "sync",
+          "explanation": "PIPE_ALL 等待 CopyInAndOut 的 X/scale/index 写回结束，再判断源块完成与清 flag。",
+          "reads": [
+            "PIPE_ALL"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2162,
+          "kind": "branch",
+          "explanation": "left 归零表示当前源数据块全部 token 已消费，进入 flag 回收。",
+          "reads": [
+            "index"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2163,
+          "kind": "call",
+          "explanation": "把 cleanGlobal 绑定到当前源数据块起点 wAddr。",
+          "reads": [
+            "wAddr"
+          ],
+          "writes": [
+            "cleanGlobal"
+          ]
+        },
+        {
+          "line": 2164,
+          "kind": "loop",
+          "explanation": "遍历该源块累计 expertFinishNumTensor_(index) 个已消费 token。",
+          "reads": [
+            "i",
+            "index"
+          ],
+          "writes": [
+            "i"
+          ]
+        },
+        {
+          "line": 2165,
+          "kind": "declaration",
+          "explanation": "flagIndex 以 128 floats/512B block 与 120 floats/480B payload 定位每 token 第一个 block flag。",
+          "reads": [
+            "i",
+            "SPLIT_BLOCK_COUNT",
+            "blockCntPerToken_",
+            "SPLIT_BLOCK_DATA_COUNT"
+          ],
+          "writes": [
+            "flagIndex"
+          ]
+        },
+        {
+          "line": 2166,
+          "kind": "call",
+          "explanation": "使用 cleanUpParams 从 cleanUpTensor_ 向当前 token 的所有 block flag 位置写 32B 零。",
+          "reads": [
+            "flagIndex",
+            "cleanUpTensor_",
+            "cleanUpParams"
+          ],
+          "writes": [
+            "cleanGlobal"
+          ]
+        },
+        {
+          "line": 2167,
+          "kind": "brace",
+          "explanation": "在 `WaitAndFormatOutput` 的 L2167 结束 for 循环 `for (uint32_t i = 0; i < expertFinishNumTensor_(index); i++){` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2168,
+          "kind": "sync",
+          "explanation": "MTE3_S 等待该源块全部 flag 清零写回完成。",
+          "reads": [
+            "MTE3_S"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2169,
+          "kind": "declaration",
+          "explanation": "源块完成且 flag 已清后，finishNum 加一。",
+          "reads": [
+            "finishNum"
+          ],
+          "writes": [
+            "finishNum"
+          ]
+        },
+        {
+          "line": 2170,
+          "kind": "brace",
+          "explanation": "结束源数据块完成后的 flag 清零与 finishNum 推进分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2171,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm16] aivId %d\\n\", aivId_);`；该内容当前不参与 `WaitAndFormatOutput` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2172,
+          "kind": "branch",
+          "explanation": "整批尚未到达时进入轮转分支，避免阻塞其他源块。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2173,
+          "kind": "declaration",
+          "explanation": "按 (index+1)%validNum 选择下一个源块；成功批次则保持 index 贪心继续。",
+          "reads": [
+            "validNum"
+          ],
+          "writes": [
+            "index"
+          ]
+        },
+        {
+          "line": 2174,
+          "kind": "brace",
+          "explanation": "结束未整批到达时的 index 轮转分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2175,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm17] aivId %d\\n\", aivId_);`；该内容当前不参与 `WaitAndFormatOutput` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2176,
+          "kind": "branch",
+          "explanation": "比较 finishNum 与 validNum，判断所有非零源块是否完成。",
+          "reads": [
+            "validNum",
+            "finishNum"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2177,
+          "kind": "declaration",
+          "explanation": "全部完成时 break 退出 while 状态机。",
+          "reads": [
+            "break"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2178,
+          "kind": "brace",
+          "explanation": "结束 finishNum 达到 validNum 的退出分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2179,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `break;`；该内容当前不参与 `WaitAndFormatOutput` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2180,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm18] aivId %d\\n\", aivId_);`；该内容当前不参与 `WaitAndFormatOutput` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2181,
+          "kind": "brace",
+          "explanation": "结束 while(true) 接收轮询。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2182,
+          "kind": "brace",
+          "explanation": "结束 WaitAndFormatOutput。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments": [
+        {
+          "id": "wait-partition-ub-for-flags-and-payload",
+          "start": 2100,
+          "end": 2121,
+          "title": "按单 token 的 512B blocks 与 gather mask 开销划分 tBuf",
+          "detail": "gatherOutSizePerToken 按 blockCntPerToken_ 个 uint32 bit 结果取 256B 对齐；maxCopyTokenCnt=tBufRealSize_/(hCommuSize_+gatherOutSizePerToken)。随后计算 flagRecv、gatherOut 和去 flag payload xTmp 三段容量，并用 GetWithOffset 无重叠绑定。cleanUpParams 描述每 token 的 block flag 清零 stride。",
+          "kind": "input",
+          "input_state": [
+            "tBuf/tBufRealSize_：LocalWindowCopy 剩余 UB",
+            "blockCntPerToken_/hCommuSize_：通信 token 布局"
+          ],
+          "mechanism": "每批 token 预算包含 blockCnt*480B payload + blockCnt*32B flag = hCommuSize_，再加对齐 gather 结果；三段依次放于 offset 0、gatherOutSize、gatherOutSize+flagMaxRecvSize。",
+          "output_state": [
+            "maxCopyTokenCnt：一次可检查/搬入 token 上限",
+            "flagGatherOutTensor_/flagRecvTensor_/xTmpTensor_：轮询批次工作区",
+            "cleanUpParams：跨 480B 清 flag 参数"
+          ],
+          "why": "到达检查与 payload 压紧必须共用有限 UB；容量公式保证最坏批次不重叠。",
+          "calls": [
+            {
+              "name": "Ceil",
+              "line": 2106,
+              "type": "external"
+            },
+            {
+              "name": "Ceil",
+              "line": 2114,
+              "type": "external"
+            },
+            {
+              "name": "GetWithOffset",
+              "line": 2117,
+              "type": "external"
+            },
+            {
+              "name": "GetWithOffset",
+              "line": 2118,
+              "type": "external"
+            },
+            {
+              "name": "GetWithOffset",
+              "line": 2119,
+              "type": "external"
+            },
+            {
+              "name": "ReinterpretCast",
+              "line": 2120,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "wait-select-next-source-and-batch",
+          "start": 2122,
+          "end": 2133,
+          "title": "轮询非零源块并把待收数裁到 UB 批次上限",
+          "detail": "while(true) 状态机从 index=0 开始。left 为 0 的槽按 (index+1)%validNum 跳过；否则从 expertMapTensor_ 恢复 srcExpRankId，copyCnt=min(left,maxCopyTokenCnt)。srcDataBlockIdx 把 expert-major 的 srcExpRankId 转为 Rank-major window 排布。",
+          "kind": "loop",
+          "input_state": [
+            "expertLeftNumTensor_：各有效源块剩余 token",
+            "expertMapTensor_：压缩槽到原始 srcExpRankId",
+            "validNum/maxCopyTokenCnt：轮询和批次边界"
+          ],
+          "mechanism": "零 left 轮转；copyCnt 取剩余与 UB 上限较小者；srcDataBlockIdx=(srcExpRankId%epWorldSize_)*localExpertNum+srcExpRankId/epWorldSize_。",
+          "output_state": [
+            "index/srcExpRankId/srcDataBlockIdx/copyCnt：本轮候选源块和批次"
+          ],
+          "why": "cumsum 的逻辑索引与窗口物理排布不同；必须转换后才能找到正确 Rank/本地专家数据块。",
+          "calls": [
+            {
+              "name": "expertLeftNumTensor_",
+              "line": 2126,
+              "type": "external"
+            },
+            {
+              "name": "expertMapTensor_",
+              "line": 2130,
+              "type": "external"
+            },
+            {
+              "name": "expertLeftNumTensor_",
+              "line": 2131,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "wait-bind-source-block-and-check-full-batch",
+          "start": 2134,
+          "end": 2149,
+          "title": "绑定源 expert window 并检查请求批次是否全部到达",
+          "detail": "wAddr=windowGM_+srcDataBlockIdx*expertPerSizeOnWin_。CheckDataArriveWithFlag 从 expertFinishNumTensor_(index) 起检查 copyCnt；调试地址与计数打印全部注释。",
+          "kind": "guard",
+          "input_state": [
+            "srcDataBlockIdx：物理数据块",
+            "expertFinishNumTensor_(index)：已消费 token 游标",
+            "copyCnt：请求批次"
+          ],
+          "mechanism": "传入 srcDataBlockIdx、finish 游标和 copyCnt，返回连续完整到达 arriveCount。",
+          "output_state": [
+            "wAddr：源块基址",
+            "arriveCount：从 finish 游标起完整到达 token 数"
+          ],
+          "why": "只允许消费已发布 flag 的 512B blocks，避免读取 URMA 尚未完成的 payload。",
+          "calls": [
+            {
+              "name": "CheckDataArriveWithFlag",
+              "line": 2146,
+              "type": "internal",
+              "target": "m-moedistributedispatchv2fullmesh-checkdataarrivewithflag-99021413c7"
+            },
+            {
+              "name": "expertFinishNumTensor_",
+              "line": 2146,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "wait-place-full-batch-in-cumsum-output",
+          "start": 2150,
+          "end": 2158,
+          "title": "仅在整批到达时计算 cumsum 输出位置并格式化",
+          "detail": "必须 arriveCount==copyCnt 才消费；dstPosition 先取 srcExpRankId 前一项 cumsum（第 0 项为 0），再加该源块 expertFinishNumTensor_，形成无空洞连续位置。dstExpertId 由目的 Rank 和 local expert 组合，CopyInAndOut 写 X/scale/index。",
+          "kind": "output",
+          "input_state": [
+            "arriveCount/copyCnt：整批到达门槛",
+            "sendCntTensor_：源块 cumsum",
+            "expertFinishNumTensor_：源块内偏移"
+          ],
+          "mechanism": "dstPosition=(srcExpRankId?cumsum[srcExpRankId-1]:0)+finish；dstExpertId=srcExpRankId/epWorldSize_+epRankId_*localExpertNum。",
+          "output_state": [
+            "连续输出 [dstPosition,dstPosition+arriveCount)：由 CopyInAndOut 填充"
+          ],
+          "why": "等待整批而非复制部分前缀，可复用固定 copyCnt 参数并保证同源块输出连续；cumsum 使不同源块也无重叠。",
+          "calls": [
+            {
+              "name": "sendCntTensor_",
+              "line": 2151,
+              "type": "external"
+            },
+            {
+              "name": "expertFinishNumTensor_",
+              "line": 2152,
+              "type": "external"
+            },
+            {
+              "name": "CopyInAndOut",
+              "line": 2156,
+              "type": "internal",
+              "target": "m-moedistributedispatchv2fullmesh-copyinandout-da9b81eb3f"
+            }
+          ]
+        },
+        {
+          "id": "wait-advance-source-and-clear-all-flags",
+          "start": 2159,
+          "end": 2170,
+          "title": "推进 finish/left，并在源块完成后清零全部 512B block flag",
+          "detail": "成功批次后 finish+=arriveCount、left-=arriveCount，PIPE_ALL 等 CopyInAndOut。left 变 0 时 cleanGlobal 绑定源块；对所有已完成 token 和 block，flagIndex=i*SPLIT_BLOCK_COUNT*blocks+SPLIT_BLOCK_DATA_COUNT 指向每 token 第一个 480B 后的 flag，cleanUpParams 跨 block 写零；MTE3_S 后 finishNum++。",
+          "kind": "sync",
+          "input_state": [
+            "expertFinishNumTensor_/expertLeftNumTensor_：源块状态",
+            "cleanUpTensor_：blockCntPerToken_*32B 零模板",
+            "wAddr：源块基址"
+          ],
+          "mechanism": "更新游标→PIPE_ALL；源块完成时按 128 float/512B block stride 与 120 float/480B flag offset 清所有 token flag。",
+          "output_state": [
+            "expertFinishNumTensor_：累计已输出",
+            "expertLeftNumTensor_：归零",
+            "源 window flags：恢复为 0 供下一轮复用",
+            "finishNum：完成源块数+1"
+          ],
+          "why": "双缓冲/下一轮不能继承本轮值为 1 的到达 flag；必须在整源块消费完后统一清理。",
+          "calls": [
+            {
+              "name": "expertFinishNumTensor_",
+              "line": 2159,
+              "type": "external"
+            },
+            {
+              "name": "expertLeftNumTensor_",
+              "line": 2160,
+              "type": "external"
+            },
+            {
+              "name": "PipeBarrier",
+              "line": 2161,
+              "type": "external"
+            },
+            {
+              "name": "expertLeftNumTensor_",
+              "line": 2162,
+              "type": "external"
+            },
+            {
+              "name": "SetGlobalBuffer",
+              "line": 2163,
+              "type": "external"
+            },
+            {
+              "name": "expertFinishNumTensor_",
+              "line": 2164,
+              "type": "external"
+            },
+            {
+              "name": "DataCopy",
+              "line": 2166,
+              "type": "external"
+            },
+            {
+              "name": "SyncFunc",
+              "line": 2168,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "wait-rotate-on-miss-and-stop-when-all-finished",
+          "start": 2171,
+          "end": 2180,
+          "title": "未整批到达时轮转源块，全部完成时退出轮询",
+          "detail": "arriveCount!=copyCnt 时 index=(index+1)%validNum，避免阻塞在慢源块；成功且 left 仍非零时不轮转，下一轮继续贪心消费同一块。每轮比较 validNum 与 finishNum，相等则 break。注释掉的无条件 break 不执行。",
+          "kind": "loop",
+          "input_state": [
+            "arriveCount/copyCnt：本轮到达状态",
+            "index：当前有效源槽",
+            "finishNum/validNum：全局完成条件"
+          ],
+          "mechanism": "miss 才轮转；success 保持 index；finishNum==validNum 结束 while。",
+          "output_state": [
+            "慢源块让出轮询机会；快源块可连续批量排空",
+            "所有有效源块完成后退出"
+          ],
+          "why": "轮询避免 head-of-line blocking，同时对已到达源块保持局部性。",
+          "calls": []
+        },
+        {
+          "id": "wait-finish-state-machine",
+          "start": 2181,
+          "end": 2182,
+          "title": "结束轮询状态机与格式化函数",
+          "detail": "第一个右花括号闭合 while，第二个结束 WaitAndFormatOutput。",
+          "kind": "output",
+          "input_state": [
+            "finishNum==validNum"
+          ],
+          "mechanism": "依次关闭 while 轮询与 WaitAndFormatOutput 函数作用域；退出条件保证 finishNum 已等于 validNum，因此不会把仍有剩余 token 的源块留给调用者。",
+          "output_state": [
+            "当前 AIV 负责的所有非零源数据块均已连续写出并清 flag"
+          ],
+          "why": "LocalWindowCopy 可安全返回 Process 的最终同步阶段。",
+          "calls": []
+        }
+      ]
+    },
+    {
+      "id": "m-moedistributedispatchv2fullmesh-runposrecord-a1ffd8ca5e",
+      "module_id": "receive-format",
+      "name": "RunPosRecord",
+      "start": 2184,
+      "end": 2193,
+      "inactive": true,
+      "summary": "禁用的维测打点 helper：分配 32B UB，把 runPos 写到 dataStateLocalTensor_[0]，经 S_MTE3 后写 selfDataStatusGMTensor_[1]；当前所有调用点都被注释。",
+      "inputs": [
+        "runPos",
+        "tpipe_",
+        "dataStateParams_"
+      ],
+      "outputs": [
+        "dataStateLocalTensor_",
+        "selfDataStatusGMTensor_"
+      ],
+      "side_effects": [
+        "若被调用会写 selfDataStatusGMTensor_[1] 记录运行阶段",
+        "inactive：WaitCumSumFlag 与 LocalWindowCopy 中的 RunPosRecord 调用均被注释"
+      ],
+      "review": {
+        "status": "PASS",
+        "reviewer": "e2e-architecture-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "line_range": [
+          2184,
+          2193
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 2184,
+        "reviewed_end": 2193,
+        "expected_line_count": 10,
+        "covered_line_count": 10,
+        "covered_ranges": [
+          [
+            2184,
+            2193
+          ]
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {
+          "line": 2184,
+          "kind": "signature",
+          "explanation": "构成函数 `RunPosRecord` 的签名片段 `template <TemplateMC2TypeFullmeshClass>`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2185,
+          "kind": "signature",
+          "explanation": "构成函数 `RunPosRecord` 的签名片段 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::RunPosRecord(const uint32_t runPos)`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2186,
+          "kind": "brace",
+          "explanation": "开始不可达的维测 runPos 写入 helper。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2187,
+          "kind": "declaration",
+          "explanation": "声明/初始化 runPosBuf；源码表达式 `TBuf<> runPosBuf;`。",
+          "reads": [],
+          "writes": [
+            "runPosBuf"
+          ]
+        },
+        {
+          "line": 2188,
+          "kind": "call",
+          "explanation": "从 tpipe_ 分配一个 UB_ALIGN 大小的 runPosBuf。",
+          "reads": [
+            "tpipe_",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "runPosBuf"
+          ]
+        },
+        {
+          "line": 2189,
+          "kind": "call",
+          "explanation": "把 dataStateLocalTensor_ 绑定为 runPosBuf 的 uint32_t 视图。",
+          "reads": [
+            "runPosBuf"
+          ],
+          "writes": [
+            "dataStateLocalTensor_"
+          ]
+        },
+        {
+          "line": 2190,
+          "kind": "call",
+          "explanation": "将 runPos 写入 dataStateLocalTensor_[0]。",
+          "reads": [
+            "runPos"
+          ],
+          "writes": [
+            "dataStateLocalTensor_"
+          ]
+        },
+        {
+          "line": 2191,
+          "kind": "sync",
+          "explanation": "S_MTE3 使标量 SetValue 对后续 MTE3 状态写可见。",
+          "reads": [
+            "S_MTE3"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2192,
+          "kind": "call",
+          "explanation": "把 runPos 从 UB 写到 selfDataStatusGMTensor_[1]；这是当前不可达的维测打点。",
+          "reads": [
+            "dataStateLocalTensor_",
+            "dataStateParams_"
+          ],
+          "writes": [
+            "selfDataStatusGMTensor_"
+          ]
+        },
+        {
+          "line": 2193,
+          "kind": "brace",
+          "explanation": "结束 RunPosRecord。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments": [
+        {
+          "id": "inactive-record-run-position-to-status-window",
+          "start": 2184,
+          "end": 2193,
+          "title": "把 runPos 打点写入 selfDataStatusGMTensor_[1]（当前不可达）",
+          "detail": "runPosBuf 分配 UB_ALIGN，dataStateLocalTensor_ 绑定 uint32_t 视图并 SetValue；S_MTE3 后 DataCopyPad 写状态窗口索引 1。函数本身可编译，但入口调用图没有有效调用者。",
+          "kind": "debug",
+          "input_state": [
+            "runPos：待记录阶段编号",
+            "selfDataStatusGMTensor_：本 Rank/AIV 状态窗口"
+          ],
+          "mechanism": "InitBuffer→Get<uint32_t>→SetValue(0,runPos)→S_MTE3→DataCopyPad(status[1])。",
+          "output_state": [
+            "若启用：selfDataStatusGMTensor_[1] 保存 runPos",
+            "当前主路径：无写入，因为调用点均注释"
+          ],
+          "why": "该 helper 用于维测定位执行进度，不能将其状态写误当成 dispatch 协议必需步骤。",
+          "calls": [
+            {
+              "name": "InitBuffer",
+              "line": 2188,
+              "type": "external"
+            },
+            {
+              "name": "Get",
+              "line": 2189,
+              "type": "external"
+            },
+            {
+              "name": "SetValue",
+              "line": 2190,
+              "type": "external"
+            },
+            {
+              "name": "SyncFunc",
+              "line": 2191,
+              "type": "external"
+            },
+            {
+              "name": "DataCopyPad",
+              "line": 2192,
+              "type": "external"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m-moedistributedispatchv2fullmesh-localwindowcopy-68c5075b26",
+      "module_id": "receive-format",
+      "name": "LocalWindowCopy",
+      "start": 2195,
+      "end": 2252,
+      "inactive": false,
+      "summary": "接收连续化总入口：Reset 后给全部 AIV 分配源状态范围，并先共同等待/清理 cumsum flag；有任务的核从 cumsum 压缩非零源块，初始化 flag 比较与清零模板，最后运行 WaitAndFormatOutput 轮询到达、连续写输出并回收 flag。",
+      "inputs": [
+        "tpipe_",
+        "rscvStatusNum_",
+        "aivNum_",
+        "aivUsedCumSum_",
+        "blockCntPerToken_",
+        "MAX_UB_SIZE"
+      ],
+      "outputs": [
+        "sendCntTensor_",
+        "expertMapTensor_",
+        "expertFinishNumTensor_",
+        "expertLeftNumTensor_",
+        "flagCompResultU8_",
+        "flagCompResultLtU64_",
+        "flagRecvGatherMask_",
+        "cleanUpTensor_"
+      ],
+      "side_effects": [
+        "Reset 并重建接收阶段全部 UB buffer/tensor 绑定",
+        "WaitCumSumFlag 让所有 AIV 等待 cumsum 完成并清 flag；零任务核在其后返回",
+        "SetValidExpertInfo 搬入 cumsum 并构造非零源块状态",
+        "初始化比较 bit mask、gather mask 和 block flag 清零模板后调用 WaitAndFormatOutput"
+      ],
+      "review": {
+        "status": "PASS",
+        "reviewer": "e2e-architecture-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "line_range": [
+          2195,
+          2252
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 2195,
+        "reviewed_end": 2252,
+        "expected_line_count": 58,
+        "covered_line_count": 58,
+        "covered_ranges": [
+          [
+            2195,
+            2214
+          ],
+          [
+            2215,
+            2231
+          ],
+          [
+            2232,
+            2240
+          ],
+          [
+            2241,
+            2249
+          ],
+          [
+            2250,
+            2252
+          ]
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {
+          "line": 2195,
+          "kind": "signature",
+          "explanation": "构成函数 `LocalWindowCopy` 的签名片段 `template <TemplateMC2TypeFullmeshClass>`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2196,
+          "kind": "signature",
+          "explanation": "构成函数 `LocalWindowCopy` 的签名片段 `__aicore__ inline void MoeDistributeDispatchV2FullMesh<TemplateMC2TypeFullmeshFunc>::LocalWindowCopy()`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2197,
+          "kind": "brace",
+          "explanation": "开始 LocalWindowCopy 接收连续化总入口。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2198,
+          "kind": "comment",
+          "explanation": "注释记录 `分核负责源专家数量`，说明 `LocalWindowCopy` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2199,
+          "kind": "call",
+          "explanation": "Reset 清除前一阶段 pipe 资源，开始接收连续化 UB 重建。",
+          "reads": [],
+          "writes": [
+            "tpipe_"
+          ]
+        },
+        {
+          "line": 2200,
+          "kind": "declaration",
+          "explanation": "声明/初始化 cumSumBuf、statusWaitBuf、statusCleanBuf；源码表达式 `TBuf<> cumSumBuf, statusWaitBuf, statusCleanBuf;`。",
+          "reads": [],
+          "writes": [
+            "cumSumBuf",
+            "statusWaitBuf",
+            "statusCleanBuf"
+          ]
+        },
+        {
+          "line": 2201,
+          "kind": "call",
+          "explanation": "将 rscvStatusNum_ 个 int32 cumsum 项上取整到 UB_ALIGN，得到 rscvNumAlign。",
+          "reads": [
+            "rscvStatusNum_",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "rscvNumAlign"
+          ]
+        },
+        {
+          "line": 2202,
+          "kind": "call",
+          "explanation": "分配 scalarBuf_，供 WaitCumSumFlag 标量归约/状态操作使用。",
+          "reads": [
+            "tpipe_",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "scalarBuf_"
+          ]
+        },
+        {
+          "line": 2203,
+          "kind": "call",
+          "explanation": "为 aivUsedCumSum_ 个对齐 flag 分配 statusWaitBuf。",
+          "reads": [
+            "tpipe_",
+            "aivUsedCumSum_",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "statusWaitBuf"
+          ]
+        },
+        {
+          "line": 2204,
+          "kind": "call",
+          "explanation": "为当前 AIV 的 rscvStatusNum_ cumsum 行分配 cumSumBuf。",
+          "reads": [
+            "tpipe_",
+            "rscvNumAlign"
+          ],
+          "writes": [
+            "cumSumBuf"
+          ]
+        },
+        {
+          "line": 2205,
+          "kind": "call",
+          "explanation": "分配 statusCleanBuf，供 WaitCumSumFlag 清 flag，之后复用前 32B 为 gather mask。",
+          "reads": [
+            "tpipe_",
+            "aivUsedCumSum_",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "statusCleanBuf"
+          ]
+        },
+        {
+          "line": 2206,
+          "kind": "call",
+          "explanation": "调用 Get；读取 statusWaitBuf，更新 statusFp32Tensor_。",
+          "reads": [
+            "statusWaitBuf"
+          ],
+          "writes": [
+            "statusFp32Tensor_"
+          ]
+        },
+        {
+          "line": 2207,
+          "kind": "call",
+          "explanation": "调用 Get；读取 statusCleanBuf，更新 statusCleanFp32Tensor_。",
+          "reads": [
+            "statusCleanBuf"
+          ],
+          "writes": [
+            "statusCleanFp32Tensor_"
+          ]
+        },
+        {
+          "line": 2208,
+          "kind": "call",
+          "explanation": "调用 Get；读取 cumSumBuf，更新 sendCntTensor_。",
+          "reads": [
+            "cumSumBuf"
+          ],
+          "writes": [
+            "sendCntTensor_"
+          ]
+        },
+        {
+          "line": 2209,
+          "kind": "call",
+          "explanation": "调用 SplitToCore，把 rscvStatusNum_ 个源状态均分给全部 aivNum_，写 startId_/endId_/sendNum_。",
+          "reads": [
+            "rscvStatusNum_",
+            "aivNum_"
+          ],
+          "writes": [
+            "startId_",
+            "endId_",
+            "sendNum_"
+          ]
+        },
+        {
+          "line": 2210,
+          "kind": "comment",
+          "explanation": "注释记录 `软同步`，说明 `LocalWindowCopy` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2211,
+          "kind": "call",
+          "explanation": "所有 AIV 先调用 WaitCumSumFlag 等待 cumsum 生产核并清 flag，包括 sendNum_ 为零的核。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2212,
+          "kind": "branch",
+          "explanation": "WaitCumSumFlag 之后检查当前 AIV 是否没有源状态任务。",
+          "reads": [
+            "sendNum_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2213,
+          "kind": "statement",
+          "explanation": "执行 `return;`；不读取运行时对象。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2214,
+          "kind": "brace",
+          "explanation": "结束 sendNum_ 为零的接收任务退出分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2215,
+          "kind": "comment",
+          "explanation": "注释记录 `连续化`，说明 `LocalWindowCopy` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2216,
+          "kind": "declaration",
+          "explanation": "声明/初始化 expertMapBuf、expertFinishBuf、expertLeftBuf、flagMaskBuf、cleanUpBuf、tBuf；源码表达式 `TBuf<> expertMapBuf, expertFinishBuf, expertLeftBuf, flagMaskBuf, cleanUpBuf, tBuf;`。",
+          "reads": [],
+          "writes": [
+            "expertMapBuf",
+            "expertFinishBuf",
+            "expertLeftBuf",
+            "flagMaskBuf",
+            "cleanUpBuf",
+            "tBuf"
+          ]
+        },
+        {
+          "line": 2217,
+          "kind": "declaration",
+          "explanation": "声明/初始化 validNum；源码表达式 `uint32_t validNum = 0;`。",
+          "reads": [],
+          "writes": [
+            "validNum"
+          ]
+        },
+        {
+          "line": 2218,
+          "kind": "call",
+          "explanation": "按 sendNum_ 个 uint32_t 状态上取整到 UB_ALIGN，得到三组 expInfo buffer 容量。",
+          "reads": [
+            "sendNum_",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "expInfoSize"
+          ]
+        },
+        {
+          "line": 2219,
+          "kind": "call",
+          "explanation": "调用 InitBuffer；读取 tpipe_、expInfoSize，更新 expertMapBuf。",
+          "reads": [
+            "tpipe_",
+            "expInfoSize"
+          ],
+          "writes": [
+            "expertMapBuf"
+          ]
+        },
+        {
+          "line": 2220,
+          "kind": "call",
+          "explanation": "调用 InitBuffer；读取 tpipe_、expInfoSize，更新 expertFinishBuf。",
+          "reads": [
+            "tpipe_",
+            "expInfoSize"
+          ],
+          "writes": [
+            "expertFinishBuf"
+          ]
+        },
+        {
+          "line": 2221,
+          "kind": "call",
+          "explanation": "调用 InitBuffer；读取 tpipe_、expInfoSize，更新 expertLeftBuf。",
+          "reads": [
+            "tpipe_",
+            "expInfoSize"
+          ],
+          "writes": [
+            "expertLeftBuf"
+          ]
+        },
+        {
+          "line": 2222,
+          "kind": "call",
+          "explanation": "调用 InitBuffer；读取 tpipe_、BUFFER_NUM、UB_ALIGN，更新 flagMaskBuf。",
+          "reads": [
+            "tpipe_",
+            "BUFFER_NUM",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "flagMaskBuf"
+          ]
+        },
+        {
+          "line": 2223,
+          "kind": "call",
+          "explanation": "调用 InitBuffer；读取 tpipe_、blockCntPerToken_、UB_ALIGN，更新 cleanUpBuf。",
+          "reads": [
+            "tpipe_",
+            "blockCntPerToken_",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "cleanUpBuf"
+          ]
+        },
+        {
+          "line": 2224,
+          "kind": "statement",
+          "explanation": "从 MAX_UB_SIZE 扣除 scalar、cumsum wait/clean、三份 expInfo、比较 mask 与 cleanup 固定占用，开始计算 tBufRealSize_。",
+          "reads": [
+            "MAX_UB_SIZE",
+            "UB_ALIGN",
+            "rscvNumAlign",
+            "aivUsedCumSum_"
+          ],
+          "writes": [
+            "tBufRealSize_"
+          ]
+        },
+        {
+          "line": 2225,
+          "kind": "statement",
+          "explanation": "完成 tBufRealSize_ 扣减：三份 expInfoSize、BUFFER_NUM*UB_ALIGN 与每 token blocks*UB_ALIGN。",
+          "reads": [
+            "expInfoSize",
+            "BUFFER_NUM",
+            "UB_ALIGN",
+            "blockCntPerToken_"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2226,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm] aivId_ %d tBufRealSize_ %d\\n\", aivId_, tBufRealSize_);`；该内容当前不参与 `LocalWindowCopy` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2227,
+          "kind": "call",
+          "explanation": "把全部剩余 UB 一次分配为 tBuf，后续按实际 maxCopyTokenCnt 分区。",
+          "reads": [
+            "tpipe_",
+            "tBufRealSize_"
+          ],
+          "writes": [
+            "tBuf"
+          ]
+        },
+        {
+          "line": 2228,
+          "kind": "call",
+          "explanation": "调用 Get；读取 expertMapBuf，更新 expertMapTensor_。",
+          "reads": [
+            "expertMapBuf"
+          ],
+          "writes": [
+            "expertMapTensor_"
+          ]
+        },
+        {
+          "line": 2229,
+          "kind": "call",
+          "explanation": "调用 Get；读取 expertFinishBuf，更新 expertFinishNumTensor_。",
+          "reads": [
+            "expertFinishBuf"
+          ],
+          "writes": [
+            "expertFinishNumTensor_"
+          ]
+        },
+        {
+          "line": 2230,
+          "kind": "call",
+          "explanation": "调用 Get；读取 expertLeftBuf，更新 expertLeftNumTensor_。",
+          "reads": [
+            "expertLeftBuf"
+          ],
+          "writes": [
+            "expertLeftNumTensor_"
+          ]
+        },
+        {
+          "line": 2231,
+          "kind": "call",
+          "explanation": "SetValidExpertInfo 从 cumsum 构造 expertMap/finish/left，并写回非零源块数 validNum。",
+          "reads": [
+            "expInfoSize"
+          ],
+          "writes": [
+            "validNum"
+          ]
+        },
+        {
+          "line": 2232,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::printf(\"[kfm] LocalWindowCopy validNum: aivId_ %d startId_ %d endId_ %d validNum %d\\n\",`；该内容当前不参与 `LocalWindowCopy` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2233,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `aivId_, startId_, endId_, validNum);`；该内容当前不参与 `LocalWindowCopy` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2234,
+          "kind": "branch",
+          "explanation": "validNum 为零表示当前 AIV 分配的源状态都没有实际 token，直接返回。",
+          "reads": [
+            "validNum"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2235,
+          "kind": "statement",
+          "explanation": "执行 `return;`；不读取运行时对象。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2236,
+          "kind": "brace",
+          "explanation": "结束 validNum 为零的非零源块退出分支。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2237,
+          "kind": "call",
+          "explanation": "将 flagMaskBuf 绑定为 CompareScalar 写入的 uint8_t 结果视图。",
+          "reads": [
+            "flagMaskBuf"
+          ],
+          "writes": [
+            "flagCompResultU8_"
+          ]
+        },
+        {
+          "line": 2238,
+          "kind": "call",
+          "explanation": "同一 flagMaskBuf 再绑定为 ScalarGetSFFValue 读取的 uint64_t 视图。",
+          "reads": [
+            "flagMaskBuf"
+          ],
+          "writes": [
+            "flagCompResultLtU64_"
+          ]
+        },
+        {
+          "line": 2239,
+          "kind": "call",
+          "explanation": "复用 statusCleanBuf 的前 UB_ALIGN 字节作为 uint32_t gather 选择 mask。",
+          "reads": [
+            "statusCleanBuf",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "flagRecvGatherMask_"
+          ]
+        },
+        {
+          "line": 2240,
+          "kind": "call",
+          "explanation": "将 cleanUpBuf 绑定为 float 零模板 cleanUpTensor_。",
+          "reads": [
+            "cleanUpBuf"
+          ],
+          "writes": [
+            "cleanUpTensor_"
+          ]
+        },
+        {
+          "line": 2241,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `xTmpTensor_ = tBuf.Get<XOutType>();`；该内容当前不参与 `LocalWindowCopy` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2242,
+          "kind": "call",
+          "explanation": "调用 LocalTensor；读取 flagMaskBuf、Get，更新 flagCompResultLtU32。",
+          "reads": [
+            "flagMaskBuf",
+            "Get"
+          ],
+          "writes": [
+            "flagCompResultLtU32"
+          ]
+        },
+        {
+          "line": 2243,
+          "kind": "call",
+          "explanation": "将整个 flag 比较结果 buffer 清零。",
+          "reads": [
+            "BUFFER_NUM",
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "flagCompResultLtU32"
+          ]
+        },
+        {
+          "line": 2244,
+          "kind": "call",
+          "explanation": "先把 flagRecvGatherMask_ 全部清零。",
+          "reads": [
+            "UB_ALIGN"
+          ],
+          "writes": [
+            "flagRecvGatherMask_"
+          ]
+        },
+        {
+          "line": 2245,
+          "kind": "call",
+          "explanation": "把每 token block 数 * 32B 的 cleanUpTensor_ 全部填 0。",
+          "reads": [
+            "blockCntPerToken_",
+            "UB_ALIGN_DATA_COUNT"
+          ],
+          "writes": [
+            "cleanUpTensor_"
+          ]
+        },
+        {
+          "line": 2246,
+          "kind": "sync",
+          "explanation": "V_S 使 gather mask 的向量清零结果可被标量 SetValue 更新。",
+          "reads": [
+            "V_S"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2247,
+          "kind": "sync",
+          "explanation": "V_MTE3 使 cleanup 零模板可被后续 MTE3 DataCopy 使用。",
+          "reads": [
+            "V_MTE3"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2248,
+          "kind": "call",
+          "explanation": "只把 flagRecvGatherMask_[0] 设为 1，用于从每个 32B flag 段抽取首 float。",
+          "reads": [],
+          "writes": [
+            "flagRecvGatherMask_"
+          ]
+        },
+        {
+          "line": 2249,
+          "kind": "sync",
+          "explanation": "S_V 把标量写入的 gather mask 首 bit 发布给 GatherMask。",
+          "reads": [
+            "S_V"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2250,
+          "kind": "call",
+          "explanation": "调用 WaitAndFormatOutput，轮询 validNum 个源块直到连续写出并清理全部 flag。",
+          "reads": [
+            "tBuf",
+            "validNum"
+          ],
+          "writes": []
+        },
+        {
+          "line": 2251,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `RunPosRecord(RUNPOS_ARRIVECNT); // 维测打点`；该内容当前不参与 `LocalWindowCopy` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 2252,
+          "kind": "brace",
+          "explanation": "结束 LocalWindowCopy。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments": [
+        {
+          "id": "local-copy-reset-split-and-wait-cumsum",
+          "start": 2195,
+          "end": 2214,
+          "title": "重置 pipe、分配 cumsum 等待区并让所有 AIV 先完成软同步",
+          "detail": "Reset 清前一阶段资源；分配 scalar、statusWait、cumSum、statusClean buffer并绑定 tensor。SplitToCore 把 rscvStatusNum_ 个源状态分给全部 aivNum_。WaitCumSumFlag 在 sendNum_==0 判断之前调用，因此无接收任务的 AIV 也参与 cumsum flag 汇合与清零，随后才返回。",
+          "kind": "sync",
+          "input_state": [
+            "rscvStatusNum_/aivNum_：源状态总数与接收核数",
+            "aivUsedCumSum_：需等待的 cumsum 生产核数"
+          ],
+          "mechanism": "Reset→InitBuffer/绑定→SplitToCore(...,isFront=true)→WaitCumSumFlag→sendNum_==0 退出。",
+          "output_state": [
+            "startId_/endId_/sendNum_：当前 AIV 源状态范围",
+            "sendCntTensor_：待接收 cumsum UB",
+            "cumsum flags：已等待并为下一轮清零"
+          ],
+          "why": "如果零任务核在 WaitCumSumFlag 前返回，软同步参与者集合会不一致且 cumsum flag 可能残留。",
+          "calls": [
+            {
+              "name": "Reset",
+              "line": 2199,
+              "type": "external"
+            },
+            {
+              "name": "Ceil",
+              "line": 2201,
+              "type": "external"
+            },
+            {
+              "name": "InitBuffer",
+              "line": 2202,
+              "type": "external"
+            },
+            {
+              "name": "InitBuffer",
+              "line": 2203,
+              "type": "external"
+            },
+            {
+              "name": "InitBuffer",
+              "line": 2204,
+              "type": "external"
+            },
+            {
+              "name": "InitBuffer",
+              "line": 2205,
+              "type": "external"
+            },
+            {
+              "name": "Get",
+              "line": 2206,
+              "type": "external"
+            },
+            {
+              "name": "Get",
+              "line": 2207,
+              "type": "external"
+            },
+            {
+              "name": "Get",
+              "line": 2208,
+              "type": "external"
+            },
+            {
+              "name": "SplitToCore",
+              "line": 2209,
+              "type": "internal",
+              "target": "m-moedistributedispatchv2fullmesh-splittocore-e75b18e982"
+            },
+            {
+              "name": "WaitCumSumFlag",
+              "line": 2211,
+              "type": "internal",
+              "target": "m-moedistributedispatchv2fullmesh-waitcumsumflag-0b3cb9c8cb"
+            }
+          ]
+        },
+        {
+          "id": "local-copy-allocate-state-and-remaining-ub",
+          "start": 2215,
+          "end": 2231,
+          "title": "分配 per-source 状态、flag 工作区和全部剩余 tBuf",
+          "detail": "expInfoSize 按 sendNum_ 个 uint32_t 对齐，分配 map/finish/left 三块；flagMaskBuf 为两份 32B，cleanUpBuf 为每 token block 数×32B。tBufRealSize_ 从 MAX_UB_SIZE 扣除 scalar、cumsum、三份 expInfo、mask 与 cleanup，剩余一次分配 tBuf。绑定三组 expert tensor 后 SetValidExpertInfo 压缩非零源块。",
+          "kind": "input",
+          "input_state": [
+            "sendNum_：当前 AIV 源状态数",
+            "MAX_UB_SIZE：总 UB 预算",
+            "已有 scalar/cumsum buffer 占用"
+          ],
+          "mechanism": "逐项扣减固定缓冲容量得到 tBufRealSize_；tBuf 供 flag/payload 动态批次分区。",
+          "output_state": [
+            "expertMap/Finish/Left tensor：源块状态",
+            "flagMaskBuf/cleanUpBuf：到达检查与回收模板",
+            "tBuf：最大剩余批处理空间",
+            "validNum：非零源块数"
+          ],
+          "why": "接收批量大小取决于实际剩余 UB，必须先完整核算常驻状态缓冲。",
+          "calls": [
+            {
+              "name": "Ceil",
+              "line": 2218,
+              "type": "external"
+            },
+            {
+              "name": "InitBuffer",
+              "line": 2219,
+              "type": "external"
+            },
+            {
+              "name": "InitBuffer",
+              "line": 2220,
+              "type": "external"
+            },
+            {
+              "name": "InitBuffer",
+              "line": 2221,
+              "type": "external"
+            },
+            {
+              "name": "InitBuffer",
+              "line": 2222,
+              "type": "external"
+            },
+            {
+              "name": "InitBuffer",
+              "line": 2223,
+              "type": "external"
+            },
+            {
+              "name": "InitBuffer",
+              "line": 2227,
+              "type": "external"
+            },
+            {
+              "name": "Get",
+              "line": 2228,
+              "type": "external"
+            },
+            {
+              "name": "Get",
+              "line": 2229,
+              "type": "external"
+            },
+            {
+              "name": "Get",
+              "line": 2230,
+              "type": "external"
+            },
+            {
+              "name": "SetValidExpertInfo",
+              "line": 2231,
+              "type": "internal",
+              "target": "m-moedistributedispatchv2fullmesh-setvalidexpertinfo-6b263412eb"
+            }
+          ]
+        },
+        {
+          "id": "local-copy-guard-and-bind-flag-views",
+          "start": 2232,
+          "end": 2240,
+          "title": "零有效源块退出，否则绑定比较 mask、gather mask 与清零模板",
+          "detail": "调试打印注释。validNum==0 时当前核没有实际接收数据并返回。否则 flagMaskBuf 同时绑定 uint8_t CompareScalar 输出和 uint64_t 标量扫描视图；flagRecvGatherMask_ 复用 WaitCumSumFlag 已完成后的 statusCleanBuf 前 32B；cleanUpTensor_ 绑定 cleanUpBuf。",
+          "kind": "guard",
+          "input_state": [
+            "validNum：SetValidExpertInfo 的非零源块数",
+            "flagMaskBuf/statusCleanBuf/cleanUpBuf：已分配 UB"
+          ],
+          "mechanism": "零 validNum 提前返回；非零路径用多类型别名与生命周期复用建立 flag pipeline。",
+          "output_state": [
+            "flagCompResultU8_/flagCompResultLtU64_：同一比较 bit mask 的 byte/word 视图",
+            "flagRecvGatherMask_：gather 选择 mask",
+            "cleanUpTensor_：flag 清零源"
+          ],
+          "why": "CompareScalar 写 byte mask，而 ScalarGetSFFValue 按 64-bit 扫描；共享底层 UB 避免复制。",
+          "calls": [
+            {
+              "name": "Get",
+              "line": 2237,
+              "type": "external"
+            },
+            {
+              "name": "Get",
+              "line": 2238,
+              "type": "external"
+            },
+            {
+              "name": "GetWithOffset",
+              "line": 2239,
+              "type": "external"
+            },
+            {
+              "name": "Get",
+              "line": 2240,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "local-copy-initialize-compare-and-clean-masks",
+          "start": 2241,
+          "end": 2249,
+          "title": "清零比较区与 cleanup 模板，并把 gather mask 首 bit 设为 1",
+          "detail": "flagCompResultLtU32 绑定 flagMaskBuf 后整区清零；flagRecvGatherMask_ 清零；cleanUpTensor_ 清零 blockCntPerToken_*32B。V_S 与 V_MTE3 分别让标量 SetValue 和 MTE3 cleanup 可见；SetValue(0,1) 只选择每个 32B flag 段首元素，S_V 再发布给 GatherMask。",
+          "kind": "sync",
+          "input_state": [
+            "三块新绑定 UB tensor",
+            "blockCntPerToken_：cleanup 32B 段数"
+          ],
+          "mechanism": "Duplicate 三次→V_S/V_MTE3→SetValue(mask[0],1)→S_V。",
+          "output_state": [
+            "flag bit 比较区：全零",
+            "flagRecvGatherMask_：仅第 0 bit 为 1",
+            "cleanUpTensor_：每 block 32B 全零且 MTE3 可见"
+          ],
+          "why": "GatherMask 需从每个对齐段只抽 flag float；cleanup 则需一次 strided DataCopy 清除每 token 所有 block flag。",
+          "calls": [
+            {
+              "name": "Get",
+              "line": 2242,
+              "type": "external"
+            },
+            {
+              "name": "Duplicate",
+              "line": 2243,
+              "type": "external"
+            },
+            {
+              "name": "Duplicate",
+              "line": 2244,
+              "type": "external"
+            },
+            {
+              "name": "Duplicate",
+              "line": 2245,
+              "type": "external"
+            },
+            {
+              "name": "SyncFunc",
+              "line": 2246,
+              "type": "external"
+            },
+            {
+              "name": "SyncFunc",
+              "line": 2247,
+              "type": "external"
+            },
+            {
+              "name": "SetValue",
+              "line": 2248,
+              "type": "external"
+            },
+            {
+              "name": "SyncFunc",
+              "line": 2249,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "local-copy-run-format-state-machine",
+          "start": 2250,
+          "end": 2252,
+          "title": "运行到达轮询与连续输出，保留禁用维测打点",
+          "detail": "WaitAndFormatOutput 使用 tBuf 与 validNum 直到全部有效源块完成；RunPosRecord(RUNPOS_ARRIVECNT) 调用被注释，不写维测状态；最后结束 LocalWindowCopy。",
+          "kind": "output",
+          "input_state": [
+            "tBuf：剩余 UB 批处理区",
+            "validNum：有效源块数量",
+            "所有 flag/tensor 工作区已初始化"
+          ],
+          "mechanism": "调用 WaitAndFormatOutput；跳过注释掉的 RunPosRecord。",
+          "output_state": [
+            "当前 AIV 负责的接收 token 已连续写入输出，源 block flags 已回收"
+          ],
+          "why": "该调用是接收连续化主状态机；维测 helper 不属于有效协议链。",
+          "calls": [
+            {
+              "name": "WaitAndFormatOutput",
+              "line": 2250,
+              "type": "internal",
+              "target": "m-moedistributedispatchv2fullmesh-waitandformatoutput-71e0265973"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

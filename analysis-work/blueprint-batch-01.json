@@ -1,0 +1,2856 @@
+{
+  "source": {
+    "sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc"
+  },
+  "functions": [
+    {
+      "id": "f-moedistributedispatchv2fullmeshimpl-simt-prepare-mapping-afc96d238b",
+      "module_id": "routing-simt",
+      "name": "simt_prepare_mapping",
+      "start": 122,
+      "end": 246,
+      "inactive": false,
+      "summary": "用 1024 个 SIMT 线程把当前 expert 范围内的扁平 expertIds 路由槽按 expert 分组，记录每个 expert 的 token 数与原始槽位；随后按原始扁平槽位升序生成稳定的 expert 内偏移表，并把非本 Rank 的有效槽数原子累加到 totalRemoteSendNum。",
+      "inputs": [
+        "expertIds：长度至少为 axisBS * axisK 的扁平 Top-K expert ID 列表",
+        "dstExpCnt：调用方预先清零的每 expert 计数数组，本函数既读又原子更新",
+        "axisBS：本 Rank token 数，同时是每个 expert 偏移行的跨度",
+        "axisK：每个 token 的路由槽数，用于限定扫描总数",
+        "beginExpertId：当前 worker 负责的首个全局 expert ID",
+        "expertNum：当前 worker 负责的连续 expert 数",
+        "moeExpertNumPerRank：每个 Rank 的 MoE expert 数，用于 expert→Rank 映射",
+        "myRankId：本 Rank ID，用于排除 self-copy 槽"
+      ],
+      "outputs": [
+        "dstExpCnt：每个当前范围 expert 命中的路由槽数",
+        "dstExpOffsetList：按 atomicAdd 到达顺序暂存的原始扁平路由槽位",
+        "dstExpOrderedOffsetList：每个 expert 内按原始扁平槽位升序排列的槽位表",
+        "totalRemoteSendNum：在原值上累加目标 Rank 不等于 myRankId 的路由槽总数"
+      ],
+      "side_effects": [
+        "第 143 行通过 atomicAdd 并发更新 dstExpCnt，并以返回的旧值分配 dstExpOffsetList 槽位",
+        "第 151 行 ThreadBarrier 保证所有 expert 计数与未排序偏移已完成，随后线程才读取 dstExpCnt/dstExpOffsetList",
+        "第 202 行仅由各 expert 的 curTokenSlot==0 线程原子累加 totalRemoteSendNum",
+        "第 153–190、217–245 行是注释掉的两版替代排序实现，不参与当前执行"
+      ],
+      "review": {
+        "status": "PASS",
+        "reviewer": "function-block-review-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 2,
+        "line_range": [
+          122,
+          246
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 122,
+        "reviewed_end": 246,
+        "expected_line_count": 125,
+        "covered_line_count": 125,
+        "covered_ranges": [
+          [
+            122,
+            134
+          ],
+          [
+            135,
+            151
+          ],
+          [
+            152,
+            170
+          ],
+          [
+            171,
+            190
+          ],
+          [
+            191,
+            203
+          ],
+          [
+            204,
+            215
+          ],
+          [
+            216,
+            231
+          ],
+          [
+            232,
+            245
+          ],
+          [
+            246,
+            246
+          ]
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {
+          "line": 122,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_prepare_mapping` 的签名片段 `__simt_vf__ __aicore__ LAUNCH_BOUND(PREPARE_THREADS_NUM) inline void simt_prepare_mapping(`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 123,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_prepare_mapping` 的签名片段 `__ubuf__ int32_t* expertIds,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 124,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_prepare_mapping` 的签名片段 `__ubuf__ int32_t* dstExpCnt,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 125,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_prepare_mapping` 的签名片段 `__ubuf__ int32_t* dstExpOffsetList,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 126,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_prepare_mapping` 的签名片段 `__ubuf__ int32_t* dstExpOrderedOffsetList,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 127,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_prepare_mapping` 的签名片段 `__ubuf__ uint32_t* totalRemoteSendNum,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 128,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_prepare_mapping` 的签名片段 `int32_t axisBS,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 129,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_prepare_mapping` 的签名片段 `int32_t axisK,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 130,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_prepare_mapping` 的签名片段 `int32_t beginExpertId,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 131,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_prepare_mapping` 的签名片段 `int32_t expertNum,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 132,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_prepare_mapping` 的签名片段 `uint32_t moeExpertNumPerRank,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 133,
+          "kind": "signature",
+          "explanation": "构成函数 `simt_prepare_mapping` 的签名片段 `uint32_t myRankId)`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 134,
+          "kind": "brace",
+          "explanation": "在 `simt_prepare_mapping` 的 L134 打开 代码块 `uint32_t myRankId)` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 135,
+          "kind": "call",
+          "explanation": "读取 SIMT 第 0 维线程号到 `tid`，作为两阶段 grid-stride 扫描的首个任务索引。",
+          "reads": [
+            "AscendC",
+            "Simt"
+          ],
+          "writes": [
+            "tid"
+          ]
+        },
+        {
+          "line": 136,
+          "kind": "blank",
+          "explanation": "空行在 `simt_prepare_mapping` 的 L136 分隔 `auto tid = AscendC::Simt::GetThreadIdx<0>();` 与 `for (int row = tid; row < axisBS*axisK; row += PREPARE_THREADS_NUM) {` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 137,
+          "kind": "blank",
+          "explanation": "空行在 `simt_prepare_mapping` 的 L137 分隔 `auto tid = AscendC::Simt::GetThreadIdx<0>();` 与 `for (int row = tid; row < axisBS*axisK; row += PREPARE_THREADS_NUM) {` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 138,
+          "kind": "blank",
+          "explanation": "空行在 `simt_prepare_mapping` 的 L138 分隔 `auto tid = AscendC::Simt::GetThreadIdx<0>();` 与 `for (int row = tid; row < axisBS*axisK; row += PREPARE_THREADS_NUM) {` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 139,
+          "kind": "loop",
+          "explanation": "启动或推进 `for` 循环 `for (int row = tid; row < axisBS*axisK; row += PREPARE_THREADS_NUM) {`；迭代式涉及 `row、tid、axisBS、axisK、PREPARE_THREADS_NUM`。",
+          "reads": [
+            "tid",
+            "axisBS",
+            "axisK",
+            "PREPARE_THREADS_NUM"
+          ],
+          "writes": [
+            "row"
+          ]
+        },
+        {
+          "line": 140,
+          "kind": "declaration",
+          "explanation": "声明 `ep_id`；源码初始化式 `int ep_id = *(expertIds+row);`读取 `expertIds、row`。",
+          "reads": [
+            "expertIds",
+            "row"
+          ],
+          "writes": [
+            "ep_id"
+          ]
+        },
+        {
+          "line": 141,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (ep_id >= beginExpertId && ep_id < expertNum + beginExpertId) {` 选择 `simt_prepare_mapping` 的后续路径；判定涉及 `ep_id、beginExpertId、expertNum`。",
+          "reads": [
+            "ep_id",
+            "beginExpertId",
+            "expertNum"
+          ],
+          "writes": []
+        },
+        {
+          "line": 142,
+          "kind": "declaration",
+          "explanation": "声明 `cur_ep_id`；源码初始化式 `int cur_ep_id = ep_id - beginExpertId;`读取 `ep_id、beginExpertId`。",
+          "reads": [
+            "ep_id",
+            "beginExpertId"
+          ],
+          "writes": [
+            "cur_ep_id"
+          ]
+        },
+        {
+          "line": 143,
+          "kind": "call",
+          "explanation": "对 `dstExpCnt[cur_ep_id]` 原子加 1，并把旧计数返回到 `pre_cnt`；旧值同时是该 expert 偏移行的唯一写槽。",
+          "reads": [
+            "cur_ep_id"
+          ],
+          "writes": [
+            "pre_cnt",
+            "dstExpCnt"
+          ]
+        },
+        {
+          "line": 144,
+          "kind": "comment",
+          "explanation": "注释记录 `写入偏移：第 dstExpCnt[ep_id] 行，第 ep_id 列`，说明 `simt_prepare_mapping` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 145,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `if (tid == 10) {`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 146,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `AscendC::Simt::printf(\"pre_cnt %d\", pre_cnt);`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 147,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 148,
+          "kind": "declaration",
+          "explanation": "把原始扁平路由槽 `row` 写入 `dstExpOffsetList[cur_ep_id*axisBS+pre_cnt]`，按 expert 行和原子分配列保存。",
+          "reads": [
+            "cur_ep_id",
+            "axisBS",
+            "pre_cnt",
+            "row"
+          ],
+          "writes": [
+            "dstExpOffsetList"
+          ]
+        },
+        {
+          "line": 149,
+          "kind": "brace",
+          "explanation": "在 `simt_prepare_mapping` 的 L149 结束 if 分支 `if (ep_id >= beginExpertId && ep_id < expertNum + beginExpertId) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 150,
+          "kind": "brace",
+          "explanation": "在 `simt_prepare_mapping` 的 L150 结束 for 循环 `for (int row = tid; row < axisBS*axisK; row += PREPARE_THREADS_NUM) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 151,
+          "kind": "sync",
+          "explanation": "调用 `ThreadBarrier`，使参与当前 `AscendC` 阶段的线程或核在此汇合。",
+          "reads": [
+            "AscendC",
+            "Simt"
+          ],
+          "writes": []
+        },
+        {
+          "line": 152,
+          "kind": "blank",
+          "explanation": "空行在 `simt_prepare_mapping` 的 L152 分隔 `AscendC::Simt::ThreadBarrier();` 与 `// for (uint32_t flatThreadTask = tid; flatThreadTask < expertNum * axi…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 153,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `for (uint32_t flatThreadTask = tid; flatThreadTask < expertNum * axisBS; flatThreadTask += PREPARE_THREADS_NUM) {`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 154,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `const uint32_t curExpertId = flatThreadTask / axisBS;`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 155,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `const uint32_t curTokenSlot = flatThreadTask - curExpertId * axisBS;`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 156,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `const uint32_t curExpertSlotBase = curExpertId * axisBS;`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 157,
+          "kind": "blank",
+          "explanation": "空行在 `simt_prepare_mapping` 的 L157 分隔 `// const uint32_t curExpertSlotBase = curExpertId * axisBS;` 与 `// int32_t curExpertTokenCntI32 = dstExpCnt[curExpertId];` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 158,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `int32_t curExpertTokenCntI32 = dstExpCnt[curExpertId];`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 159,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `uint32_t curExpertTokenCnt = 0;`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 160,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `if (curExpertTokenCntI32 > 0) {`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 161,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `curExpertTokenCnt = static_cast<uint32_t>(curExpertTokenCntI32);`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 162,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `if (curExpertTokenCnt > axisBS) {`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 163,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `curExpertTokenCnt = axisBS;`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 164,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 165,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 166,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `if(flatThreadTask % (axisBS) == 0){`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 167,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `atomicAdd(totalSendNum, curExpertTokenCnt);`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 168,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 169,
+          "kind": "comment",
+          "explanation": "注释记录 `// 非有效 token 区间只写尾部 sentinel。由于排序输出 rank 一定在 [0, curExpertTokenCnt)，`，说明 `simt_prepare_mapping` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 170,
+          "kind": "comment",
+          "explanation": "注释记录 `// curTokenSlot >= curExpertTokenCnt 写 -1 不会和有效输出发生竞争。`，说明 `simt_prepare_mapping` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 171,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `if (curTokenSlot >= curExpertTokenCnt) {`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 172,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `// dstExpOrderedOffsetList[curExpertSlotBase + curTokenSlot] = -1;`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 173,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `continue;`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 174,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 175,
+          "kind": "blank",
+          "explanation": "空行在 `simt_prepare_mapping` 的 L175 分隔 `// }` 与 `// const int32_t curTokenOriginalOffset = dstExpOffsetList[curExpertSlo…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 176,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `const int32_t curTokenOriginalOffset = dstExpOffsetList[curExpertSlotBase + curTokenSlot];`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 177,
+          "kind": "blank",
+          "explanation": "空行在 `simt_prepare_mapping` 的 L177 分隔 `// const int32_t curTokenOriginalOffset = dstExpOffsetList[curExpertSlo…` 与 `// // sortedSlotInExpert 计算：` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 178,
+          "kind": "comment",
+          "explanation": "注释记录 `// sortedSlotInExpert 计算：`，说明 `simt_prepare_mapping` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 179,
+          "kind": "comment",
+          "explanation": "注释记录 `// 比 curTokenOriginalOffset 小的元素数量决定升序位置；`，说明 `simt_prepare_mapping` 在此处的实现意图或约束。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 180,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `uint32_t sortedSlotInExpert = 0;`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 181,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `for (uint32_t compareSlot = 0; compareSlot < curExpertTokenCnt; ++compareSlot) {`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 182,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `const int32_t compareTokenOriginalOffset = dstExpOffsetList[curExpertSlotBase + compareSlot];`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 183,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `if (compareTokenOriginalOffset < curTokenOriginalOffset) {`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 184,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `sortedSlotInExpert++;`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 185,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 186,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 187,
+          "kind": "blank",
+          "explanation": "空行在 `simt_prepare_mapping` 的 L187 分隔 `// }` 与 `// dstExpOrderedOffsetList[curExpertSlotBase + sortedSlotInExpert] = cu…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 188,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `dstExpOrderedOffsetList[curExpertSlotBase + sortedSlotInExpert] = curTokenOriginalOffset;`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 189,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 190,
+          "kind": "blank",
+          "explanation": "空行在 `simt_prepare_mapping` 的 L190 分隔 `// }` 与 `auto maxthreadId = expertNum * axisBS;` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 191,
+          "kind": "declaration",
+          "explanation": "声明 `maxthreadId`；源码初始化式 `auto maxthreadId = expertNum * axisBS;`读取 `expertNum、axisBS`。",
+          "reads": [
+            "expertNum",
+            "axisBS"
+          ],
+          "writes": [
+            "maxthreadId"
+          ]
+        },
+        {
+          "line": 192,
+          "kind": "loop",
+          "explanation": "启动或推进 `for` 循环 `for (uint32_t flatThreadTask = tid; flatThreadTask < maxthreadId; flatThreadTask += PREPARE_THREADS_NUM) {`；迭代式涉及 `flatThreadTask、tid、maxthreadId、PREPARE_THREADS_NUM`。",
+          "reads": [
+            "tid",
+            "maxthreadId",
+            "PREPARE_THREADS_NUM"
+          ],
+          "writes": [
+            "flatThreadTask"
+          ]
+        },
+        {
+          "line": 193,
+          "kind": "declaration",
+          "explanation": "声明 `curLocalExpertId`；源码初始化式 `uint32_t curLocalExpertId = flatThreadTask / axisBS;`读取 `flatThreadTask、axisBS`。",
+          "reads": [
+            "flatThreadTask",
+            "axisBS"
+          ],
+          "writes": [
+            "curLocalExpertId"
+          ]
+        },
+        {
+          "line": 194,
+          "kind": "declaration",
+          "explanation": "声明 `curExpertId`；源码初始化式 `uint32_t curExpertId = beginExpertId + curLocalExpertId;`读取 `beginExpertId、curLocalExpertId`。",
+          "reads": [
+            "beginExpertId",
+            "curLocalExpertId"
+          ],
+          "writes": [
+            "curExpertId"
+          ]
+        },
+        {
+          "line": 195,
+          "kind": "declaration",
+          "explanation": "声明 `curRankId`；源码初始化式 `uint32_t curRankId = curExpertId / moeExpertNumPerRank;`读取 `curExpertId、moeExpertNumPerRank`。",
+          "reads": [
+            "curExpertId",
+            "moeExpertNumPerRank"
+          ],
+          "writes": [
+            "curRankId"
+          ]
+        },
+        {
+          "line": 196,
+          "kind": "declaration",
+          "explanation": "声明 `curTokenSlot`；源码初始化式 `uint32_t curTokenSlot = flatThreadTask % axisBS;`读取 `flatThreadTask、axisBS`。",
+          "reads": [
+            "flatThreadTask",
+            "axisBS"
+          ],
+          "writes": [
+            "curTokenSlot"
+          ]
+        },
+        {
+          "line": 197,
+          "kind": "declaration",
+          "explanation": "声明 `offsetNum`；源码初始化式 `uint32_t offsetNum = dstExpCnt[curLocalExpertId];`读取 `dstExpCnt、curLocalExpertId`。",
+          "reads": [
+            "dstExpCnt",
+            "curLocalExpertId"
+          ],
+          "writes": [
+            "offsetNum"
+          ]
+        },
+        {
+          "line": 198,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if(curTokenSlot >= offsetNum)` 选择 `simt_prepare_mapping` 的后续路径；判定涉及 `curTokenSlot、offsetNum`。",
+          "reads": [
+            "curTokenSlot",
+            "offsetNum"
+          ],
+          "writes": []
+        },
+        {
+          "line": 199,
+          "kind": "declaration",
+          "explanation": "当前 token 槽超过该 expert 的 `offsetNum` 时跳过本任务，不参与远端计数和稳定排序。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 200,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if(curTokenSlot == 0){` 选择 `simt_prepare_mapping` 的后续路径；判定涉及 `curTokenSlot`。",
+          "reads": [
+            "curTokenSlot"
+          ],
+          "writes": []
+        },
+        {
+          "line": 201,
+          "kind": "declaration",
+          "explanation": "声明 `remoteRankTaskNum`；源码初始化式 `uint32_t remoteRankTaskNum = (curRankId == myRankId) ? 0 : offsetNum;`读取 `curRankId、myRankId、offsetNum`。",
+          "reads": [
+            "curRankId",
+            "myRankId",
+            "offsetNum"
+          ],
+          "writes": [
+            "remoteRankTaskNum"
+          ]
+        },
+        {
+          "line": 202,
+          "kind": "call",
+          "explanation": "每个 expert 仅由 `curTokenSlot==0` 的线程把 `remoteRankTaskNum` 原子累加到 `totalRemoteSendNum`。",
+          "reads": [
+            "remoteRankTaskNum"
+          ],
+          "writes": [
+            "totalRemoteSendNum"
+          ]
+        },
+        {
+          "line": 203,
+          "kind": "brace",
+          "explanation": "在 `simt_prepare_mapping` 的 L203 结束 if 分支 `if(curTokenSlot == 0){` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 204,
+          "kind": "declaration",
+          "explanation": "声明 `curExpertSlotBase`；源码初始化式 `uint32_t curExpertSlotBase = curLocalExpertId * axisBS;`读取 `curLocalExpertId、axisBS`。",
+          "reads": [
+            "curLocalExpertId",
+            "axisBS"
+          ],
+          "writes": [
+            "curExpertSlotBase"
+          ]
+        },
+        {
+          "line": 205,
+          "kind": "declaration",
+          "explanation": "声明 `curTokenOriginalOffset`；源码初始化式 `int32_t curTokenOriginalOffset = dstExpOffsetList[flatThreadTask];`读取 `dstExpOffsetList、flatThreadTask`。",
+          "reads": [
+            "dstExpOffsetList",
+            "flatThreadTask"
+          ],
+          "writes": [
+            "curTokenOriginalOffset"
+          ]
+        },
+        {
+          "line": 206,
+          "kind": "declaration",
+          "explanation": "声明 `sortedSlotInExpert`；源码初始化式 `uint32_t sortedSlotInExpert = 0;`读取 `无运行时对象`。",
+          "reads": [],
+          "writes": [
+            "sortedSlotInExpert"
+          ]
+        },
+        {
+          "line": 207,
+          "kind": "blank",
+          "explanation": "空行在 `simt_prepare_mapping` 的 L207 分隔 `uint32_t sortedSlotInExpert = 0;` 与 `for (uint32_t compareSlot = 0; compareSlot < offsetNum; ++compareSlot) {` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 208,
+          "kind": "loop",
+          "explanation": "启动或推进 `for` 循环 `for (uint32_t compareSlot = 0; compareSlot < offsetNum; ++compareSlot) {`；迭代式涉及 `compareSlot、offsetNum`。",
+          "reads": [
+            "offsetNum"
+          ],
+          "writes": [
+            "compareSlot"
+          ]
+        },
+        {
+          "line": 209,
+          "kind": "declaration",
+          "explanation": "声明 `compareTokenOriginalOffset`；源码初始化式 `int32_t compareTokenOriginalOffset = dstExpOffsetList[curExpertSlotBase + compareSlot];`读取 `dstExpOffsetList、curExpertSlotBase、compareSlot`。",
+          "reads": [
+            "dstExpOffsetList",
+            "curExpertSlotBase",
+            "compareSlot"
+          ],
+          "writes": [
+            "compareTokenOriginalOffset"
+          ]
+        },
+        {
+          "line": 210,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (compareTokenOriginalOffset < curTokenOriginalOffset) {` 选择 `simt_prepare_mapping` 的后续路径；判定涉及 `compareTokenOriginalOffset、curTokenOriginalOffset`。",
+          "reads": [
+            "compareTokenOriginalOffset",
+            "curTokenOriginalOffset"
+          ],
+          "writes": []
+        },
+        {
+          "line": 211,
+          "kind": "declaration",
+          "explanation": "发现一个原始 offset 更小的同 expert 槽，将 `sortedSlotInExpert` 加 1，形成当前 offset 的升序 rank。",
+          "reads": [],
+          "writes": [
+            "sortedSlotInExpert"
+          ]
+        },
+        {
+          "line": 212,
+          "kind": "brace",
+          "explanation": "在 `simt_prepare_mapping` 的 L212 结束 if 分支 `if (compareTokenOriginalOffset < curTokenOriginalOffset) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 213,
+          "kind": "brace",
+          "explanation": "在 `simt_prepare_mapping` 的 L213 结束 for 循环 `for (uint32_t compareSlot = 0; compareSlot < offsetNum; ++compareSlot) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 214,
+          "kind": "declaration",
+          "explanation": "按计算出的升序位置把 `curTokenOriginalOffset` 写入该 expert 的 `dstExpOrderedOffsetList` 行，完成稳定原始槽序输出。",
+          "reads": [
+            "curExpertSlotBase",
+            "sortedSlotInExpert",
+            "curTokenOriginalOffset"
+          ],
+          "writes": [
+            "dstExpOrderedOffsetList"
+          ]
+        },
+        {
+          "line": 215,
+          "kind": "brace",
+          "explanation": "在 `simt_prepare_mapping` 的 L215 结束 for 循环 `for (uint32_t flatThreadTask = tid; flatThreadTask < maxthreadId; flatThreadTask += PREPARE_THR…` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 216,
+          "kind": "blank",
+          "explanation": "空行在 `simt_prepare_mapping` 的 L216 分隔 `}` 与 `// const uint32_t warpId = tid / WARP_SIZE;` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 217,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `const uint32_t warpId = tid / WARP_SIZE;`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 218,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `const uint32_t laneId = tid % WARP_SIZE;`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 219,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `int32_t compareTokenOriginalOffset;`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 220,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `uint32_t offsetNum;`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 221,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `uint32_t curExpertSlotBase;`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 222,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `int32_t curTokenOriginalOffset;`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 223,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `auto maxthreadId = expertNum * axisBS;`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 224,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `uint32_t sortedSlotInExpert;`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 225,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `for (uint32_t curExpertId = warpId; curExpertId < expertNum; curExpertId += PREPARE_THREADS_NUM / WARP_SIZE) {`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 226,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `offsetNum = dstExpCnt[curExpertId];`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 227,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `curExpertSlotBase = curExpertId * axisBS;`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 228,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `for (uint32_t curTokenSlot = laneId; curTokenSlot < offsetNum; curTokenSlot += WARP_SIZE) {`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 229,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `if(curTokenSlot == 0){`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 230,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `atomicAdd(totalSendNum, offsetNum);`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 231,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 232,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `curTokenOriginalOffset = dstExpOffsetList[curExpertSlotBase + curTokenSlot];`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 233,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `sortedSlotInExpert = 0;`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 234,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `for (uint32_t compareSlot = 0; compareSlot < offsetNum; ++compareSlot) {`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 235,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `compareTokenOriginalOffset = dstExpOffsetList[curExpertSlotBase + compareSlot];`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 236,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `if (compareTokenOriginalOffset < curTokenOriginalOffset) {`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 237,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `sortedSlotInExpert++;`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 238,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 239,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 240,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `dstExpOrderedOffsetList[curExpertSlotBase + sortedSlotInExpert] = curTokenOriginalOffset;`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 241,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 242,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `// if(curTokenSlot >= offsetNum)`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 243,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `// continue;`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 244,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `// if (curExpertId)`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 245,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `}`；该内容当前不参与 `simt_prepare_mapping` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 246,
+          "kind": "brace",
+          "explanation": "在 `simt_prepare_mapping` 的 L246 结束 代码块 `uint32_t myRankId)` 作用域。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments": [
+        {
+          "id": "simt-prepare-mapping-contract",
+          "start": 122,
+          "end": 134,
+          "title": "声明 expert 分组、稳定排序和远端计数所需的 UB 参数",
+          "detail": "函数签名把 expertIds、两个偏移表和两个原子计数器绑定到 UB，并显式接收 BS、Top-K、expert 范围和 Rank 拓扑参数。",
+          "kind": "input",
+          "input_state": [
+            "expertIds：扁平路由槽",
+            "dstExpCnt/totalRemoteSendNum：调用方已清零的 UB 累加器"
+          ],
+          "mechanism": "LAUNCH_BOUND(PREPARE_THREADS_NUM) 约束 SIMT 线程规模；beginExpertId 与 expertNum 定义本 worker 的连续 expert 区间。",
+          "output_state": [
+            "建立后续两阶段扫描使用的参数契约，尚未写入任何数组"
+          ],
+          "why": "偏移生成与远端计数需要共享同一 expert 范围和 axisBS 行跨度，集中传参可让 URMASendToken 与 SelfCopyToken 复用。",
+          "calls": []
+        },
+        {
+          "id": "simt-prepare-mapping-count-and-capture",
+          "start": 135,
+          "end": 151,
+          "title": "并行统计当前 expert 范围并捕获原始路由槽位",
+          "detail": "每个线程以 PREPARE_THREADS_NUM 为步长扫描 axisBS*axisK 个路由槽，只处理落入 [beginExpertId, beginExpertId+expertNum) 的 expertId；atomicAdd 返回该 expert 的唯一写槽。",
+          "kind": "loop",
+          "input_state": [
+            "expertIds：未经本函数修改",
+            "dstExpCnt：各 expert 初始计数",
+            "tid：当前 SIMT 线程号"
+          ],
+          "mechanism": "cur_ep_id=ep_id-beginExpertId 把全局 expert 映射到局部行；pre_cnt=atomicAdd(dstExpCnt+cur_ep_id,1) 同时计数并分配 dstExpOffsetList[cur_ep_id*axisBS+pre_cnt]。",
+          "output_state": [
+            "dstExpCnt：得到每 expert 路由槽数",
+            "dstExpOffsetList：保存每个命中槽的扁平 row",
+            "所有线程在 ThreadBarrier 后看到完整第一阶段结果"
+          ],
+          "why": "后续排序必须先知道每个 expert 的有效长度，并拥有不会发生写冲突的原始槽位集合。",
+          "calls": [
+            {
+              "name": "GetThreadIdx",
+              "line": 135,
+              "type": "external"
+            },
+            {
+              "name": "atomicAdd",
+              "line": 143,
+              "type": "external"
+            },
+            {
+              "name": "ThreadBarrier",
+              "line": 151,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "simt-prepare-mapping-disabled-flat-sort-setup",
+          "start": 152,
+          "end": 170,
+          "title": "保留但禁用的 flatThreadTask 排序方案前半段",
+          "detail": "整段均为注释：候选实现原计划让每个 flatThreadTask 解出 expert/slot，钳制 dstExpCnt，并在 expert 行首累加总发送数；当前二进制不执行这些语句。",
+          "kind": "debug",
+          "input_state": [
+            "注释中的 dstExpCnt、axisBS 和 totalSendNum 仅作为历史方案输入"
+          ],
+          "mechanism": "历史方案按 expertNum*axisBS 展平任务，并把超出 curExpertTokenCnt 的槽视为无效尾部。",
+          "output_state": [
+            "当前执行状态不变；这些行只记录被放弃的边界处理思路"
+          ],
+          "why": "HTML 需明确区分历史注释与主路径，避免把 totalSendNum 或 sentinel 写入误画成真实行为。",
+          "calls": []
+        },
+        {
+          "id": "simt-prepare-mapping-disabled-flat-sort-ranking",
+          "start": 171,
+          "end": 190,
+          "title": "保留但禁用的按较小 offset 数量确定排序位置",
+          "detail": "注释方案读取 curTokenOriginalOffset，统计同 expert 内比它小的 compareTokenOriginalOffset 数量，并写入 dstExpOrderedOffsetList；该算法思想被第 191–215 行的当前实现采用。",
+          "kind": "debug",
+          "input_state": [
+            "注释中的 dstExpOffsetList 和 curExpertTokenCnt"
+          ],
+          "mechanism": "sortedSlotInExpert 等于严格小于当前原始槽位的元素数，因此唯一原始槽位获得唯一升序位置。",
+          "output_state": [
+            "当前执行状态不变；仅提供现行排名算法的历史版本说明"
+          ],
+          "why": "说明稳定顺序不是 atomicAdd 到达顺序，而是由原始 expertIds 扁平位置重新确定。",
+          "calls": []
+        },
+        {
+          "id": "simt-prepare-mapping-active-rank-and-remote-count",
+          "start": 191,
+          "end": 203,
+          "title": "展平 expert×token 槽并由行首线程累计远端任务数",
+          "detail": "当前实现把 expertNum*axisBS 展平到线程任务，解出局部 expert、全局 expert、目标 Rank 和 expert 内槽；无效尾部直接跳过，每个 expert 仅 slot 0 线程决定是否把 offsetNum 加入 totalRemoteSendNum。",
+          "kind": "loop",
+          "input_state": [
+            "dstExpCnt：第一阶段得到的每 expert 有效长度",
+            "moeExpertNumPerRank/myRankId：expert→Rank 与本地性判断"
+          ],
+          "mechanism": "curRankId=curExpertId/moeExpertNumPerRank；remoteRankTaskNum 在 curRankId==myRankId 时为 0，否则为 offsetNum，并通过 atomicAdd 汇总。",
+          "output_state": [
+            "totalRemoteSendNum：增加该 expert 的远端路由槽数且不会重复累计",
+            "无效 curTokenSlot 不进入排序阶段"
+          ],
+          "why": "WQE 生成循环需要精确终止条件，而本 Rank expert 由 SelfCopyToken 处理，不能计入远端 WQE 总数。",
+          "calls": [
+            {
+              "name": "atomicAdd",
+              "line": 202,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "simt-prepare-mapping-active-stable-order",
+          "start": 204,
+          "end": 215,
+          "title": "按原始 expertIds 槽位为每个 expert 生成升序偏移表",
+          "detail": "每个有效 curTokenSlot 读取自身原始偏移，遍历该 expert 的 offsetNum 个偏移，计算严格较小元素数量，并把自身写到对应排序位置。",
+          "kind": "loop",
+          "input_state": [
+            "dstExpOffsetList：按并发到达顺序保存但内容唯一的扁平槽位",
+            "offsetNum：当前 expert 的有效长度"
+          ],
+          "mechanism": "sortedSlotInExpert=count(compareTokenOriginalOffset<curTokenOriginalOffset)，随后写 dstExpOrderedOffsetList[curExpertSlotBase+sortedSlotInExpert]。",
+          "output_state": [
+            "dstExpOrderedOffsetList：当前 expert 的槽位按原始 token/top-k 扁平顺序排列"
+          ],
+          "why": "atomicAdd 生成的临时顺序不稳定；远端窗口和 self-copy 必须使用可重现的 expert 内 token 顺序。",
+          "calls": []
+        },
+        {
+          "id": "simt-prepare-mapping-disabled-warp-plan-setup",
+          "start": 216,
+          "end": 231,
+          "title": "保留但禁用的 warp-per-expert 调度草案",
+          "detail": "注释代码曾计划用 warpId 分配 expert、laneId 分配 expert 内槽，并由槽 0 累加 totalSendNum；它未参与当前编译执行。",
+          "kind": "debug",
+          "input_state": [
+            "注释中的 tid、WARP_SIZE、dstExpCnt"
+          ],
+          "mechanism": "warpId=tid/WARP_SIZE，laneId=tid%WARP_SIZE，expert 以 PREPARE_THREADS_NUM/WARP_SIZE 为步长。",
+          "output_state": [
+            "当前状态不变；记录另一种并行粒度选择"
+          ],
+          "why": "避免读者把注释中的 totalSendNum 与现行 totalRemoteSendNum 混淆。",
+          "calls": []
+        },
+        {
+          "id": "simt-prepare-mapping-disabled-warp-ranking",
+          "start": 232,
+          "end": 245,
+          "title": "保留但禁用的 warp 内 expert 偏移排名循环",
+          "detail": "注释中的 lane 逐槽排名算法同样统计更小原始偏移并写 ordered 表，末尾还保留了被注释的无效槽 guard；当前实现不执行。",
+          "kind": "debug",
+          "input_state": [
+            "注释中的 curTokenOriginalOffset、offsetNum 和 dstExpOffsetList"
+          ],
+          "mechanism": "每个 lane 遍历 compareSlot，更新 sortedSlotInExpert 后写 dstExpOrderedOffsetList。",
+          "output_state": [
+            "当前执行状态不变"
+          ],
+          "why": "完整覆盖历史实现可防止代码走读把注释分支误认为漏分析的 active 逻辑。",
+          "calls": []
+        },
+        {
+          "id": "simt-prepare-mapping-close",
+          "start": 246,
+          "end": 246,
+          "title": "结束 expert 映射函数",
+          "detail": "右花括号结束 simt_prepare_mapping；此时四个输出累加器/数组均已完成当前 worker 范围的更新。",
+          "kind": "output",
+          "input_state": [
+            "dstExpCnt、dstExpOffsetList、dstExpOrderedOffsetList、totalRemoteSendNum：已更新"
+          ],
+          "mechanism": "退出函数并把 UB 结果留给 URMASendToken 或 SelfCopyToken 的后续阶段。",
+          "output_state": [
+            "调用方可读取完整 expert 映射结果"
+          ],
+          "why": "明确函数结果通过指针参数而非 return 返回。",
+          "calls": []
+        }
+      ]
+    },
+    {
+      "id": "f-moedistributedispatchv2fullmeshimpl-buildremotewqedesc-a49b5a47dd",
+      "module_id": "routing-simt",
+      "name": "buildRemoteWqeDesc",
+      "start": 250,
+      "end": 299,
+      "inactive": false,
+      "summary": "把当前 loopIdx 对应的 warp/lane 映射为一个 expert 内 token 槽；对非本 Rank 且有效的槽，依据稳定 expert 偏移生成 localAddr、remoteAddr、dstRank、messageLen 和 opcode 五个并行 WQE 描述数组。",
+      "inputs": [
+        "expertCntList：每个负责 expert 的有效 token 数",
+        "expertOrderedOffsetList：按源槽位升序排列的 expert 路由偏移",
+        "expertNum、beginExpertId、axisBS、axisK：负责范围与扁平槽位布局",
+        "srcBaseAddr、tokenCommSize：本地 staging buffer 基址与每 token 通信字节数",
+        "expertPerRank、localRankId：expert→Rank 映射和 self 过滤",
+        "remoteAddrList：负责 Rank 范围的远端窗口基址",
+        "opcode、loopIdx：本批 WQE 操作类型与调度批次"
+      ],
+      "outputs": [
+        "localAddrList：每条有效远端任务的本地 token 地址",
+        "remoteWqeAddrList：目标 expert 在远端窗口中的连续 token 地址",
+        "dstRankList：每条 WQE 的目标 Rank",
+        "messageLenList：每条 WQE 的 tokenCommSize",
+        "opcodeList：每条 WQE 的 opcode",
+        "finishedWqeDescNum：原子增加已生成描述数量"
+      ],
+      "side_effects": [
+        "第 289 行 atomicAdd 为并发线程分配唯一 taskOffset",
+        "第 290–295 行按 taskOffset 写六个调用方提供的 UB 输出",
+        "第 298 行 ThreadBarrier 让本次 VF_CALL 返回前所有描述写入完成"
+      ],
+      "review": {
+        "status": "PASS",
+        "reviewer": "function-block-review-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 2,
+        "line_range": [
+          250,
+          299
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 250,
+        "reviewed_end": 299,
+        "expected_line_count": 50,
+        "covered_line_count": 50,
+        "covered_ranges": [
+          [
+            250,
+            260
+          ],
+          [
+            261,
+            271
+          ],
+          [
+            272,
+            282
+          ],
+          [
+            283,
+            296
+          ],
+          [
+            297,
+            299
+          ]
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {
+          "line": 250,
+          "kind": "signature",
+          "explanation": "构成函数 `buildRemoteWqeDesc` 的签名片段 `__simt_vf__ __aicore__ LAUNCH_BOUND(BUILD_THREADS_NUM) inline void buildRemoteWqeDesc(`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 251,
+          "kind": "signature",
+          "explanation": "构成函数 `buildRemoteWqeDesc` 的签名片段 `__ubuf__ uint32_t* expertCntList,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 252,
+          "kind": "signature",
+          "explanation": "构成函数 `buildRemoteWqeDesc` 的签名片段 `__ubuf__ int32_t* expertOrderedOffsetList,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 253,
+          "kind": "signature",
+          "explanation": "构成函数 `buildRemoteWqeDesc` 的签名片段 `uint32_t expertNum,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 254,
+          "kind": "signature",
+          "explanation": "构成函数 `buildRemoteWqeDesc` 的签名片段 `uint32_t beginExpertId,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 255,
+          "kind": "signature",
+          "explanation": "构成函数 `buildRemoteWqeDesc` 的签名片段 `uint32_t axisBS,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 256,
+          "kind": "signature",
+          "explanation": "构成函数 `buildRemoteWqeDesc` 的签名片段 `uint32_t axisK,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 257,
+          "kind": "signature",
+          "explanation": "构成函数 `buildRemoteWqeDesc` 的签名片段 `uint64_t srcBaseAddr,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 258,
+          "kind": "signature",
+          "explanation": "构成函数 `buildRemoteWqeDesc` 的签名片段 `uint64_t tokenCommSize,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 259,
+          "kind": "signature",
+          "explanation": "构成函数 `buildRemoteWqeDesc` 的签名片段 `uint32_t expertPerRank,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 260,
+          "kind": "signature",
+          "explanation": "构成函数 `buildRemoteWqeDesc` 的签名片段 `uint32_t localRankId,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 261,
+          "kind": "signature",
+          "explanation": "构成函数 `buildRemoteWqeDesc` 的签名片段 `__ubuf__ uint64_t* remoteAddrList,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 262,
+          "kind": "signature",
+          "explanation": "构成函数 `buildRemoteWqeDesc` 的签名片段 `uint32_t opcode,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 263,
+          "kind": "signature",
+          "explanation": "构成函数 `buildRemoteWqeDesc` 的签名片段 `__ubuf__ uint64_t* localAddrList,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 264,
+          "kind": "signature",
+          "explanation": "构成函数 `buildRemoteWqeDesc` 的签名片段 `__ubuf__ uint64_t* remoteWqeAddrList,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 265,
+          "kind": "signature",
+          "explanation": "构成函数 `buildRemoteWqeDesc` 的签名片段 `__ubuf__ uint32_t* dstRankList,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 266,
+          "kind": "signature",
+          "explanation": "构成函数 `buildRemoteWqeDesc` 的签名片段 `__ubuf__ uint32_t* messageLenList,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 267,
+          "kind": "signature",
+          "explanation": "构成函数 `buildRemoteWqeDesc` 的签名片段 `__ubuf__ uint32_t* opcodeList,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 268,
+          "kind": "signature",
+          "explanation": "构成函数 `buildRemoteWqeDesc` 的签名片段 `uint32_t loopIdx,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 269,
+          "kind": "signature",
+          "explanation": "构成函数 `buildRemoteWqeDesc` 的签名片段 `__ubuf__ uint32_t* finishedWqeDescNum`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 270,
+          "kind": "brace",
+          "explanation": "在 `buildRemoteWqeDesc` 的 L270 打开 代码块 `)` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 271,
+          "kind": "brace",
+          "explanation": "在 `buildRemoteWqeDesc` 的 L271 打开 代码块 `)` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 272,
+          "kind": "call",
+          "explanation": "取得当前 SIMT 线程号 `tid`，下一两行把它拆成 warp 与 lane 以映射 expert 批次和槽位。",
+          "reads": [
+            "AscendC",
+            "Simt"
+          ],
+          "writes": [
+            "tid"
+          ]
+        },
+        {
+          "line": 273,
+          "kind": "declaration",
+          "explanation": "声明 `warpId`；源码初始化式 `const uint32_t warpId = tid / WARP_SIZE;`读取 `tid、WARP_SIZE`。",
+          "reads": [
+            "tid",
+            "WARP_SIZE"
+          ],
+          "writes": [
+            "warpId"
+          ]
+        },
+        {
+          "line": 274,
+          "kind": "declaration",
+          "explanation": "声明 `laneId`；源码初始化式 `const uint32_t laneId = tid % WARP_SIZE;`读取 `tid、WARP_SIZE`。",
+          "reads": [
+            "tid",
+            "WARP_SIZE"
+          ],
+          "writes": [
+            "laneId"
+          ]
+        },
+        {
+          "line": 275,
+          "kind": "blank",
+          "explanation": "空行在 `buildRemoteWqeDesc` 的 L275 分隔 `const uint32_t laneId = tid % WARP_SIZE;` 与 `uint32_t currBlock = (BUILD_THREADS_NUM / WARP_SIZE) * loopIdx + warpId;` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 276,
+          "kind": "declaration",
+          "explanation": "声明 `currBlock`；源码初始化式 `uint32_t currBlock = (BUILD_THREADS_NUM / WARP_SIZE) * loopIdx + warpId;`读取 `BUILD_THREADS_NUM、WARP_SIZE、loopIdx、warpId`。",
+          "reads": [
+            "BUILD_THREADS_NUM",
+            "WARP_SIZE",
+            "loopIdx",
+            "warpId"
+          ],
+          "writes": [
+            "currBlock"
+          ]
+        },
+        {
+          "line": 277,
+          "kind": "declaration",
+          "explanation": "声明 `targetLocalExp`；源码初始化式 `uint32_t targetLocalExp = currBlock % expertNum;`读取 `currBlock、expertNum`。",
+          "reads": [
+            "currBlock",
+            "expertNum"
+          ],
+          "writes": [
+            "targetLocalExp"
+          ]
+        },
+        {
+          "line": 278,
+          "kind": "declaration",
+          "explanation": "声明 `currBatchOfCurrExp`；源码初始化式 `uint32_t currBatchOfCurrExp = currBlock / expertNum;`读取 `currBlock、expertNum`。",
+          "reads": [
+            "currBlock",
+            "expertNum"
+          ],
+          "writes": [
+            "currBatchOfCurrExp"
+          ]
+        },
+        {
+          "line": 279,
+          "kind": "declaration",
+          "explanation": "声明 `mySlot`；源码初始化式 `uint32_t mySlot = currBatchOfCurrExp * WARP_SIZE + laneId;`读取 `currBatchOfCurrExp、WARP_SIZE、laneId`。",
+          "reads": [
+            "currBatchOfCurrExp",
+            "WARP_SIZE",
+            "laneId"
+          ],
+          "writes": [
+            "mySlot"
+          ]
+        },
+        {
+          "line": 280,
+          "kind": "declaration",
+          "explanation": "声明 `targetExpId`；源码初始化式 `uint32_t targetExpId = targetLocalExp + beginExpertId;`读取 `targetLocalExp、beginExpertId`。",
+          "reads": [
+            "targetLocalExp",
+            "beginExpertId"
+          ],
+          "writes": [
+            "targetExpId"
+          ]
+        },
+        {
+          "line": 281,
+          "kind": "declaration",
+          "explanation": "声明 `targetRankId`；源码初始化式 `uint32_t targetRankId = targetExpId / expertPerRank;`读取 `targetExpId、expertPerRank`。",
+          "reads": [
+            "targetExpId",
+            "expertPerRank"
+          ],
+          "writes": [
+            "targetRankId"
+          ]
+        },
+        {
+          "line": 282,
+          "kind": "declaration",
+          "explanation": "声明 `validOffsetCnt`；源码初始化式 `uint32_t validOffsetCnt = expertCntList[targetLocalExp];`读取 `expertCntList、targetLocalExp`。",
+          "reads": [
+            "expertCntList",
+            "targetLocalExp"
+          ],
+          "writes": [
+            "validOffsetCnt"
+          ]
+        },
+        {
+          "line": 283,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (targetRankId != localRankId && mySlot < validOffsetCnt) {` 选择 `buildRemoteWqeDesc` 的后续路径；判定涉及 `targetRankId、localRankId、mySlot、validOffsetCnt`。",
+          "reads": [
+            "targetRankId",
+            "localRankId",
+            "mySlot",
+            "validOffsetCnt"
+          ],
+          "writes": []
+        },
+        {
+          "line": 284,
+          "kind": "declaration",
+          "explanation": "声明 `offsetValue`；源码初始化式 `int32_t offsetValue = expertOrderedOffsetList[targetLocalExp * axisBS + mySlot];`读取 `expertOrderedOffsetList、targetLocalExp、axisBS、mySlot`。",
+          "reads": [
+            "expertOrderedOffsetList",
+            "targetLocalExp",
+            "axisBS",
+            "mySlot"
+          ],
+          "writes": [
+            "offsetValue"
+          ]
+        },
+        {
+          "line": 285,
+          "kind": "declaration",
+          "explanation": "声明 `targetExpertOnRank`；源码初始化式 `uint32_t targetExpertOnRank = targetExpId % expertPerRank;`读取 `targetExpId、expertPerRank`。",
+          "reads": [
+            "targetExpId",
+            "expertPerRank"
+          ],
+          "writes": [
+            "targetExpertOnRank"
+          ]
+        },
+        {
+          "line": 286,
+          "kind": "declaration",
+          "explanation": "声明 `beginRankId`；源码初始化式 `uint32_t beginRankId = beginExpertId / expertPerRank;`读取 `beginExpertId、expertPerRank`。",
+          "reads": [
+            "beginExpertId",
+            "expertPerRank"
+          ],
+          "writes": [
+            "beginRankId"
+          ]
+        },
+        {
+          "line": 287,
+          "kind": "call",
+          "explanation": "将有序扁平路由偏移 `offsetValue` 转为无符号数并除以 `axisK`，还原源 `tokenId`。",
+          "reads": [
+            "offsetValue",
+            "axisK"
+          ],
+          "writes": [
+            "tokenId"
+          ]
+        },
+        {
+          "line": 288,
+          "kind": "declaration",
+          "explanation": "声明 `remoteBaseAddr`；源码初始化式 `uint64_t remoteBaseAddr = remoteAddrList[targetRankId - beginRankId];`读取 `remoteAddrList、targetRankId、beginRankId`。",
+          "reads": [
+            "remoteAddrList",
+            "targetRankId",
+            "beginRankId"
+          ],
+          "writes": [
+            "remoteBaseAddr"
+          ]
+        },
+        {
+          "line": 289,
+          "kind": "call",
+          "explanation": "原子递增 `finishedWqeDescNum` 并取得旧值 `taskOffset`，为当前远端任务分配五个描述符数组的共同索引。",
+          "reads": [],
+          "writes": [
+            "taskOffset",
+            "finishedWqeDescNum"
+          ]
+        },
+        {
+          "line": 290,
+          "kind": "declaration",
+          "explanation": "把源 token 地址 `srcBaseAddr+tokenId*tokenCommSize` 写入 `localAddrList[taskOffset]`。",
+          "reads": [
+            "taskOffset",
+            "srcBaseAddr",
+            "tokenId",
+            "tokenCommSize"
+          ],
+          "writes": [
+            "localAddrList"
+          ]
+        },
+        {
+          "line": 291,
+          "kind": "statement",
+          "explanation": "按表达式 `remoteWqeAddrList[taskOffset] =` 更新 `remoteWqeAddrList`；右侧读取 `taskOffset`。",
+          "reads": [
+            "taskOffset"
+          ],
+          "writes": [
+            "remoteWqeAddrList"
+          ]
+        },
+        {
+          "line": 292,
+          "kind": "declaration",
+          "explanation": "完成上一行 `remoteWqeAddrList[taskOffset]` 的地址公式：远端 rank window 根加专家行、槽位和 token 字节跨度。",
+          "reads": [
+            "remoteBaseAddr",
+            "targetExpertOnRank",
+            "axisBS",
+            "mySlot",
+            "tokenCommSize"
+          ],
+          "writes": []
+        },
+        {
+          "line": 293,
+          "kind": "declaration",
+          "explanation": "把目标 `targetRankId` 写入当前任务的 `dstRankList` 描述字段。",
+          "reads": [
+            "taskOffset",
+            "targetRankId"
+          ],
+          "writes": [
+            "dstRankList"
+          ]
+        },
+        {
+          "line": 294,
+          "kind": "declaration",
+          "explanation": "把单 token 传输字节数 `tokenCommSize` 写入当前任务的 `messageLenList`。",
+          "reads": [
+            "taskOffset",
+            "tokenCommSize"
+          ],
+          "writes": [
+            "messageLenList"
+          ]
+        },
+        {
+          "line": 295,
+          "kind": "declaration",
+          "explanation": "把调用方指定的 `opcode` 写入当前任务的 `opcodeList`，完成五列远端 WQE 描述。",
+          "reads": [
+            "taskOffset",
+            "opcode"
+          ],
+          "writes": [
+            "opcodeList"
+          ]
+        },
+        {
+          "line": 296,
+          "kind": "brace",
+          "explanation": "在 `buildRemoteWqeDesc` 的 L296 结束 if 分支 `if (targetRankId != localRankId && mySlot < validOffsetCnt) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 297,
+          "kind": "blank",
+          "explanation": "空行在 `buildRemoteWqeDesc` 的 L297 分隔 `}` 与 `AscendC::Simt::ThreadBarrier();` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 298,
+          "kind": "sync",
+          "explanation": "调用 `ThreadBarrier`，使参与当前 `AscendC` 阶段的线程或核在此汇合。",
+          "reads": [
+            "AscendC",
+            "Simt"
+          ],
+          "writes": []
+        },
+        {
+          "line": 299,
+          "kind": "brace",
+          "explanation": "在 `buildRemoteWqeDesc` 的 L299 结束 代码块 `)` 作用域。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments": [
+        {
+          "id": "build-wqe-source-contract",
+          "start": 250,
+          "end": 260,
+          "title": "声明 expert 映射和本地 token 地址输入",
+          "detail": "签名前半部分给出 expert 计数、有序偏移、当前 expert 范围、BS/Top-K、staging 基址、通信长度和本 Rank 标识。",
+          "kind": "input",
+          "input_state": [
+            "expertCntList/expertOrderedOffsetList：simt_prepare_mapping 的结果",
+            "srcBaseAddr/tokenCommSize：本地 token 线格式"
+          ],
+          "mechanism": "beginExpertId+expertNum 确定任务 expert；axisBS 是每 expert 行跨度，axisK 把扁平路由槽恢复为 tokenId。",
+          "output_state": [
+            "建立地址计算所需参数，尚未生成 WQE 描述"
+          ],
+          "why": "WQE local/remote 地址必须从同一稳定 expert 映射和通信步长派生。",
+          "calls": []
+        },
+        {
+          "id": "build-wqe-output-contract",
+          "start": 261,
+          "end": 271,
+          "title": "声明远端基址、WQE 输出数组和批次计数器",
+          "detail": "签名后半部分绑定 remoteAddrList、opcode、五个描述字段数组、loopIdx 与 finishedWqeDescNum。",
+          "kind": "input",
+          "input_state": [
+            "remoteAddrList：按 Rank 保存的远端 expert 数据基址",
+            "finishedWqeDescNum：本批开始前由调用方置零"
+          ],
+          "mechanism": "多个线程用同一原子计数器把有效任务压紧写入 structure-of-arrays 描述。",
+          "output_state": [
+            "定义本函数全部可观察输出位置"
+          ],
+          "why": "simt_nw_mj 后续以 wqe_desc_array_t 的并行数组消费这些字段。",
+          "calls": []
+        },
+        {
+          "id": "build-wqe-map-thread-to-expert-slot",
+          "start": 272,
+          "end": 282,
+          "title": "把 loopIdx、warpId 和 laneId 映射到 expert 内 token 槽",
+          "detail": "每个 warp 负责一个 currBlock，currBlock 对 expertNum 取模选择 expert，整除得到该 expert 的第几个 32 槽批次，laneId 再选批内槽。",
+          "kind": "compute",
+          "input_state": [
+            "loopIdx：当前四 warp 批次",
+            "expertNum：负责 expert 数",
+            "expertCntList：每 expert 有效长度"
+          ],
+          "mechanism": "currBlock=(BUILD_THREADS_NUM/WARP_SIZE)*loopIdx+warpId；mySlot=(currBlock/expertNum)*WARP_SIZE+laneId。",
+          "output_state": [
+            "targetExpId/targetRankId：本线程候选目标",
+            "mySlot/validOffsetCnt：有效性判断所需槽位和上界"
+          ],
+          "why": "按 warp 分 expert、按 lane 分 token 槽可一次并行构造最多 BUILD_THREADS_NUM 条候选描述。",
+          "calls": [
+            {
+              "name": "GetThreadIdx",
+              "line": 272,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "build-wqe-emit-remote-descriptor",
+          "start": 283,
+          "end": 296,
+          "title": "过滤 self/无效槽并压紧写出远端 WRITE 描述",
+          "detail": "只有 targetRankId 不是 localRankId 且 mySlot 小于 expert 计数时才读取有序 offset，恢复 tokenId，计算目标 expert 的 rank 内编号与远端地址，并写描述数组。",
+          "kind": "output",
+          "input_state": [
+            "expertOrderedOffsetList：稳定源槽位",
+            "remoteAddrList：目标 Rank 基址",
+            "finishedWqeDescNum：当前已生成数量"
+          ],
+          "mechanism": "tokenId=offsetValue/axisK；remoteAddr=remoteBaseAddr+(targetExpertOnRank*axisBS+mySlot)*tokenCommSize；atomicAdd 返回 taskOffset。",
+          "output_state": [
+            "taskOffset 对应的 localAddrList、remoteWqeAddrList、dstRankList、messageLenList、opcodeList 已完整写入",
+            "finishedWqeDescNum 增加 1"
+          ],
+          "why": "本 Rank token 走 SelfCopyToken；远端描述按 taskOffset 压紧，避免在 wqe_desc_array_t 中留下空洞。",
+          "calls": [
+            {
+              "name": "atomicAdd",
+              "line": 289,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "build-wqe-finish-batch",
+          "start": 297,
+          "end": 299,
+          "title": "等待本批所有 WQE 描述字段写完",
+          "detail": "空行分隔描述生成和同步；ThreadBarrier 确保调用方读取 finishedWqeDescNum 与描述数组前所有线程已完成写入，随后函数结束。",
+          "kind": "sync",
+          "input_state": [
+            "WQE 描述数组：各线程可能仍在完成 UB 写入"
+          ],
+          "mechanism": "AscendC::Simt::ThreadBarrier 建立本次 SIMT 调用内的线程会合。",
+          "output_state": [
+            "本批描述数组和 finishedWqeDescNum 对调用方一致可见"
+          ],
+          "why": "调用方紧接着读取描述数量并启动 simt_nw_mj，不能看到半写状态。",
+          "calls": [
+            {
+              "name": "ThreadBarrier",
+              "line": 298,
+              "type": "external"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "f-moedistributedispatchv2fullmeshimpl-calc-rank-token-cnt-dbb2600941",
+      "module_id": "routing-simt",
+      "name": "calc_rank_token_cnt",
+      "start": 301,
+      "end": 332,
+      "inactive": false,
+      "summary": "并行扫描有效 expertIds，把非本 Rank 的路由槽按目标 Rank 计数到 remoteRankTokenCnt，并统计至少有一个待发送槽的远端 Rank 数到 remoteRanksNum，供 RingDoorbell 决定何时结束轮询。",
+      "inputs": [
+        "expertIds：已应用 mask、无效项为负数的扁平路由表",
+        "expertIdsSize：本次参与统计的扁平槽数",
+        "moeExpertNumPerRank：expert ID 到 Rank ID 的除数",
+        "myRankId：本 Rank ID",
+        "epWorldSize：Rank 数及 remoteRankTokenCnt 有效长度",
+        "remoteRanksNum：调用前由调用方清零的远端 Rank 累加器"
+      ],
+      "outputs": [
+        "remoteRankTokenCnt：每个非本 Rank 的有效路由槽数，本 Rank 保持零",
+        "remoteRanksNum：具有至少一个待发送槽的非本 Rank 数"
+      ],
+      "side_effects": [
+        "第 312–314 行覆盖清零 remoteRankTokenCnt[0..epWorldSize)",
+        "第 323 行原子增加目标 Rank 的 token 计数",
+        "第 329 行原子增加非空远端 Rank 数",
+        "第 315、326 行 barrier 分隔清零、路由计数和非空 Rank 统计三阶段"
+      ],
+      "review": {
+        "status": "PASS",
+        "reviewer": "function-block-review-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 2,
+        "line_range": [
+          301,
+          332
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 301,
+        "reviewed_end": 332,
+        "expected_line_count": 32,
+        "covered_line_count": 32,
+        "covered_ranges": [
+          [
+            301,
+            309
+          ],
+          [
+            310,
+            315
+          ],
+          [
+            316,
+            326
+          ],
+          [
+            327,
+            332
+          ]
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {
+          "line": 301,
+          "kind": "signature",
+          "explanation": "构成函数 `calc_rank_token_cnt` 的签名片段 `__simt_vf__ __aicore__ LAUNCH_BOUND(CALC_CNT_THREADS_NUM) inline void calc_rank_token_cnt(`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 302,
+          "kind": "signature",
+          "explanation": "构成函数 `calc_rank_token_cnt` 的签名片段 `__ubuf__ int32_t* expertIds,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 303,
+          "kind": "signature",
+          "explanation": "构成函数 `calc_rank_token_cnt` 的签名片段 `__ubuf__ uint32_t* remoteRankTokenCnt,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 304,
+          "kind": "signature",
+          "explanation": "构成函数 `calc_rank_token_cnt` 的签名片段 `uint32_t expertIdsSize,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 305,
+          "kind": "signature",
+          "explanation": "构成函数 `calc_rank_token_cnt` 的签名片段 `uint32_t moeExpertNumPerRank,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 306,
+          "kind": "signature",
+          "explanation": "构成函数 `calc_rank_token_cnt` 的签名片段 `__ubuf__ uint32_t* remoteRanksNum,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 307,
+          "kind": "signature",
+          "explanation": "构成函数 `calc_rank_token_cnt` 的签名片段 `uint32_t myRankId,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 308,
+          "kind": "signature",
+          "explanation": "构成函数 `calc_rank_token_cnt` 的签名片段 `uint32_t epWorldSize`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 309,
+          "kind": "brace",
+          "explanation": "在 `calc_rank_token_cnt` 的 L309 打开 代码块 `) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 310,
+          "kind": "call",
+          "explanation": "取得 SIMT 线程号 `tid`，供清零、路由扫描和非空 rank 统计三个 grid-stride 循环复用。",
+          "reads": [
+            "AscendC",
+            "Simt"
+          ],
+          "writes": [
+            "tid"
+          ]
+        },
+        {
+          "line": 311,
+          "kind": "blank",
+          "explanation": "空行在 `calc_rank_token_cnt` 的 L311 分隔 `const uint32_t tid = AscendC::Simt::GetThreadIdx<0>();` 与 `for (uint32_t rankIdx = tid; rankIdx < epWorldSize; rankIdx += CALC_CNT…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 312,
+          "kind": "loop",
+          "explanation": "启动或推进 `for` 循环 `for (uint32_t rankIdx = tid; rankIdx < epWorldSize; rankIdx += CALC_CNT_THREADS_NUM) {`；迭代式涉及 `rankIdx、tid、epWorldSize、CALC_CNT_THREADS_NUM`。",
+          "reads": [
+            "tid",
+            "epWorldSize",
+            "CALC_CNT_THREADS_NUM"
+          ],
+          "writes": [
+            "rankIdx"
+          ]
+        },
+        {
+          "line": 313,
+          "kind": "declaration",
+          "explanation": "当前线程把负责的 `remoteRankTokenCnt[rankIdx]` 清零，为后续并发原子计数建立确定初值。",
+          "reads": [
+            "rankIdx"
+          ],
+          "writes": [
+            "remoteRankTokenCnt"
+          ]
+        },
+        {
+          "line": 314,
+          "kind": "brace",
+          "explanation": "在 `calc_rank_token_cnt` 的 L314 结束 for 循环 `for (uint32_t rankIdx = tid; rankIdx < epWorldSize; rankIdx += CALC_CNT_THREADS_NUM) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 315,
+          "kind": "sync",
+          "explanation": "调用 `ThreadBarrier`，使参与当前 `AscendC` 阶段的线程或核在此汇合。",
+          "reads": [
+            "AscendC",
+            "Simt"
+          ],
+          "writes": []
+        },
+        {
+          "line": 316,
+          "kind": "loop",
+          "explanation": "启动或推进 `for` 循环 `for (uint32_t slot = tid; slot < expertIdsSize; slot += CALC_CNT_THREADS_NUM) {`；迭代式涉及 `slot、tid、expertIdsSize、CALC_CNT_THREADS_NUM`。",
+          "reads": [
+            "tid",
+            "expertIdsSize",
+            "CALC_CNT_THREADS_NUM"
+          ],
+          "writes": [
+            "slot"
+          ]
+        },
+        {
+          "line": 317,
+          "kind": "declaration",
+          "explanation": "声明 `expertId`；源码初始化式 `int32_t expertId = expertIds[slot];`读取 `expertIds、slot`。",
+          "reads": [
+            "expertIds",
+            "slot"
+          ],
+          "writes": [
+            "expertId"
+          ]
+        },
+        {
+          "line": 318,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (expertId < 0) {` 选择 `calc_rank_token_cnt` 的后续路径；判定涉及 `expertId`。",
+          "reads": [
+            "expertId"
+          ],
+          "writes": []
+        },
+        {
+          "line": 319,
+          "kind": "declaration",
+          "explanation": "`expertId<0` 表示 mask/padding sentinel；直接跳过该路由槽，不计入任何 rank。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 320,
+          "kind": "brace",
+          "explanation": "在 `calc_rank_token_cnt` 的 L320 结束 if 分支 `if (expertId < 0) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 321,
+          "kind": "declaration",
+          "explanation": "声明 `rankId`；源码初始化式 `uint32_t rankId = static_cast<uint32_t>(expertId) / moeExpertNumPerRank;`读取 `expertId、moeExpertNumPerRank`。",
+          "reads": [
+            "expertId",
+            "moeExpertNumPerRank"
+          ],
+          "writes": [
+            "rankId"
+          ]
+        },
+        {
+          "line": 322,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (rankId < epWorldSize && rankId != myRankId) {` 选择 `calc_rank_token_cnt` 的后续路径；判定涉及 `rankId、epWorldSize、myRankId`。",
+          "reads": [
+            "rankId",
+            "epWorldSize",
+            "myRankId"
+          ],
+          "writes": []
+        },
+        {
+          "line": 323,
+          "kind": "call",
+          "explanation": "对合法且非本 rank 的 `remoteRankTokenCnt[rankId]` 原子加 1，累计该远端 rank 的 WQE 数。",
+          "reads": [
+            "rankId"
+          ],
+          "writes": [
+            "remoteRankTokenCnt"
+          ]
+        },
+        {
+          "line": 324,
+          "kind": "brace",
+          "explanation": "在 `calc_rank_token_cnt` 的 L324 结束 if 分支 `if (rankId < epWorldSize && rankId != myRankId) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 325,
+          "kind": "brace",
+          "explanation": "在 `calc_rank_token_cnt` 的 L325 结束 for 循环 `for (uint32_t slot = tid; slot < expertIdsSize; slot += CALC_CNT_THREADS_NUM) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 326,
+          "kind": "sync",
+          "explanation": "调用 `ThreadBarrier`，使参与当前 `AscendC` 阶段的线程或核在此汇合。",
+          "reads": [
+            "AscendC",
+            "Simt"
+          ],
+          "writes": []
+        },
+        {
+          "line": 327,
+          "kind": "loop",
+          "explanation": "启动或推进 `for` 循环 `for (uint32_t rankIdx = tid; rankIdx < epWorldSize; rankIdx += CALC_CNT_THREADS_NUM) {`；迭代式涉及 `rankIdx、tid、epWorldSize、CALC_CNT_THREADS_NUM`。",
+          "reads": [
+            "tid",
+            "epWorldSize",
+            "CALC_CNT_THREADS_NUM"
+          ],
+          "writes": [
+            "rankIdx"
+          ]
+        },
+        {
+          "line": 328,
+          "kind": "branch",
+          "explanation": "按分支表达式 `if (rankIdx != myRankId && remoteRankTokenCnt[rankIdx] != 0U) {` 选择 `calc_rank_token_cnt` 的后续路径；判定涉及 `rankIdx、myRankId、remoteRankTokenCnt`。",
+          "reads": [
+            "rankIdx",
+            "myRankId",
+            "remoteRankTokenCnt"
+          ],
+          "writes": []
+        },
+        {
+          "line": 329,
+          "kind": "call",
+          "explanation": "每发现一个非本 rank 且 token 计数非零的 `rankIdx`，就原子递增全局 `remoteRanksNum`。",
+          "reads": [],
+          "writes": [
+            "remoteRanksNum"
+          ]
+        },
+        {
+          "line": 330,
+          "kind": "brace",
+          "explanation": "在 `calc_rank_token_cnt` 的 L330 结束 if 分支 `if (rankIdx != myRankId && remoteRankTokenCnt[rankIdx] != 0U) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 331,
+          "kind": "brace",
+          "explanation": "在 `calc_rank_token_cnt` 的 L331 结束 for 循环 `for (uint32_t rankIdx = tid; rankIdx < epWorldSize; rankIdx += CALC_CNT_THREADS_NUM) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 332,
+          "kind": "brace",
+          "explanation": "在 `calc_rank_token_cnt` 的 L332 结束 代码块 `) {` 作用域。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments": [
+        {
+          "id": "rank-token-count-contract",
+          "start": 301,
+          "end": 309,
+          "title": "声明 expert 路由扫描和两级计数输出",
+          "detail": "函数签名绑定 expertIds、per-rank 计数数组、有效槽数、expert/rank 拓扑、非空 Rank 累加器及本 Rank 标识。",
+          "kind": "input",
+          "input_state": [
+            "expertIds：负值表示已屏蔽路由",
+            "remoteRanksNum：调用方已置零"
+          ],
+          "mechanism": "moeExpertNumPerRank 把非负 expertId 映射为 rankId；epWorldSize 同时提供范围保护。",
+          "output_state": [
+            "建立 remoteRankTokenCnt 和 remoteRanksNum 的写入契约"
+          ],
+          "why": "RingDoorbell 既需要每 Rank 的目标 WQE 数，也需要仍有任务的 Rank 个数作为循环终止条件。",
+          "calls": []
+        },
+        {
+          "id": "rank-token-count-clear",
+          "start": 310,
+          "end": 315,
+          "title": "并行清零每 Rank token 计数并会合",
+          "detail": "每个线程以 CALC_CNT_THREADS_NUM 为步长覆盖 epWorldSize 个槽，把 remoteRankTokenCnt 清零；barrier 防止下一阶段 atomicAdd 与迟到清零竞争。",
+          "kind": "sync",
+          "input_state": [
+            "remoteRankTokenCnt：可能保留上轮值",
+            "epWorldSize：有效槽数"
+          ],
+          "mechanism": "rankIdx=tid+n*CALC_CNT_THREADS_NUM 分工清零，然后 ThreadBarrier。",
+          "output_state": [
+            "remoteRankTokenCnt[0..epWorldSize) 全部为 0 且对本次 SIMT 线程可见"
+          ],
+          "why": "计数数组必须从确定的零状态开始，否则 doorbell 会多提交 WQE。",
+          "calls": [
+            {
+              "name": "GetThreadIdx",
+              "line": 310,
+              "type": "external"
+            },
+            {
+              "name": "ThreadBarrier",
+              "line": 315,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "rank-token-count-scan-routes",
+          "start": 316,
+          "end": 326,
+          "title": "扫描有效路由并原子累计非本 Rank token 数",
+          "detail": "线程跨步读取 expertIds；负 expertId 直接跳过，非负值除以 moeExpertNumPerRank 得到 rankId，只对合法且非 myRankId 的目标原子加一。",
+          "kind": "loop",
+          "input_state": [
+            "expertIds[0..expertIdsSize)：可能含 -1 mask",
+            "remoteRankTokenCnt：已清零"
+          ],
+          "mechanism": "rankId=uint32_t(expertId)/moeExpertNumPerRank，并以 rankId<epWorldSize && rankId!=myRankId 保护数组与 self 路径。",
+          "output_state": [
+            "remoteRankTokenCnt：得到各远端 Rank 的路由槽数",
+            "第二个 ThreadBarrier 后计数阶段完成"
+          ],
+          "why": "self token 不会生成远端 WQE；负值和越界 expert 也不能影响 doorbell 目标数量。",
+          "calls": [
+            {
+              "name": "atomicAdd",
+              "line": 323,
+              "type": "external"
+            },
+            {
+              "name": "ThreadBarrier",
+              "line": 326,
+              "type": "external"
+            }
+          ]
+        },
+        {
+          "id": "rank-token-count-nonempty-ranks",
+          "start": 327,
+          "end": 332,
+          "title": "统计存在待提交 WQE 的远端 Rank 数",
+          "detail": "再次按 Rank 跨步扫描，排除 myRankId，只要 remoteRankTokenCnt 非零就原子增加 remoteRanksNum，最后结束函数。",
+          "kind": "output",
+          "input_state": [
+            "remoteRankTokenCnt：各 Rank 最终计数",
+            "remoteRanksNum：调用方预先置零"
+          ],
+          "mechanism": "每个 rankIdx 只由一个线程检查，因此每个非空远端 Rank 恰好执行一次 atomicAdd(remoteRanksNum,1U)。",
+          "output_state": [
+            "remoteRanksNum：RingDoorbell 尚需完成的目标 Rank 个数"
+          ],
+          "why": "doorbell 轮询按 Rank 判断完成，不能仅依赖全局 token 总数。",
+          "calls": [
+            {
+              "name": "atomicAdd",
+              "line": 329,
+              "type": "external"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "f-moedistributedispatchv2fullmeshimpl-set-gm-value-b3c17ca3da",
+      "module_id": "routing-simt",
+      "name": "set_gm_value",
+      "start": 334,
+      "end": 347,
+      "inactive": false,
+      "summary": "让 2048 个 SIMT 线程按字节 stride 在全局内存 baseAddr 中写入同一个 uint32_t flag，并在函数返回前执行线程会合；RingDoorbell 用它批量清零 headRecord 和发布稀疏 headReady。",
+      "inputs": [
+        "baseAddr：待写全局 uint32_t 区域的首地址",
+        "totalNum：需要写入的逻辑元素数",
+        "stride：相邻逻辑元素的字节距离，必须可按 sizeof(uint32_t) 换算",
+        "flag：写入每个逻辑位置的值"
+      ],
+      "outputs": [
+        "baseAddr[slot * stride / sizeof(uint32_t)]：totalNum 个按 stride 分布的位置均被设为 flag"
+      ],
+      "side_effects": [
+        "直接写全局内存 baseAddr，既可处理连续 uint32_t，也可处理 HEAD_READY_STRIDE 间隔的标志",
+        "第 345 行 asc_threadfence 已注释，不构成当前可见性操作",
+        "第 346 行 ThreadBarrier 仅会合本次 SIMT 线程"
+      ],
+      "review": {
+        "status": "PASS",
+        "reviewer": "function-block-review-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 2,
+        "line_range": [
+          334,
+          347
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 334,
+        "reviewed_end": 347,
+        "expected_line_count": 14,
+        "covered_line_count": 14,
+        "covered_ranges": [
+          [
+            334,
+            339
+          ],
+          [
+            340,
+            347
+          ]
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {
+          "line": 334,
+          "kind": "signature",
+          "explanation": "构成函数 `set_gm_value` 的签名片段 `__simt_vf__ __aicore__ LAUNCH_BOUND(SET_GM_VALUE_THREAD_NUM) inline void set_gm_value(`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 335,
+          "kind": "signature",
+          "explanation": "构成函数 `set_gm_value` 的签名片段 `__gm__ uint32_t* baseAddr,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 336,
+          "kind": "signature",
+          "explanation": "构成函数 `set_gm_value` 的签名片段 `uint32_t totalNum,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 337,
+          "kind": "signature",
+          "explanation": "构成函数 `set_gm_value` 的签名片段 `uint32_t stride,`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 338,
+          "kind": "signature",
+          "explanation": "构成函数 `set_gm_value` 的签名片段 `uint32_t flag`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 339,
+          "kind": "brace",
+          "explanation": "在 `set_gm_value` 的 L339 打开 代码块 `) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 340,
+          "kind": "call",
+          "explanation": "取得 SIMT 线程号 `tid`，作为步进写 GM 的起始逻辑槽。",
+          "reads": [
+            "AscendC",
+            "Simt"
+          ],
+          "writes": [
+            "tid"
+          ]
+        },
+        {
+          "line": 341,
+          "kind": "blank",
+          "explanation": "空行在 `set_gm_value` 的 L341 分隔 `const uint32_t tid = AscendC::Simt::GetThreadIdx<0>();` 与 `for (uint32_t slot = tid; slot < totalNum; slot += SET_GM_VALUE_THREAD_…` 两段源码。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 342,
+          "kind": "loop",
+          "explanation": "启动或推进 `for` 循环 `for (uint32_t slot = tid; slot < totalNum; slot += SET_GM_VALUE_THREAD_NUM) {`；迭代式涉及 `slot、tid、totalNum、SET_GM_VALUE_THREAD_NUM`。",
+          "reads": [
+            "tid",
+            "totalNum",
+            "SET_GM_VALUE_THREAD_NUM"
+          ],
+          "writes": [
+            "slot"
+          ]
+        },
+        {
+          "line": 343,
+          "kind": "declaration",
+          "explanation": "按字节步长 `stride` 换算成 uint32 索引，把 `flag` 写到 `baseAddr[slot*stride/sizeof(uint32_t)]`。",
+          "reads": [
+            "slot",
+            "stride",
+            "flag"
+          ],
+          "writes": [
+            "baseAddr"
+          ]
+        },
+        {
+          "line": 344,
+          "kind": "brace",
+          "explanation": "在 `set_gm_value` 的 L344 结束 for 循环 `for (uint32_t slot = tid; slot < totalNum; slot += SET_GM_VALUE_THREAD_NUM) {` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 345,
+          "kind": "comment",
+          "explanation": "保留被注释的调试或历史代码 `asc_threadfence();`；该内容当前不参与 `set_gm_value` 执行。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 346,
+          "kind": "sync",
+          "explanation": "调用 `ThreadBarrier`，使参与当前 `AscendC` 阶段的线程或核在此汇合。",
+          "reads": [
+            "AscendC",
+            "Simt"
+          ],
+          "writes": []
+        },
+        {
+          "line": 347,
+          "kind": "brace",
+          "explanation": "在 `set_gm_value` 的 L347 结束 代码块 `) {` 作用域。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments": [
+        {
+          "id": "set-gm-value-contract",
+          "start": 334,
+          "end": 339,
+          "title": "声明跨步全局 flag 写入参数",
+          "detail": "签名绑定全局 baseAddr、逻辑元素数 totalNum、字节 stride 和统一 flag，并用 SET_GM_VALUE_THREAD_NUM 约束线程数。",
+          "kind": "input",
+          "input_state": [
+            "baseAddr：可写全局 uint32_t 指针",
+            "stride：以字节为单位的逻辑步长"
+          ],
+          "mechanism": "实际 uint32_t 下标由 slot*stride/sizeof(uint32_t) 计算。",
+          "output_state": [
+            "定义后续批量写入的地址序列"
+          ],
+          "why": "同一 helper 同时支持连续 headRecord 清零和每 512B 一个 headReady 标志。",
+          "calls": []
+        },
+        {
+          "id": "set-gm-value-strided-store",
+          "start": 340,
+          "end": 347,
+          "title": "并行写入全部跨步位置并会合线程",
+          "detail": "tid 起始的线程跨步循环覆盖 totalNum 个 slot，把每个换算后的 uint32_t 位置设为 flag；注释掉的 asc_threadfence 不执行，随后 ThreadBarrier 会合并结束函数。",
+          "kind": "sync",
+          "input_state": [
+            "baseAddr：旧全局值",
+            "tid/totalNum/stride/flag：线程分工与写值"
+          ],
+          "mechanism": "slot=tid+n*SET_GM_VALUE_THREAD_NUM，写 baseAddr[slot*stride/sizeof(uint32_t)]=flag；最后 ThreadBarrier。",
+          "output_state": [
+            "totalNum 个逻辑位置写为 flag",
+            "本次 VF_CALL 的线程全部完成循环"
+          ],
+          "why": "避免 scalar 核逐项初始化大量 bitmap，同时确保调用方不会在部分线程仍写入时继续。",
+          "calls": [
+            {
+              "name": "GetThreadIdx",
+              "line": 340,
+              "type": "external"
+            },
+            {
+              "name": "ThreadBarrier",
+              "line": 346,
+              "type": "external"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ctor-moedistributedispatchv2fullmesh-moedistributedispatchv2fullmesh-a94c1aa7ec",
+      "module_id": "source-contract",
+      "name": "MoeDistributeDispatchV2FullMesh",
+      "start": 367,
+      "end": 367,
+      "inactive": false,
+      "summary": "构造 MoeDistributeDispatchV2FullMesh 对象但不执行显式初始化；所有成员沿用类内默认成员初始化，运行期资源绑定由后续 Init 完成。",
+      "inputs": [],
+      "outputs": [
+        "新建 MoeDistributeDispatchV2FullMesh 实例，其带默认初始化器的成员处于声明给定的初始状态"
+      ],
+      "side_effects": [],
+      "review": {
+        "status": "PASS",
+        "reviewer": "function-block-review-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 2,
+        "line_range": [
+          367,
+          367
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 367,
+        "reviewed_end": 367,
+        "expected_line_count": 1,
+        "covered_line_count": 1,
+        "covered_ranges": [
+          [
+            367,
+            367
+          ]
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {
+          "line": 367,
+          "kind": "signature",
+          "explanation": "构成函数 `MoeDistributeDispatchV2FullMesh` 的签名片段 `__aicore__ inline MoeDistributeDispatchV2FullMesh() {};`。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments": [
+        {
+          "id": "dispatch-default-constructor",
+          "start": 367,
+          "end": 367,
+          "title": "创建仅含默认成员状态的 dispatch 对象",
+          "detail": "空函数体不绑定 GM、TPipe、tiling 或通信上下文；这些运行期状态必须由 public Init 写入。",
+          "kind": "output",
+          "input_state": [
+            "无构造参数；类内成员默认初始化器定义初始零值/nullptr"
+          ],
+          "mechanism": "执行空的 MoeDistributeDispatchV2FullMesh() {}，不覆盖任何默认成员初始化结果。",
+          "output_state": [
+            "对象已构造但尚不能执行 Process，需先调用 Init"
+          ],
+          "why": "把轻量对象构造与设备运行期地址/tiling 绑定分离。",
+          "calls": []
+        }
+      ]
+    },
+    {
+      "id": "m-moedistributedispatchv2fullmesh-getheadrecordregionsize-f33b3f5132",
+      "module_id": "source-contract",
+      "name": "GetHeadRecordRegionSize",
+      "start": 431,
+      "end": 437,
+      "inactive": false,
+      "summary": "计算所有 jetty 的 headRecord bitmap 所需字节数：每 jetty 为 axisBS_*axisK_ 个潜在 WQE 槽按 32 位一组分配 uint32_t bitmap，再增加一个 UB_ALIGN 区域，最后把总大小向 WIN_ADDR_ALIGN 对齐。",
+      "inputs": [
+        "axisBS_：本 Rank token 数",
+        "axisK_：每 token 路由槽数",
+        "totalJettyNum：rank×port×jetty 的总队列数",
+        "UB_ALIGN：每 jetty 额外保留的字节数",
+        "WIN_ADDR_ALIGN：整个控制区的对齐粒度"
+      ],
+      "outputs": [
+        "返回对齐后的 headRecord 控制区字节数"
+      ],
+      "side_effects": [],
+      "review": {
+        "status": "PASS",
+        "reviewer": "function-block-review-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 2,
+        "line_range": [
+          431,
+          437
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "reviewed_start": 431,
+        "reviewed_end": 437,
+        "expected_line_count": 7,
+        "covered_line_count": 7,
+        "covered_ranges": [
+          [
+            431,
+            437
+          ]
+        ],
+        "gaps": [],
+        "overlaps": [],
+        "all_source_lines_read": true,
+        "comments_blank_lines_braces_included": true
+      },
+      "line_notes": [
+        {
+          "line": 431,
+          "kind": "signature",
+          "explanation": "构成函数 `GetHeadRecordRegionSize` 的签名片段 `__aicore__ inline uint64_t GetHeadRecordRegionSize()`。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 432,
+          "kind": "brace",
+          "explanation": "在 `GetHeadRecordRegionSize` 的 L432 打开 代码块 `__aicore__ inline uint64_t GetHeadRecordRegionSize()` 作用域。",
+          "reads": [],
+          "writes": []
+        },
+        {
+          "line": 433,
+          "kind": "call",
+          "explanation": "计算每个 jetty 容纳 `axisBS_*axisK_` 个就绪位所需的 32 位 bitmap word 数，并向上取整到 `N32numPerJetty`。",
+          "reads": [
+            "axisBS_",
+            "axisK_"
+          ],
+          "writes": [
+            "N32numPerJetty"
+          ]
+        },
+        {
+          "line": 434,
+          "kind": "statement",
+          "explanation": "按表达式 `uint64_t headRecordBytes = totalJettyNum *` 更新 `headRecordBytes`；右侧读取 `totalJettyNum`。",
+          "reads": [
+            "totalJettyNum"
+          ],
+          "writes": [
+            "headRecordBytes"
+          ]
+        },
+        {
+          "line": 435,
+          "kind": "statement",
+          "explanation": "完成 `headRecordBytes` 公式：每个 jetty 占 bitmap 字节数 `N32numPerJetty*sizeof(uint32_t)`，另加一个 `UB_ALIGN` 保护/对齐区。",
+          "reads": [
+            "N32numPerJetty",
+            "UB_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 436,
+          "kind": "statement",
+          "explanation": "从 `GetHeadRecordRegionSize` 返回表达式 `Ceil(headRecordBytes, WIN_ADDR_ALIGN) * WIN_ADDR_ALIGN`，把结果交还直接调用者。",
+          "reads": [
+            "headRecordBytes",
+            "WIN_ADDR_ALIGN"
+          ],
+          "writes": []
+        },
+        {
+          "line": 437,
+          "kind": "brace",
+          "explanation": "在 `GetHeadRecordRegionSize` 的 L437 结束 代码块 `__aicore__ inline uint64_t GetHeadRecordRegionSize()` 作用域。",
+          "reads": [],
+          "writes": []
+        }
+      ],
+      "segments": [
+        {
+          "id": "head-record-region-size",
+          "start": 431,
+          "end": 437,
+          "title": "把每 jetty WQE 完成位图扩展并对齐为共享窗口控制区",
+          "detail": "N32numPerJetty 把 axisBS_*axisK_ 个最大路由槽按每 uint32_t 32 位向上取整；总大小乘 totalJettyNum，每 jetty 额外加 UB_ALIGN，再向 WIN_ADDR_ALIGN 对齐返回。",
+          "kind": "compute",
+          "input_state": [
+            "axisBS_*axisK_：每 jetty 需要跟踪的最大 WQE 槽数",
+            "totalJettyNum：需要独立 bitmap 的 SQ 数"
+          ],
+          "mechanism": "N32numPerJetty=Ceil(axisBS_*axisK_,32U)；headRecordBytes=totalJettyNum*(N32numPerJetty*sizeof(uint32_t)+UB_ALIGN)；return Ceil(headRecordBytes,WIN_ADDR_ALIGN)*WIN_ADDR_ALIGN。",
+          "output_state": [
+            "返回值：足以容纳所有 jetty bitmap 且满足窗口地址对齐的字节数"
+          ],
+          "why": "RingDoorbell 按 jetty 扫描连续完成位，控制区既要覆盖最大 Top-K 任务数，也要与后续 SQ/CQ 区域保持稳定对齐。",
+          "calls": [
+            {
+              "name": "Ceil",
+              "line": 433,
+              "type": "external"
+            },
+            {
+              "name": "Ceil",
+              "line": 436,
+              "type": "external"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

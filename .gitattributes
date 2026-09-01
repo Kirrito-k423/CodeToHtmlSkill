@@ -1,0 +1,2 @@
+# 上游源码快照必须保持字节级一致，包含其原始空白。
+samples/deepep_moe_dis_dispatch.h -whitespace

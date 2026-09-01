@@ -1,0 +1,362 @@
+{
+  "source": {
+    "sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc"
+  },
+  "functions": [
+    {
+      "id": "m-moedistributedispatchv2fullmesh-geturmactrlreservesize-52bf758842",
+      "module_id": "source-contract",
+      "name": "GetUrmaCtrlReserveSize",
+      "start": 439,
+      "end": 445,
+      "inactive": false,
+      "summary": "汇总 head-ready 槽、head-record bitmap、全部 SQ/CQ 上下文的字节数，将控制区上取整到 WIN_ADDR_ALIGN 后再追加 URMA_CTRL_GUARD，得到 URMA 控制保留区总大小。",
+      "inputs": [
+        "aivUsedRemoteWqe_：会发布 head-ready 的远端 WQE AIV 数",
+        "HEAD_READY_STRIDE：每个远端 WQE AIV 的 head-ready 槽跨度",
+        "GetHeadRecordRegionSize()：全部 jetty 的 head-record bitmap 对齐后字节数",
+        "totalJettyNum：需配置 SQ/CQ 的 jetty 总数",
+        "sizeof(HcclAiRMAWQ) 与 sizeof(HcclAiRMACQ)：单个 jetty 的发送队列和完成队列上下文字节数",
+        "WIN_ADDR_ALIGN 与 URMA_CTRL_GUARD：控制区对齐粒度和尾部保护空间"
+      ],
+      "outputs": [
+        "ctrlBytes：head-ready、head-record 与 SQ/CQ 上下文的未对齐总字节数",
+        "uint64_t 返回值：Ceil(ctrlBytes, WIN_ADDR_ALIGN) * WIN_ADDR_ALIGN + URMA_CTRL_GUARD"
+      ],
+      "side_effects": [
+        "无成员或内存写入；函数只读取布局参数并返回 URMA 控制区容量"
+      ],
+      "review": {
+        "status": "PASS",
+        "verdict": "PASS",
+        "reviewer": "code-index-agent",
+        "draft_author": "full-analysis-draft-agent",
+        "revision": 1,
+        "source_sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc",
+        "line_range": [439, 445],
+        "gaps": [],
+        "overlaps": [],
+        "unresolved": [],
+        "required_changes": []
+      },
+      "line_review_certification": {
+        "complete": true,
+        "reviewed_line_range": [439, 445],
+        "reviewed_line_count": 7,
+        "coverage": "every_source_line_reviewed_once",
+        "source_sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc",
+        "gaps": [],
+        "overlaps": []
+      },
+      "line_notes": [
+        {"line": 439, "kind": "signature", "explanation": "声明返回 uint64_t 字节数的内联布局查询 GetUrmaCtrlReserveSize，不接收显式参数。", "reads": [], "writes": []},
+        {"line": 440, "kind": "brace", "explanation": "开始计算 URMA 控制保留区大小的函数体。", "reads": [], "writes": []},
+        {"line": 441, "kind": "declaration", "explanation": "以 aivUsedRemoteWqe_ 乘 HEAD_READY_STRIDE，先计入每个远端 WQE AIV 的 head-ready 槽并开始初始化 ctrlBytes。", "reads": ["aivUsedRemoteWqe_", "HEAD_READY_STRIDE"], "writes": ["ctrlBytes"]},
+        {"line": 442, "kind": "call", "explanation": "调用 GetHeadRecordRegionSize，把全部 jetty 的 head-record bitmap 区域加入 ctrlBytes 的跨行求和表达式。", "reads": ["GetHeadRecordRegionSize"], "writes": []},
+        {"line": 443, "kind": "statement", "explanation": "再按 totalJettyNum 为每个 jetty 计入一个 HcclAiRMAWQ 和一个 HcclAiRMACQ 上下文，完成 ctrlBytes 原始容量求和。", "reads": ["totalJettyNum", "HcclAiRMAWQ", "HcclAiRMACQ"], "writes": []},
+        {"line": 444, "kind": "call", "explanation": "用 Ceil 将 ctrlBytes 上取整到 WIN_ADDR_ALIGN 的整数倍，再追加 URMA_CTRL_GUARD 后返回，避免随后布局侵入控制对象。", "reads": ["ctrlBytes", "WIN_ADDR_ALIGN", "URMA_CTRL_GUARD"], "writes": []},
+        {"line": 445, "kind": "brace", "explanation": "结束 URMA 控制保留区容量查询。", "reads": [], "writes": []}
+      ],
+      "segments": [
+        {
+          "id": "urma-reserve-sum-control-objects",
+          "start": 439,
+          "end": 443,
+          "title": "汇总 head-ready、bitmap 与 SQ/CQ 容量",
+          "detail": "ctrlBytes 先容纳 aivUsedRemoteWqe_ 个 head-ready 槽，再加入 GetHeadRecordRegionSize() 和 totalJettyNum 份 WQ/CQ 上下文。",
+          "kind": "compute",
+          "input_state": ["aivUsedRemoteWqe_：远端 WQE 工作核数", "totalJettyNum：全部通信 jetty 数", "GetHeadRecordRegionSize()：已按窗口粒度对齐的 bitmap 容量"],
+          "mechanism": "按 aivUsedRemoteWqe_ * HEAD_READY_STRIDE + GetHeadRecordRegionSize() + totalJettyNum * (sizeof(HcclAiRMAWQ) + sizeof(HcclAiRMACQ)) 构造 ctrlBytes。",
+          "output_state": ["ctrlBytes：三类 URMA 控制对象合计的未对齐字节数"],
+          "why": "head-ready、head-record、SQ 和 CQ 共用窗口前部控制区，ctrlBytes 必须同时覆盖这些对象才能为后续数据区给出无重叠起点。",
+          "calls": [
+            {"name": "GetHeadRecordRegionSize", "line": 442, "type": "internal", "target": "m-moedistributedispatchv2fullmesh-getheadrecordregionsize-f33b3f5132"}
+          ]
+        },
+        {
+          "id": "urma-reserve-align-and-guard",
+          "start": 444,
+          "end": 445,
+          "title": "对齐控制区并追加保护空间",
+          "detail": "将 ctrlBytes 向上对齐到 WIN_ADDR_ALIGN，再在对齐边界之后保留 URMA_CTRL_GUARD。",
+          "kind": "output",
+          "input_state": ["ctrlBytes：三类控制对象的原始总字节数", "WIN_ADDR_ALIGN：窗口地址对齐粒度", "URMA_CTRL_GUARD：固定尾部保护容量"],
+          "mechanism": "Ceil(ctrlBytes, WIN_ADDR_ALIGN) 取得所需对齐单元数，乘回 WIN_ADDR_ALIGN 并加 URMA_CTRL_GUARD。",
+          "output_state": ["uint64_t 返回值：可供窗口地址布局直接使用的 URMA 控制保留区总字节数"],
+          "why": "对象总量可能不落在窗口对齐边界上；对齐并追加 URMA_CTRL_GUARD 可让后续状态区和数据区避开控制区尾部。",
+          "calls": [
+            {"name": "Ceil", "line": 444, "type": "external"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m-moedistributedispatchv2fullmesh-getstagedoneregionsize-5c2a0cf9f6",
+      "module_id": "source-contract",
+      "name": "GetStageDoneRegionSize",
+      "start": 447,
+      "end": 450,
+      "inactive": false,
+      "summary": "按 axisBS_ 个潜在 stage 槽乘以 STAGE_DONE_STRIDE，返回共享窗口最前部 stage-done 标志区域的字节数。",
+      "inputs": ["axisBS_：输入 token 数，也是预留的 stage-done 槽数上界", "STAGE_DONE_STRIDE：相邻 stage-done 标志的字节跨度"],
+      "outputs": ["uint64_t 返回值：static_cast<uint64_t>(axisBS_) * STAGE_DONE_STRIDE"],
+      "side_effects": ["无成员或内存写入；只计算 stage-done 区域容量"],
+      "review": {
+        "status": "PASS", "verdict": "PASS", "reviewer": "code-index-agent", "draft_author": "full-analysis-draft-agent", "revision": 1,
+        "source_sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc", "line_range": [447, 450],
+        "gaps": [], "overlaps": [], "unresolved": [], "required_changes": []
+      },
+      "line_review_certification": {"complete": true, "reviewed_line_range": [447, 450], "reviewed_line_count": 4, "coverage": "every_source_line_reviewed_once", "source_sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc", "gaps": [], "overlaps": []},
+      "line_notes": [
+        {"line": 447, "kind": "signature", "explanation": "声明无显式参数并返回 uint64_t 字节数的 GetStageDoneRegionSize。", "reads": [], "writes": []},
+        {"line": 448, "kind": "brace", "explanation": "开始 stage-done 标志区域容量计算。", "reads": [], "writes": []},
+        {"line": 449, "kind": "statement", "explanation": "把 axisBS_ 扩展为 uint64_t 后乘 STAGE_DONE_STRIDE，得到所有 stage-done 槽覆盖的总字节数并返回。", "reads": ["axisBS_", "STAGE_DONE_STRIDE"], "writes": []},
+        {"line": 450, "kind": "brace", "explanation": "结束 stage-done 区域容量查询。", "reads": [], "writes": []}
+      ],
+      "segments": [
+        {
+          "id": "stage-done-size-by-token-capacity", "start": 447, "end": 450,
+          "title": "按 BS 槽数计算 stage-done 区域",
+          "detail": "为 axisBS_ 个逻辑槽各保留 STAGE_DONE_STRIDE 字节，并以 uint64_t 返回总容量。",
+          "kind": "output",
+          "input_state": ["axisBS_：当前 BS/token 槽数", "STAGE_DONE_STRIDE：单槽隔离跨度"],
+          "mechanism": "先 static_cast<uint64_t>(axisBS_) 避免乘法停留在 32 位，再乘 STAGE_DONE_STRIDE。",
+          "output_state": ["uint64_t 返回值：stage-done 区域的连续字节长度"],
+          "why": "后续窗口地址都把该区域放在最前部；统一用 axisBS_ * STAGE_DONE_STRIDE 才能让完成标志与 token 槽一一对应并保持固定跨度。",
+          "calls": []
+        }
+      ]
+    },
+    {
+      "id": "m-moedistributedispatchv2fullmesh-getactivestagenum-6043683614",
+      "module_id": "source-contract",
+      "name": "GetActiveStageNum",
+      "start": 452,
+      "end": 455,
+      "inactive": false,
+      "summary": "返回 axisBS_ 与 aivUsedStage_ 的较小值，使实际 stage 核数既不超过 token 数，也不超过初始化划给 stage 角色的 AIV 数。",
+      "inputs": ["axisBS_：可处理的 token 数", "aivUsedStage_：划给 shared/MoE stage 工作的 AIV 总数"],
+      "outputs": ["uint32_t 返回值：min(axisBS_, aivUsedStage_)，即实际活跃 stage 核数"],
+      "side_effects": ["无成员或内存写入；只读取两个调度上限"],
+      "review": {
+        "status": "PASS", "verdict": "PASS", "reviewer": "code-index-agent", "draft_author": "full-analysis-draft-agent", "revision": 1,
+        "source_sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc", "line_range": [452, 455],
+        "gaps": [], "overlaps": [], "unresolved": [], "required_changes": []
+      },
+      "line_review_certification": {"complete": true, "reviewed_line_range": [452, 455], "reviewed_line_count": 4, "coverage": "every_source_line_reviewed_once", "source_sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc", "gaps": [], "overlaps": []},
+      "line_notes": [
+        {"line": 452, "kind": "signature", "explanation": "声明返回 uint32_t 活跃 stage 核数的 GetActiveStageNum。", "reads": [], "writes": []},
+        {"line": 453, "kind": "brace", "explanation": "开始求取 stage 核的实际并行度。", "reads": [], "writes": []},
+        {"line": 454, "kind": "branch", "explanation": "三元表达式比较 axisBS_ 与 aivUsedStage_ 并返回较小值，防止空闲核等待不存在的 token 或调度超过 stage 核预算。", "reads": ["axisBS_", "aivUsedStage_"], "writes": []},
+        {"line": 455, "kind": "brace", "explanation": "结束活跃 stage 核数查询。", "reads": [], "writes": []}
+      ],
+      "segments": [
+        {
+          "id": "active-stage-clamp-by-bs", "start": 452, "end": 455,
+          "title": "把 stage 并行度夹在 token 数以内",
+          "detail": "三元表达式取 axisBS_ 和 aivUsedStage_ 的最小值作为实际参与 stage 协议的核数。",
+          "kind": "compute",
+          "input_state": ["axisBS_：能够形成有效 stage 工作的 token 数", "aivUsedStage_：初始化分配的 stage AIV 容量"],
+          "mechanism": "若 axisBS_ < aivUsedStage_ 则返回 axisBS_，否则返回 aivUsedStage_。",
+          "output_state": ["uint32_t 返回值：需要清零、发布和等待 stageDone 的活跃 stage 核数"],
+          "why": "ClearStageDoneFlags、PublishStageDone 和 WaitAllStageDone 都消费该计数；取最小值可使同步参与者集合与实际工作核集合一致。",
+          "calls": []
+        }
+      ]
+    },
+    {
+      "id": "m-moedistributedispatchv2fullmesh-getactivemoestagenum-ddba56eb6b",
+      "module_id": "source-contract",
+      "name": "GetActiveMoeStageNum",
+      "start": 457,
+      "end": 460,
+      "inactive": false,
+      "summary": "返回 axisBS_ 与 moeUsedAivNum_ 的较小值，给 MoE token staging 路径提供不会超过 token 数或 MoE 核预算的实际并行度。",
+      "inputs": ["axisBS_：本次输入 token 数", "moeUsedAivNum_：扣除 shared-expert stage 核后留给 MoE stage 的 AIV 数"],
+      "outputs": ["uint32_t 返回值：min(axisBS_, moeUsedAivNum_)，即活跃 MoE stage 核数"],
+      "side_effects": ["无成员或内存写入；只读取 MoE 调度边界"],
+      "review": {
+        "status": "PASS", "verdict": "PASS", "reviewer": "code-index-agent", "draft_author": "full-analysis-draft-agent", "revision": 1,
+        "source_sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc", "line_range": [457, 460],
+        "gaps": [], "overlaps": [], "unresolved": [], "required_changes": []
+      },
+      "line_review_certification": {"complete": true, "reviewed_line_range": [457, 460], "reviewed_line_count": 4, "coverage": "every_source_line_reviewed_once", "source_sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc", "gaps": [], "overlaps": []},
+      "line_notes": [
+        {"line": 457, "kind": "signature", "explanation": "声明返回 uint32_t 活跃 MoE stage 核数的 GetActiveMoeStageNum。", "reads": [], "writes": []},
+        {"line": 458, "kind": "brace", "explanation": "开始求取 MoE staging 路径的实际并行度。", "reads": [], "writes": []},
+        {"line": 459, "kind": "branch", "explanation": "三元表达式取 axisBS_ 与 moeUsedAivNum_ 的较小值，避免 MoE stage 核分到空 token 区间。", "reads": ["axisBS_", "moeUsedAivNum_"], "writes": []},
+        {"line": 460, "kind": "brace", "explanation": "结束活跃 MoE stage 核数查询。", "reads": [], "writes": []}
+      ],
+      "segments": [
+        {
+          "id": "active-moe-stage-clamp-by-bs", "start": 457, "end": 460,
+          "title": "把 MoE stage 核数限制到有效 token 数",
+          "detail": "用 axisBS_ 与 moeUsedAivNum_ 的最小值控制 SendToMoeExpertNew 的 token 分片参与者数量。",
+          "kind": "compute",
+          "input_state": ["axisBS_：待路由 token 数", "moeUsedAivNum_：可执行 MoE staging 的核预算"],
+          "mechanism": "当 token 数更少时返回 axisBS_，否则返回 moeUsedAivNum_。",
+          "output_state": ["uint32_t 返回值：SendToMoeExpertNew 用于计算 sendNum_ 和余数分片的 activeMoeStageNum"],
+          "why": "SendToMoeExpertNew 会除以 activeMoeStageNum 并按核分 token；将其限制为 min(axisBS_, moeUsedAivNum_) 可避免核多于 token 时产生无意义分片。",
+          "calls": []
+        }
+      ]
+    },
+    {
+      "id": "m-moedistributedispatchv2fullmesh-getwindaddrbyrankid-994ab853c1",
+      "module_id": "source-contract",
+      "name": "GetWindAddrByRankId",
+      "start": 462,
+      "end": 479,
+      "inactive": false,
+      "summary": "先计算窗口中 token 数据区相对控制区的固定起点，再按 isMc2Context_ 在 aclshmem 映射与普通 HCCL window 之间选择目标 rank 的当前双缓冲数据地址。",
+      "inputs": [
+        "rankId：目标 EP rank",
+        "GetStageDoneRegionSize()、axisBS_ * hCommuSize_、GetUrmaCtrlReserveSize()：数据区之前的三个可变区域",
+        "FLAG_FIELD_OFFSET 与 aivNum_ * WIN_ADDR_ALIGN：状态 flag 固定域和逐 AIV 状态槽",
+        "isMc2Context_：选择 aclshmem 或普通 HCCL window 地址路径",
+        "shmemBuffer_、shmemDataSizeOffset_：MC2 共享窗口基址及当前 dataState_ 对应的数据半区偏移",
+        "winContext_[COMM_EP_IDX]、epRankIdOriginal_、winDataSizeOffset_：普通窗口上下文、原始本 rank 与当前双缓冲偏移"
+      ],
+      "outputs": [
+        "dataBaseOffset：MC2 共享窗口内越过 stageDone、token staging、URMA 控制、flag 域和逐 AIV 状态槽后的数据起点",
+        "GM_ADDR 返回值：目标 rank 当前 dataState_ 对应的 token 数据窗口地址"
+      ],
+      "side_effects": [
+        "不修改成员或目标窗口；aclshmem_ptr/GetBaseWindAddrByRankId 仅解析目标 rank 的可寻址基址"
+      ],
+      "review": {
+        "status": "PASS", "verdict": "PASS", "reviewer": "code-index-agent", "draft_author": "full-analysis-draft-agent", "revision": 1,
+        "source_sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc", "line_range": [462, 479],
+        "gaps": [], "overlaps": [], "unresolved": [], "required_changes": []
+      },
+      "line_review_certification": {"complete": true, "reviewed_line_range": [462, 479], "reviewed_line_count": 18, "coverage": "every_source_line_reviewed_once", "source_sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc", "gaps": [], "overlaps": []},
+      "line_notes": [
+        {"line": 462, "kind": "signature", "explanation": "声明按目标 rankId 返回 GM_ADDR 数据窗口地址的 GetWindAddrByRankId。", "reads": [], "writes": []},
+        {"line": 463, "kind": "brace", "explanation": "开始解析目标 rank 数据窗口地址。", "reads": [], "writes": []},
+        {"line": 464, "kind": "declaration", "explanation": "声明 dataBaseOffset，并由后续五项跨行表达式组成数据区之前的完整布局偏移。", "reads": [], "writes": ["dataBaseOffset"]},
+        {"line": 465, "kind": "call", "explanation": "调用 GetStageDoneRegionSize，把共享窗口最前部的 stage-done 标志区加入 dataBaseOffset。", "reads": ["GetStageDoneRegionSize"], "writes": []},
+        {"line": 466, "kind": "statement", "explanation": "加入 axisBS_ * hCommuSize_，越过所有 token 的本地 staging 槽。", "reads": ["axisBS_", "hCommuSize_"], "writes": []},
+        {"line": 467, "kind": "call", "explanation": "调用 GetUrmaCtrlReserveSize，把 head-ready、bitmap、SQ/CQ 和保护区计入 dataBaseOffset。", "reads": ["GetUrmaCtrlReserveSize"], "writes": []},
+        {"line": 468, "kind": "statement", "explanation": "加入 FLAG_FIELD_OFFSET，跨过为 data-state 标志预留的固定地址域。", "reads": ["FLAG_FIELD_OFFSET"], "writes": []},
+        {"line": 469, "kind": "statement", "explanation": "最后加入 aivNum_ * WIN_ADDR_ALIGN，越过每个 AIV 的一槽状态空间并完成 dataBaseOffset。", "reads": ["aivNum_", "WIN_ADDR_ALIGN"], "writes": []},
+        {"line": 470, "kind": "blank", "explanation": "空行分隔布局偏移计算和运行时窗口后端选择。", "reads": [], "writes": []},
+        {"line": 471, "kind": "comment", "explanation": "保留的 printf 调试语句会打印 rankId、共享内存基址和 dataBaseOffset，但当前被注释，不参与地址计算。", "reads": [], "writes": []},
+        {"line": 472, "kind": "comment", "explanation": "续接上一行被注释的调试参数 dataBaseOffset 与 dataState_；当前执行路径不会求值。", "reads": [], "writes": []},
+        {"line": 473, "kind": "blank", "explanation": "空行把无效调试代码与 isMc2Context_ 分支隔开。", "reads": [], "writes": []},
+        {"line": 474, "kind": "branch", "explanation": "检查 isMc2Context_，决定是否从 aclshmem 的跨 rank 映射解析数据地址。", "reads": ["isMc2Context_"], "writes": []},
+        {"line": 475, "kind": "call", "explanation": "MC2 路径用 aclshmem_ptr 获取 rankId 的 shmemBuffer_ 基址，加 dataBaseOffset 和 shmemDataSizeOffset_ 后返回当前数据半区地址。", "reads": ["aclshmem_ptr", "shmemBuffer_", "rankId", "dataBaseOffset", "shmemDataSizeOffset_"], "writes": []},
+        {"line": 476, "kind": "comment", "explanation": "注释记录旧 mc2Context_->epHcclBuffer_ 地址方案，现不执行，也不改变当前 aclshmem_ptr 返回值。", "reads": [], "writes": []},
+        {"line": 477, "kind": "brace", "explanation": "结束 isMc2Context_ 为真的提前返回分支。", "reads": [], "writes": []},
+        {"line": 478, "kind": "call", "explanation": "普通 HCCL 路径用 COMM_EP_IDX 上下文和 rankId 取得基础数据窗口，再加 winDataSizeOffset_ 返回当前双缓冲半区。", "reads": ["winContext_", "COMM_EP_IDX", "rankId", "epRankIdOriginal_", "winDataSizeOffset_"], "writes": []},
+        {"line": 479, "kind": "brace", "explanation": "结束目标 rank 数据窗口地址解析。", "reads": [], "writes": []}
+      ],
+      "segments": [
+        {
+          "id": "window-data-offset-after-control-regions", "start": 462, "end": 469,
+          "title": "越过五段控制布局定位数据区",
+          "detail": "dataBaseOffset 依次跨过 stageDone、axisBS_ 个 staging 槽、URMA 控制区、固定 flag 域和逐 AIV 状态槽。",
+          "kind": "compute",
+          "input_state": ["axisBS_ 与 hCommuSize_：staging 区槽数和单槽跨度", "aivNum_：逐 AIV 状态槽数量", "GetStageDoneRegionSize() 与 GetUrmaCtrlReserveSize()：两个封装后的控制区容量"],
+          "mechanism": "将 GetStageDoneRegionSize() + axisBS_ * hCommuSize_ + GetUrmaCtrlReserveSize() + FLAG_FIELD_OFFSET + aivNum_ * WIN_ADDR_ALIGN 累加为 dataBaseOffset。",
+          "output_state": ["dataBaseOffset：MC2 shmemBuffer_ 中 token 数据区相对基址的固定起点"],
+          "why": "MC2 把完成标志、staging、URMA 元数据和数据放在同一共享窗口；必须复用相同布局公式才能让远端 rank 找到 payload 而不落入控制区域。",
+          "calls": [
+            {"name": "GetStageDoneRegionSize", "line": 465, "type": "internal", "target": "m-moedistributedispatchv2fullmesh-getstagedoneregionsize-5c2a0cf9f6"},
+            {"name": "GetUrmaCtrlReserveSize", "line": 467, "type": "internal", "target": "m-moedistributedispatchv2fullmesh-geturmactrlreservesize-52bf758842"}
+          ]
+        },
+        {
+          "id": "window-data-address-from-mc2-shmem", "start": 470, "end": 477,
+          "title": "MC2 路径解析 rank 共享内存数据半区",
+          "detail": "isMc2Context_ 为真时，aclshmem_ptr 将本地 shmemBuffer_ 映射到 rankId，再叠加 dataBaseOffset 与 shmemDataSizeOffset_。",
+          "kind": "guard",
+          "input_state": ["isMc2Context_：MC2 后端选择标志", "rankId 与 shmemBuffer_：目标 rank 和共享内存本地句柄", "dataBaseOffset 与 shmemDataSizeOffset_：固定布局偏移和当前数据态偏移"],
+          "mechanism": "若 isMc2Context_，立即返回 aclshmem_ptr(shmemBuffer_, rankId) + dataBaseOffset + shmemDataSizeOffset_；两行 printf/旧 epHcclBuffer_ 代码均为注释。",
+          "output_state": ["GM_ADDR 返回值：rankId 在 MC2 共享窗口中的当前 token 数据半区地址"],
+          "why": "aclshmem 后端的远端基址需要运行时按 rankId 转换，而 shmemDataSizeOffset_ 选择 dataState_ 对应的双缓冲半区。",
+          "calls": [
+            {"name": "aclshmem_ptr", "line": 475, "type": "external"}
+          ]
+        },
+        {
+          "id": "window-data-address-from-hccl-context", "start": 478, "end": 479,
+          "title": "普通 HCCL 路径选择当前数据半区",
+          "detail": "非 MC2 时从 winContext_[COMM_EP_IDX] 解析 rankId 的基础数据窗口，再叠加 winDataSizeOffset_。",
+          "kind": "output",
+          "input_state": ["winContext_[COMM_EP_IDX]：EP 通信窗口上下文", "rankId 与 epRankIdOriginal_：目标 rank 和本地原始 EP rank", "winDataSizeOffset_：普通窗口当前 dataState_ 的半区偏移"],
+          "mechanism": "调用 GetBaseWindAddrByRankId(winContext_[COMM_EP_IDX], rankId, epRankIdOriginal_) 后加 winDataSizeOffset_ 并返回。",
+          "output_state": ["GM_ADDR 返回值：rankId 在普通 HCCL window 中的当前 token 数据地址"],
+          "why": "普通窗口后端由 GetBaseWindAddrByRankId 维护 rank 映射；只需在其基础地址上应用当前双缓冲偏移。",
+          "calls": [
+            {"name": "GetBaseWindAddrByRankId", "line": 478, "type": "external"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m-moedistributedispatchv2fullmesh-getwindstatebaseaddrbyrankid-3d8c15c648",
+      "module_id": "source-contract",
+      "name": "GetWindStateBaseAddrByRankId",
+      "start": 481,
+      "end": 490,
+      "inactive": false,
+      "summary": "按通信后端返回目标 rank 的状态空间基址：MC2 共享窗口中基址位于 stageDone、token staging 和 URMA 控制区之后，普通 HCCL 路径则交给 GetBaseWindStateAddrByRankId 解析。",
+      "inputs": [
+        "rankId：目标 EP rank",
+        "isMc2Context_、shmemBuffer_：MC2 后端标志和共享窗口句柄",
+        "GetStageDoneRegionSize()、axisBS_ * hCommuSize_、GetUrmaCtrlReserveSize()：MC2 状态空间之前的布局容量",
+        "winContext_[COMM_EP_IDX] 与 epRankIdOriginal_：普通 HCCL window 的 EP 上下文和本地原始 rank"
+      ],
+      "outputs": ["GM_ADDR 返回值：目标 rank 状态空间的基址；尚未叠加 dataState_ * WIN_STATE_OFFSET"],
+      "side_effects": ["不修改成员或状态空间；aclshmem_ptr/GetBaseWindStateAddrByRankId 只解析远端可寻址基址"],
+      "review": {
+        "status": "PASS", "verdict": "PASS", "reviewer": "code-index-agent", "draft_author": "full-analysis-draft-agent", "revision": 1,
+        "source_sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc", "line_range": [481, 490],
+        "gaps": [], "overlaps": [], "unresolved": [], "required_changes": []
+      },
+      "line_review_certification": {"complete": true, "reviewed_line_range": [481, 490], "reviewed_line_count": 10, "coverage": "every_source_line_reviewed_once", "source_sha256": "e2e87f115784687ea8c91b370183001ab7a17198203faa38e530263536da96fc", "gaps": [], "overlaps": []},
+      "line_notes": [
+        {"line": 481, "kind": "signature", "explanation": "声明按 rankId 返回目标 rank 状态空间基础 GM_ADDR 的 GetWindStateBaseAddrByRankId。", "reads": [], "writes": []},
+        {"line": 482, "kind": "brace", "explanation": "开始按通信后端解析状态空间基址。", "reads": [], "writes": []},
+        {"line": 483, "kind": "branch", "explanation": "检查 isMc2Context_，若为真则按共享窗口的内嵌布局计算状态空间基址。", "reads": ["isMc2Context_"], "writes": []},
+        {"line": 484, "kind": "call", "explanation": "MC2 路径先用 aclshmem_ptr 把 shmemBuffer_ 转为 rankId 的远端共享窗口基址。", "reads": ["aclshmem_ptr", "shmemBuffer_", "rankId"], "writes": []},
+        {"line": 485, "kind": "call", "explanation": "在远端共享窗口基址上加入 GetStageDoneRegionSize()，跨过 stage-done 标志区域。", "reads": ["GetStageDoneRegionSize"], "writes": []},
+        {"line": 486, "kind": "statement", "explanation": "继续加入 axisBS_ * hCommuSize_，跨过所有 token staging 槽。", "reads": ["axisBS_", "hCommuSize_"], "writes": []},
+        {"line": 487, "kind": "call", "explanation": "加入 GetUrmaCtrlReserveSize() 并返回，令 MC2 状态空间紧随 URMA 控制保留区。", "reads": ["GetUrmaCtrlReserveSize"], "writes": []},
+        {"line": 488, "kind": "brace", "explanation": "结束 MC2 状态基址的提前返回分支。", "reads": [], "writes": []},
+        {"line": 489, "kind": "call", "explanation": "非 MC2 路径调用 GetBaseWindStateAddrByRankId，以 EP 窗口上下文、rankId 和 epRankIdOriginal_ 解析状态空间基址并返回。", "reads": ["winContext_", "COMM_EP_IDX", "rankId", "epRankIdOriginal_"], "writes": []},
+        {"line": 490, "kind": "brace", "explanation": "结束目标 rank 状态空间基址解析。", "reads": [], "writes": []}
+      ],
+      "segments": [
+        {
+          "id": "state-base-after-mc2-control-layout", "start": 481, "end": 488,
+          "title": "MC2 共享窗口中越过 staging 与 URMA 控制区",
+          "detail": "isMc2Context_ 为真时，从 aclshmem_ptr 给出的 rankId 基址依次跨过 stageDone、token staging 和 URMA 控制保留区。",
+          "kind": "guard",
+          "input_state": ["rankId 与 shmemBuffer_：目标 rank 和共享窗口句柄", "axisBS_ 与 hCommuSize_：token staging 区容量参数", "GetStageDoneRegionSize() 与 GetUrmaCtrlReserveSize()：前置控制区域容量"],
+          "mechanism": "返回 aclshmem_ptr(shmemBuffer_, rankId) + GetStageDoneRegionSize() + axisBS_ * hCommuSize_ + GetUrmaCtrlReserveSize()。",
+          "output_state": ["GM_ADDR 返回值：MC2 共享窗口内状态空间的首地址"],
+          "why": "SetDataStatus 会从这个基址继续叠加 FLAG_FIELD_OFFSET；因此本函数必须停在 URMA 控制区之后、固定 flag 域之前。",
+          "calls": [
+            {"name": "aclshmem_ptr", "line": 484, "type": "external"},
+            {"name": "GetStageDoneRegionSize", "line": 485, "type": "internal", "target": "m-moedistributedispatchv2fullmesh-getstagedoneregionsize-5c2a0cf9f6"},
+            {"name": "GetUrmaCtrlReserveSize", "line": 487, "type": "internal", "target": "m-moedistributedispatchv2fullmesh-geturmactrlreservesize-52bf758842"}
+          ]
+        },
+        {
+          "id": "state-base-from-hccl-context", "start": 489, "end": 490,
+          "title": "普通 HCCL 上下文解析状态空间基址",
+          "detail": "非 MC2 时将 EP 通信上下文、目标 rankId 和 epRankIdOriginal_ 交给标准窗口状态地址助手。",
+          "kind": "output",
+          "input_state": ["winContext_[COMM_EP_IDX]：EP 通信窗口上下文", "rankId：目标 EP rank", "epRankIdOriginal_：本地原始 EP rank"],
+          "mechanism": "直接返回 GetBaseWindStateAddrByRankId(winContext_[COMM_EP_IDX], rankId, epRankIdOriginal_)。",
+          "output_state": ["GM_ADDR 返回值：普通 HCCL window 中目标 rank 的状态空间基址"],
+          "why": "普通后端的窗口布局由 GetBaseWindStateAddrByRankId 封装，避免在本函数重复 HCCL rank 到窗口地址的映射规则。",
+          "calls": [
+            {"name": "GetBaseWindStateAddrByRankId", "line": 489, "type": "external"}
+          ]
+        }
+      ]
+    }
+  ]
+}
