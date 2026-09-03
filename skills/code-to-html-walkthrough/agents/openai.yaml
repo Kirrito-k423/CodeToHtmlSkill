@@ -1,0 +1,4 @@
+interface:
+  display_name: "代码走读 HTML"
+  short_description: "以代码逻辑和内存通信双模式生成可交互源码走读 HTML"
+  default_prompt: "使用 $code-to-html-walkthrough 将这份源码生成可交互的代码走读 HTML；若包含内存搬运，请继续追踪 allocator、大块容量、空间切片、地址公式、传输引擎与同步条件。"
